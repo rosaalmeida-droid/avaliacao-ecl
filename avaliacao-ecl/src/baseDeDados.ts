@@ -62,6 +62,8 @@ export const COLECAO_DO_TIPO: Record<string, string> = {
   aluno_fantasma: 'fantasmas',
   // Definições da escola iguais para todos (ex.: e-mails das compras).
   config: 'configs',
+  // Avisos para a coordenação (sugestões de ingredientes dos professores).
+  aviso_coord: 'avisoscoord',
 };
 /** As fichas são de todas as turmas: ficam numa «turma» à parte. */
 export const TURMA_DAS_FICHAS = '_todas';
@@ -71,7 +73,7 @@ export const TIPOS_DO_PROFESSOR = Object.keys(COLECAO_DO_TIPO);
 export const TIPOS_DO_ALUNO = ['plano', 'ficha', 'sessao', 'validacao', 'avaliacao', 'presenca', 'grupo_membro', 'grupo_info', 'lider_kf',
   'recuperacao', 'evidencia'];
 /** O que é de todas as turmas: fica numa «turma» à parte. */
-const DE_TODAS = new Set(['fichas', 'materiasprimas', 'requisicoes', 'eventos', 'notasprodutos', 'fantasmas', 'configs']);
+const DE_TODAS = new Set(['fichas', 'materiasprimas', 'requisicoes', 'eventos', 'notasprodutos', 'fantasmas', 'configs', 'avisoscoord']);
 
 let aLigar: Promise<{ app: FirebaseApp; db: Firestore } | null> | null = null;
 
@@ -145,6 +147,8 @@ function paraBase(tipo: string, dados: Record<string, any>): ParaBase | null {
       obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
     case 'eliminar_materia_prima': return dados.id ? { colecao: 'materiasprimas', turma: TURMA_DAS_FICHAS, id: String(dados.id),
       obj: { id: dados.id, eliminado: true, atualizadoEm: new Date().toISOString() } } : null;
+    case 'aviso_coord': return dados.id ? { colecao: 'avisoscoord', turma: TURMA_DAS_FICHAS, id: String(dados.id),
+      obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
     case 'config': return dados.id ? { colecao: 'configs', turma: TURMA_DAS_FICHAS, id: String(dados.id),
       obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
     case 'aluno_fantasma': return dados.alunoId ? { colecao: 'fantasmas', turma: TURMA_DAS_FICHAS, id: String(dados.alunoId),

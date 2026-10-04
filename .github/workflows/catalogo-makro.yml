@@ -1,0 +1,53 @@
+# Atualização mensal dos preços da Makro (Rosa, out/2026).
+# Quando a coordenação põe o CSV da Makro (feito pela extensão Claude no
+# Chrome) na pasta avaliacao-ecl/dados/makro/, o catálogo da aplicação
+# refaz-se sozinho e a aplicação publica-se com os preços novos.
+# Um ficheiro com outro formato ou incompleto não mexe no catálogo.
+name: Catálogo da Makro
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'avaliacao-ecl/dados/makro/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalogo-makro
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refazer o catálogo com o ficheiro mais recente
+        working-directory: avaliacao-ecl
+        run: |
+          set -e
+          # O ficheiro mais recente da pasta, pela data em que entrou no GitHub.
+          FICHEIRO=$(git log --diff-filter=AM --name-only --pretty=format: -- 'dados/makro/*.csv' 'dados/makro/*.CSV' | sed '/^$/d' | head -n 1)
+          if [ -z "$FICHEIRO" ]; then echo "Nenhum CSV em dados/makro/."; exit 0; fi
+          FICHEIRO="${FICHEIRO#avaliacao-ecl/}"
+          echo "Ficheiro: $FICHEIRO"
+          DATA=$(git log -1 --format=%cs -- "$FICHEIRO")
+          python3 dados/gerar_catalogo_makro.py "$FICHEIRO" "$DATA"
+
+      - name: Guardar o catálogo novo
+        run: |
+          git config user.name "Catálogo Makro (automático)"
+          git config user.email "actions@users.noreply.github.com"
+          git add avaliacao-ecl/public/catalogo_makro.json
+          if git diff --cached --quiet; then echo "O catálogo não mudou."; exit 0; fi
+          git commit -m "Catálogo da Makro atualizado automaticamente"
+          git push

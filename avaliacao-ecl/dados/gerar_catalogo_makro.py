@@ -46,7 +46,15 @@ def num(v):
     except ValueError: return None
 
 ficheiro = sys.argv[1]
-linhas = list(csv.reader(open(ficheiro, encoding="utf-8-sig"), delimiter=";"))[1:]
+todas = list(csv.reader(open(ficheiro, encoding="utf-8-sig"), delimiter=";"))
+# Verificação (atualização mensal automática, out/2026): um ficheiro com outro
+# formato, ou cortado a meio, não pode apagar o catálogo que está na aplicação.
+CABECALHO = ["Grupo", "Categoria", "Subcategoria", "Nome", "Marca", "Embalagem"]
+if not todas or [c.strip() for c in todas[0][:6]] != CABECALHO:
+    sys.exit("ERRO: o ficheiro não tem as colunas da Makro (Grupo;Categoria;Subcategoria;Nome;Marca;Embalagem;…). O catálogo não foi alterado.")
+linhas = [r for r in todas[1:] if len(r) >= 8 and r[3].strip()]
+if len(linhas) < 3000:
+    sys.exit(f"ERRO: o ficheiro só tem {len(linhas)} produtos (o catálogo tem mais de 12 000). Parece incompleto: o catálogo não foi alterado.")
 produtos = []
 def deposito(ps, pc, iva):
     # Nas bebidas em lata, garrafa ou com tara, o preço sem IVA inclui o depósito da
@@ -61,12 +69,15 @@ for r in linhas:
     _, cat, sub, nome, marca, emb, ps, pc, refere, pks, pkc, un, iva, antes, disp, cod = r
     produtos.append([grupo(cat, sub, nome), cat, sub, nome, marca, emb, num(ps), num(pc), refere, num(pks), num(pkc), un, num(iva), num(antes),
                      0 if disp.strip() == "UNAVAILABLE" else 1, cod, dietas(nome + " " + sub), deposito(num(ps), num(pc), num(iva)) if cat in BEBIDAS else 0])
-data = os.path.basename(ficheiro).rsplit("_", 1)[-1].replace(".csv", "")
+import datetime
+m = re.search(r"(\d{4}-\d{2}-\d{2})", os.path.basename(ficheiro))
+data = m.group(1) if m else (sys.argv[2] if len(sys.argv) > 2 else datetime.date.today().isoformat())
 saida = {"loja": "Makro Alfragide", "data": data, "grupos": GRUPOS, "dietas": DIETAS,
          "colunas": ["grupo","categoria","subcategoria","nome","marca","embalagem","precoSemIVA","precoComIVA","precoRefere",
                      "precoRefSemIVA","precoRefComIVA","unidadeRef","iva","precoAntesPromoSemIVA","disponivel","codigo","dietas","depositoEmbalagem"],
          "produtos": produtos}
 destino = os.path.join(os.path.dirname(__file__), "..", "public", "catalogo_makro.json")
 json.dump(saida, open(destino, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+print(f"Catálogo da Makro atualizado: {len(produtos)} produtos, preços de {data}.")
 from collections import Counter
 print(len(produtos), "produtos;", dict(Counter(GRUPOS[p[0]] for p in produtos)))

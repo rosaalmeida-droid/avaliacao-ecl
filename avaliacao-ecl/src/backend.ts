@@ -789,6 +789,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'nota_produto') juntarNotasProdutos(dados);
   else if (tipo === 'aluno_fantasma') juntarFantasmas(dados);
   else if (tipo === 'config') juntarConfigs(dados);
+  else if (tipo === 'aviso_coord') juntarAvisosDaCoordenacao(dados);
   else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
   else if (tipo === 'evento') juntarEventosDaBase(dados);
   else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
@@ -1165,6 +1166,11 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       const jsonMP = await ler(SHEETS_ECL_URL, { tipo: 'get_materias_primas' });
       if (jsonMP?.ok && Array.isArray(jsonMP.dados)) juntarMateriasPrimas(jsonMP.dados.concat((jsonMP.eliminados || []).map((id: string) => ({ id, eliminado: true }))));
       partilharMateriasPrimasAntigas();
+      // As sugestões feitas antes desta correção também chegam à coordenação.
+      if (!sugestoesAntigasPartilhadas) {
+        sugestoesAntigasPartilhadas = true;
+        getAvisos().filter(x => x.tipo === 'sugestao_ingrediente').forEach(partilharAvisoDaCoordenacao);
+      }
       // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarNotasDaTurma(turmaId);
@@ -4954,8 +4960,31 @@ export function addAviso(a: Omit<Aviso, 'id' | 'criadoEm' | 'resolvido'>): void 
     x.contexto?.ingredienteNome === a.contexto?.ingredienteNome
   );
   if (jaExiste) return;
-  all.push({ ...a, id: `aviso_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, resolvido: false, criadoEm: new Date().toISOString() });
+  const novo = { ...a, id: `aviso_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, resolvido: false, criadoEm: new Date().toISOString() } as Aviso;
+  all.push(novo);
   save(KEYS.avisos, all);
+  partilharAvisoDaCoordenacao(novo);
+}
+
+// Os avisos para a coordenação (sugestões de ingredientes dos professores)
+// ficavam só no aparelho do professor que os criou: a coordenadora nunca
+// os via (Rosa, out/2026: «os avisos no coordenador não estão a
+// funcionar»). Vão agora para a base de dados, e voltam de lá resolvidos.
+let sugestoesAntigasPartilhadas = false;
+function partilharAvisoDaCoordenacao(a: Aviso | undefined): void {
+  if (a && a.tipo === 'sugestao_ingrediente') gravarNaBase('aviso_coord', { ...a, atualizadoEm: new Date().toISOString() } as any);
+}
+function juntarAvisosDaCoordenacao(lista: any[]): void {
+  const all = getAvisos();
+  let mudou = false;
+  for (const x of lista) {
+    if (!x?.id || x.tipo !== 'sugestao_ingrediente') continue;
+    const { gravadoNaBaseEm: _g, turmaId: _t, ...av } = x;
+    const i = all.findIndex(a => a.id === x.id);
+    if (i < 0) { all.push(av as Aviso); mudou = true; }
+    else if (av.resolvido && !all[i].resolvido) { all[i] = { ...all[i], resolvido: true, resolvidoEm: av.resolvidoEm }; mudou = true; }
+  }
+  if (mudou) save(KEYS.avisos, all);
 }
 
 export function resolverAviso(avisoId: string): void {
@@ -4975,6 +5004,7 @@ export function resolverAviso(avisoId: string): void {
   if (idx >= 0) {
     all[idx] = { ...all[idx], resolvido: true, resolvidoEm: new Date().toISOString() };
     save(KEYS.avisos, all);
+    partilharAvisoDaCoordenacao(all[idx]);
   }
 }
 
