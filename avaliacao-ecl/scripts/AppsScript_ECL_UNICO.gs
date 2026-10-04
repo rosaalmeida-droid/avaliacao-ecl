@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.2';
+var VERSAO = 'ECL único v25.3';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -113,6 +113,11 @@ var FOLHAS = {
   // UC com o peso de cada aula e as faltas a 0, bónus, nota da UC). O separador
   // da turma usa-as, para mostrar o mesmo número que a aplicação.
   NOTAS_APP:          { chave: ['id'], colunas: ['id', 'turmaId', 'alunoId', 'nomeAluno', 'ucId', 'media', 'bonus', 'final', 'faltas', 'porAula', 'atualizadoEm'] },
+  // (v25.3) O email da escola de cada aluno, pedido na entrada da aplicação,
+  // para os avisos de autoavaliação em falta (Rosa, out/2026).
+  EMAILS_ALUNOS:      { chave: ['alunoId'], colunas: ['alunoId', 'turmaId', 'numero', 'nome', 'email', 'atualizadoEm'] },
+  // (v25.3) Os avisos por email já enviados (não se repetem).
+  AVISOS_EMAIL:       { chave: ['id'], colunas: ['id', 'alunoId', 'planoAulaId', 'email', 'enviadoEm'] },
   TABELA_PRECOS:      { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'origem', 'fonte', 'atualizadoEm'] },
   // (v24) Alunos de fora das turmas que vêm recuperar UC. As recuperações
   // deles estão em RECUPERACOES, na «turma» EXTERNOS.
@@ -813,6 +818,7 @@ function tratar(d) {
     if (tipo === 'materia_prima')          return guardar('MATERIAS_PRIMAS', d.materiaPrima || d);
     if (tipo === 'tabela_precos')          return guardarVarios('TABELA_PRECOS', d.linhas || []);
     if (tipo === 'notas_app')              return guardarVarios('NOTAS_APP', d.linhas || []);
+    if (tipo === 'email_aluno')            return guardar('EMAILS_ALUNOS', d);
     if (tipo === 'aluno_externo')          return guardar('ALUNOS_EXTERNOS', d.alunoExterno || d);
     if (tipo === 'eliminar_aluno_externo') return eliminar('ALUNOS_EXTERNOS', d.id);
     if (tipo === 'eliminar_materia_prima') return eliminar('MATERIAS_PRIMAS', d.id);
@@ -1391,8 +1397,9 @@ function escreverFichaPorExtenso(f) {
     ['Alergénios:', Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : (f.alergenicos || '')],
     ['Unidades de competência:', Array.isArray(f.ucsAssociadas) ? f.ucsAssociadas.join(', ') : (f.ucsAssociadas || '')],
     ['Elaborado por:', f.elaboradoPor || ''],
-    ['Data:', String(f.data || '').slice(0, 10)],
-    ['Plano de aula:', f.planoAulaId || '']
+    // (v25.3) A data à portuguesa e o plano pelo nome, não pelo código.
+    ['Data:', diaPT(f.data)],
+    ['Plano de aula:', descricaoDoPlanoDaFicha(f.planoAulaId)]
   ];
   s.getRange(2, 1, meta.length, 2).setValues(meta);
   s.getRange(2, 1, meta.length, 1).setFontWeight('bold').setBackground('#f5f0e8');
@@ -1805,7 +1812,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'FICHAS POR EXTENSO', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'EXTERNOS (recuperações)', 'ALUNOS_EXTERNOS', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'EXTERNOS (recuperações)', 'ALUNOS_EXTERNOS', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -1974,6 +1981,17 @@ function seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia,
  *  respondeu (e as respostas às perguntas), a nota que o professor validou e
  *  os casos à parte (faltou, farda, atividade, versão antiga do plano…). */
 function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas) {
+  // (v25.3) Atrasos que contam: declarados, ou entradas fora da tolerância
+  // nas aulas abertas no próprio dia e em que os atrasos contam.
+  var sessaoDe = {}; (d.sessoes || []).forEach(function (s) { sessaoDe[s.planoAulaId] = s; });
+  var atrasoContaAqui = function (x, p) {
+    var dec = x ? (x.decisaoProfessor || '') : '';
+    if (dec === 'falta_atraso') return true;
+    if (!x || dec || !(x.atrasado === true || x.atrasado === 'true')) return false;
+    var s = sessaoDe[p.id];
+    if (!s || !s.abertaEm || Number(s.toleranciaMin) >= 1440) return false;
+    return Utilities.formatDate(new Date(s.abertaEm), 'Europe/Lisbon', 'yyyy-MM-dd') <= String(p.data || '').slice(0, 10);
+  };
   var ultimas = aulas.filter(function (p) { return p.estado !== 'arquivado'; }).slice(-10).reverse();
   titulo('O QUE CHEGOU A CADA ALUNO (as últimas ' + ultimas.length + ' aulas e atividades)', '#6B4C9A');
   junta(['Para cada aluno: o que respondeu no telemóvel (e como), as respostas às perguntas, a nota que o professor validou (é a que o aluno vê) e os casos à parte.']);
@@ -2001,8 +2019,13 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       });
       var notasProf = v && Array.isArray(v.notas) ? v.notas.map(function (n) { return nomeC(n.competenciaId) + ': ' + virgula(n.nota); }) : [];
       var casos = [];
-      if (x && x.presente === false) casos.push('Faltou');
-      if (x && x.atrasado) casos.push('Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
+      // (v25.3) Faltas e atrasos: conta o que o professor declarou.
+      var decX = x ? (x.decisaoProfessor || '') : '';
+      var sX = sessaoDe[p.id];
+      var tardiaX = !!(sX && sX.abertaEm) && Utilities.formatDate(new Date(sX.abertaEm), 'Europe/Lisbon', 'yyyy-MM-dd') > String(p.data || '').slice(0, 10);
+      var faltouX = !!x && (decX === 'falta_presenca' || (!decX && (x.presente === false || x.presente === 'false') && !tardiaX));
+      if (faltouX) casos.push('Faltou');
+      if (atrasoContaAqui(x, p)) casos.push(decX === 'falta_atraso' ? 'Falta de atraso (declarada pelo professor)' : 'Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
       if (x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
       if (p.tipoEvento) casos.push('Atividade extra: conta como bónus');
       if (s && p.pedirDeNovoEm && s.versaoPlano && String(s.versaoPlano) < String(p.pedirDeNovoEm)) casos.push('Respondeu à versão antiga do plano');
@@ -2012,8 +2035,8 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (v && Array.isArray(v.naoReparou) && v.naoReparou.length) casos.push('O professor não reparou em: ' + v.naoReparou.map(nomeC).join(', '));
       if (v && (v.comentarioGeral || v.comentario)) casos.push('Comentário do professor: «' + (v.comentarioGeral || v.comentario) + '»');
       if (s && !v) casos.push('Por validar');
-      if (!s && !(x && x.presente === false)) casos.push('Não respondeu');
-      var presenca = !x ? '' : x.presente === false ? 'Faltou' : x.atrasado ? 'Atrasado' : 'Presente';
+      if (!s && !faltouX) casos.push('Não respondeu: conta 0 na nota da UC até se autoavaliar');
+      var presenca = !x ? '' : faltouX ? 'Faltou' : atrasoContaAqui(x, p) ? 'Atrasado' : 'Presente';
       var n20 = v ? Number(String(v.notaMedia20 === undefined ? '' : v.notaMedia20).replace(',', '.')) : NaN;
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.titulo || '', a.numero || '', a.nome || '', presenca,
         respondeu.join('\n'), respostas.join('\n'), notasProf.join('\n'), isNaN(n20) ? '' : virgula(Math.round(n20 * 10) / 10), casos.join('\n')]);
@@ -2061,7 +2084,39 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     Object.keys(pa).forEach(function (pid) { if (idsAulas[pid]) nota[chave(r.alunoId, pid)] = Math.round(Number(pa[pid]) * 10) / 10; });
   });
   var ligado = {}; d.telemoveis.forEach(function (t) { ligado[t.alunoId] = true; });
-  var abertas = {}; d.sessoes.forEach(function (s) { if (s.abertaEm) abertas[s.planoAulaId] = true; });
+  var abertas = {}, semAtrasos = {};
+  d.sessoes.forEach(function (s) { if (s.abertaEm) abertas[s.planoAulaId] = s.abertaEm; if (Number(s.toleranciaMin) >= 1440) semAtrasos[s.planoAulaId] = true; });
+  // (v25.3) Aula aberta depois do dia do plano: só conta o que o professor
+  // declarou (não há atrasos nem faltas automáticas). Nas outras, o atraso
+  // conta quando o aluno entrou depois da tolerância, exceto se o professor
+  // disse ao abrir que os atrasos não contavam, ou decidiu «sem falta» (Rosa, out/2026).
+  var diaDoPlano = {}; d.planos.forEach(function (p) { diaDoPlano[p.id] = String(p.data || '').slice(0, 10); });
+  var tardia = function (pid) {
+    var ab = abertas[pid]; if (!ab) return false;
+    var dia = Utilities.formatDate(new Date(ab), 'Europe/Lisbon', 'yyyy-MM-dd');
+    return !!diaDoPlano[pid] && dia > diaDoPlano[pid];
+  };
+  var faltou = function (x, pid) {
+    if (!x) return false;
+    var dec = x.decisaoProfessor || '';
+    if (dec === 'falta_presenca') return true;
+    if (dec) return false;
+    return x.presente === false && !tardia(pid);
+  };
+  var atrasou = function (x, pid) {
+    if (!x) return false;
+    var dec = x.decisaoProfessor || '';
+    if (dec === 'falta_atraso') return true;
+    if (dec) return false;
+    return (x.atrasado === true || x.atrasado === 'true') && !tardia(pid) && !semAtrasos[pid];
+  };
+  var esteve = function (x, pid) {
+    if (!x) return false;
+    var dec = x.decisaoProfessor || '';
+    if (dec === 'sem_falta' || dec === 'falta_atraso' || dec === 'parcial') return true;
+    if (dec === 'falta_presenca') return false;
+    return x.presente !== false;
+  };
 
   var linhas = [], formatos = [];
   var largura = 12;
@@ -2083,7 +2138,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     var p = 0, f = 0, at = 0, aa = 0, va = 0, soma = 0;
     contam.forEach(function (pl) {
       var k = chave(a.id, pl.id), x = pres[k];
-      if (x) { if (x.presente === false) f++; else p++; if (x.atrasado) at++; }
+      if (faltou(x, pl.id)) f++; else if (esteve(x, pl.id)) p++;
+      if (atrasou(x, pl.id)) at++;
       if (auto[k]) aa++;
       if (nota[k] !== undefined) { va++; soma += nota[k]; }
     });
@@ -2109,7 +2165,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         var k = chave(a.id, p.id);
         if (nota[k] !== undefined) { soma += nota[k]; n++; return virgula(nota[k]); }
         if (auto[k]) return 'AA';
-        if (pres[k] && pres[k].presente === false) return 'F';
+        if (faltou(pres[k], p.id)) return 'F';
         return '';
       });
       var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();
@@ -2132,30 +2188,43 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     vazia();
   }
 
-  // 3. As aulas (a mais recente primeiro)
+  // 3. As aulas, em grupos (v25.3, Rosa, out/2026): as que contam para a
+  // nota, as atividades extra e, por fim, os rascunhos e as arquivadas.
+  var gruposAulas = [
+    { nome: 'AULAS LANÇADAS — contam para a nota', cor: '#3E7A31', fundo: '#DFF0D8',
+      lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
+    { nome: 'ATIVIDADES EXTRA — contam como bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
+      lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && p.tipoEvento; }) },
+    { nome: 'AULAS PUBLICADAS PARA OS PRÓXIMOS DIAS', cor: '#2F5D8A', fundo: '#E3EDF7',
+      lista: d.planos.filter(function (p) { return !p.eliminado && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
+    { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
+      lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
+    { nome: 'ARQUIVADAS — não contam', cor: '#A23A2E', fundo: '#F8D7DA',
+      lista: aulas.filter(function (p) { return p.estado === 'arquivado'; }) },
+  ];
   titulo('AS AULAS (' + aulas.length + ' — ' + contam.length + (contam.length === 1 ? ' conta' : ' contam') + ' para a nota)', '#2F5D8A');
-  // (v23.3) O nº do plano e quando foi criado: com planos repetidos, sabe-se
-  // qual é o último (Rosa, out/2026). As atividades extra dizem que o são.
-  junta(['Verde: publicada, conta para a nota · Vermelho: não conta (arquivada/anulada) · Roxo: atividade extra (conta como bónus)']);
+  junta(['Em cada grupo, a aula mais recente primeiro. Presentes e faltas: o que o professor declarou (nas aulas abertas depois do dia, não há faltas automáticas).']);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
-  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Plano da UC', 'Criado em', 'Conta para a nota?']);
-  aulas.slice().reverse().forEach(function (p) {
-    var pr = 0, fa = 0, aa = 0, va = 0;
-    alunos.forEach(function (a) {
-      var k = chave(a.id, p.id);
-      if (pres[k]) { if (pres[k].presente === false) fa++; else pr++; }
-      if (auto[k]) aa++;
-      if (nota[k] !== undefined) va++;
+  gruposAulas.forEach(function (g) {
+    if (!g.lista.length) return;
+    titulo(g.nome + ' (' + g.lista.length + ')', g.cor);
+    cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Plano da UC', 'Criado em']);
+    g.lista.slice().sort(function (a, b) { return String(b.data || '').localeCompare(String(a.data || '')); }).forEach(function (p) {
+      var pr = 0, fa = 0, aa = 0, va = 0;
+      alunos.forEach(function (a) {
+        var k = chave(a.id, p.id);
+        if (faltou(pres[k], p.id)) fa++; else if (esteve(pres[k], p.id)) pr++;
+        if (auto[k]) aa++;
+        if (nota[k] !== undefined) va++;
+      });
+      junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
+        p.ucId || '', p.titulo || '', tipoParaLer(p), NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va,
+        p.tipoEvento ? '' : (posNaUC[p.id] ? 'Plano ' + posNaUC[p.id] : ''), criadoParaLer(p.criadoEm)]);
+      formatos.push({ tipo: 'cor', linha: linhas.length, n: 13, cor: g.fundo });
     });
-    junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
-      p.ucId || '', p.titulo || '', tipoParaLer(p), NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va,
-      p.tipoEvento ? '' : (posNaUC[p.id] ? 'Plano ' + posNaUC[p.id] : ''), criadoParaLer(p.criadoEm),
-      p.estado === 'arquivado' ? 'Não (arquivada)' : p.tipoEvento ? 'Bónus (atividade extra)' : 'Sim']);
-    formatos.push({ tipo: 'cor', linha: linhas.length, n: 14,
-      cor: p.estado === 'arquivado' ? '#F8D7DA' : p.tipoEvento ? '#EDE3F6' : '#DFF0D8' });
+    vazia();
   });
 
-  vazia();
   seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
   seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
 
@@ -2453,7 +2522,12 @@ function listaDeIds(v) {
   return [];
 }
 
-function diaPT(s) { var t = String(s || '').slice(0, 10).split('-'); return t.length === 3 ? t[2] + '/' + t[1] + '/' + t[0] : String(s || ''); }
+function diaPT(s) {
+  // (v25.3) Uma data com hora (2026-09-23T23:00:00.000Z) lê-se na hora de Lisboa: é o dia 24.
+  var x = String(s || '');
+  if (/^\d{4}-\d{2}-\d{2}T/.test(x)) { try { return Utilities.formatDate(new Date(x), 'Europe/Lisbon', 'dd/MM/yyyy'); } catch (e) {} }
+  var t = x.slice(0, 10).split('-'); return t.length === 3 ? t[2] + '/' + t[1] + '/' + t[0] : x;
+}
 
 /** Escreve uma folha geral: título, cabeçalho e linhas (a última coluna pode ser um link). */
 function escreverFolhaGeral(ss, nome, titulo, cab, linhas, larguras, links, cores) {
@@ -2515,8 +2589,8 @@ function escreverFolhasGerais(ss, dados) {
     (Array.isArray(e.orcamentos) ? e.orcamentos : []).forEach(function (o) { listaDeIds(o.fichasIds).forEach(function (id) { usar(id, descEvento(e) + ' (orçamento «' + (o.nome || '') + '»)'); }); });
   });
   fichas.sort(function (a, b) { return String(a.nomePrato).localeCompare(String(b.nomePrato), 'pt'); });
-  // (v25) As fichas por extenso ficam todas numa folha só (FICHAS POR EXTENSO),
-  // uma a seguir à outra; «abrir» vai direto à linha de cada uma.
+  // (v25.3) As fichas por extenso ficam num ficheiro à parte, um separador
+  // por ficha; «abrir» abre o separador da ficha.
   var irPara = {};
   try { irPara = escreverFichasPorExtenso(ss, fichas); } catch (e) { Logger.log('Fichas por extenso: ' + e); }
   var lf = [], gf = [];
@@ -2527,7 +2601,7 @@ function escreverFolhasGerais(ss, dados) {
       (usos[fi.id] || []).join('\n') || 'Ainda não entrou em nenhum plano nem evento', fo ? 'abrir' : 'sem folha: correr organizarFichas']);
     gf.push(fo);
   });
-  escreverFolhaGeral(ss, FOLHA_INDICE_FICHAS, 'FICHAS TÉCNICAS E GUIÕES (' + fichas.length + ') · «abrir» mostra a ficha por extenso, com o guião no fim (folha FICHAS POR EXTENSO)',
+  escreverFolhaGeral(ss, FOLHA_INDICE_FICHAS, 'FICHAS TÉCNICAS E GUIÕES (' + fichas.length + ') · «abrir» abre a ficha por extenso, com o guião no fim, no ficheiro «' + NOME_FICHEIRO_FICHAS + '»',
     ['Ficha', 'Classificação', 'UC', 'Elaborado por', 'Data', 'Porções', 'Tem guião', 'Onde entrou', 'Ficha por extenso'], lf,
     [230, 120, 100, 140, 85, 65, 70, 380, 150], gf);
 
@@ -2610,40 +2684,88 @@ function entreguesDaRecuperacao(r) {
  *  que está em cada folha «F …» (que fica escondida). Devolve, para cada
  *  ficha, o link que vai direto à linha onde ela começa. */
 var FOLHA_FICHAS_EXTENSO = 'FICHAS POR EXTENSO';
+var PROP_FICHEIRO_FICHAS = 'ECL_FICHEIRO_FICHAS';
+var NOME_FICHEIRO_FICHAS = 'Avaliação ECL — Fichas técnicas por extenso';
+
+/** (v25.3) O ficheiro à parte com as fichas por extenso, um separador por
+ *  ficha (Rosa, out/2026: «numa folha só é difícil procurar»). Cria-o na
+ *  mesma pasta do ficheiro principal, na primeira vez. */
+function ficheiroDasFichas(ss) {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty(PROP_FICHEIRO_FICHAS);
+  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) { Logger.log('Ficheiro das fichas não abriu: ' + e); } }
+  var novo = SpreadsheetApp.create(NOME_FICHEIRO_FICHAS);
+  try {
+    var pastas = DriveApp.getFileById(ss.getId()).getParents();
+    if (pastas.hasNext()) DriveApp.getFileById(novo.getId()).moveTo(pastas.next());
+  } catch (e) { Logger.log('Não movi o ficheiro das fichas: ' + e); }
+  props.setProperty(PROP_FICHEIRO_FICHAS, novo.getId());
+  return novo;
+}
+
+/** Copia cada folha «F …» (escondida no ficheiro principal) para o seu
+ *  separador no ficheiro das fichas, só quando a ficha mudou. Devolve, para
+ *  cada ficha, o link que abre o separador dela. */
 function escreverFichasPorExtenso(ss, fichas) {
-  var LARG = 8;
-  var blocos = [], faixas = [], inicio = {};
-  var titulo = 'FICHAS POR EXTENSO (' + fichas.length + ')  ·  atualizado a ' + agoraLisboa() + '  ·  só para ler';
-  var resumo = SUMARIOS[FOLHA_FICHAS_EXTENSO] || [];
-  var linha = 1 + resumo.length + 2;   // título, resumo, uma linha em branco
+  // A folha antiga, com as fichas todas seguidas, sai do ficheiro principal.
+  var velha = ss.getSheetByName(FOLHA_FICHAS_EXTENSO);
+  if (velha) { try { ss.deleteSheet(velha); } catch (e) { Logger.log('Não apaguei ' + FOLHA_FICHAS_EXTENSO + ': ' + e); } }
+  var alvo = ficheiroDasFichas(ss);
+  var url = alvo.getUrl();
+  // O índice (1.º separador): para cada ficha, a assinatura e o separador.
+  var ind = alvo.getSheetByName('ÍNDICE') || alvo.insertSheet('ÍNDICE', 0);
+  var antes = {};
+  var vals = ind.getLastRow() > 3 ? ind.getRange(4, 1, ind.getLastRow() - 3, 6).getValues() : [];
+  vals.forEach(function (l) { if (l[4]) antes[String(l[4])] = { sig: String(l[5]), gid: Number(l[3]) }; });
+  var porGid = {}; alvo.getSheets().forEach(function (f) { porGid[f.getSheetId()] = f; });
+  var usados = {}; var links = {}; var linhas = []; var t0 = Date.now();
+  var nomeDoSeparador = function (fi) {
+    var base = ((fi.fichaNum ? String(fi.fichaNum).replace(/^#?/, '#') + ' ' : '') + String(fi.nomePrato || 'Ficha')).replace(/[\[\]\*\?\/\\:]/g, ' ').slice(0, 80).trim();
+    var n = base, i = 2; while (usados[n]) n = base + ' (' + (i++) + ')';
+    usados[n] = true; return n;
+  };
   fichas.forEach(function (fi) {
     var fo = ss.getSheetByName(fi.folha || nomeDaFolhaDaFicha(fi));
     if (!fo) return;
-    var v = [];
-    try { v = fo.getDataRange().getValues(); } catch (e) { return; }
-    inicio[fi.id] = linha;
-    faixas.push(linha);
-    blocos.push(['FICHA: ' + (fi.nomePrato || '') + (fi.classificacao ? '  ·  ' + fi.classificacao : '')]);
-    linha++;
-    v.forEach(function (l) { blocos.push(l.slice(0, LARG).map(valorTexto)); linha++; });
-    blocos.push(['']); blocos.push(['']); linha += 2;
+    var sig = String(fi.atualizadoEm || fi.data || '') + '|' + fo.getLastRow() + '|' + fo.getLastColumn();
+    var nome = nomeDoSeparador(fi);
+    var reg = antes[fi.id];
+    var folha = reg ? porGid[reg.gid] : null;
+    // Mais de 4 minutos: o resto fica para a volta seguinte (10 em 10 minutos).
+    if ((!folha || reg.sig !== sig) && Date.now() - t0 < 240000) {
+      var nova = fo.copyTo(alvo);
+      if (folha) { try { alvo.deleteSheet(folha); } catch (e) {} }
+      var mesmoNome = alvo.getSheetByName(nome); if (mesmoNome && mesmoNome.getSheetId() !== nova.getSheetId()) { try { alvo.deleteSheet(mesmoNome); } catch (e) {} }
+      nova.setName(nome);
+      try { nova.showSheet(); } catch (e) {}
+      folha = nova; reg = { sig: sig, gid: nova.getSheetId() };
+    } else if (folha && folha.getName() !== nome) { try { folha.setName(nome); } catch (e) {} }
+    if (!folha) return;
+    links[fi.id] = url + '#gid=' + folha.getSheetId();
+    linhas.push([fi.nomePrato || '', fi.classificacao || '', diaPT(fi.data), folha.getSheetId(), fi.id, reg.sig]);
   });
-  var f = ss.getSheetByName(FOLHA_FICHAS_EXTENSO) || ss.insertSheet(FOLHA_FICHAS_EXTENSO);
-  f.clear();
-  f.getRange(1, 1).setValue(titulo).setFontWeight('bold').setFontColor(COR_GERAL);
-  escreverSumario(f, 2, FOLHA_FICHAS_EXTENSO, LARG);
-  if (blocos.length) {
-    var grelha = blocos.map(function (l) { var c = l.slice(0, LARG); while (c.length < LARG) c.push(''); return c.map(function (x) { return x === null || x === undefined ? '' : String(x); }); });
-    if (f.getMaxRows() < linha + 5) f.insertRowsAfter(f.getMaxRows(), linha + 5 - f.getMaxRows());
-    var ini = 1 + resumo.length + 2;
-    f.getRange(ini, 1, grelha.length, LARG).setNumberFormat('@').setValues(grelha).setWrap(true).setVerticalAlignment('top');
-    faixas.forEach(function (n) { f.getRange(n, 1, 1, LARG).setBackground('#1f1b16').setFontColor('#faf7f2').setFontWeight('bold'); });
+  // Separadores de fichas que já não existem: saem.
+  var vivos = {}; linhas.forEach(function (l) { vivos[l[3]] = true; });
+  alvo.getSheets().forEach(function (f) {
+    if (f.getName() === 'ÍNDICE' || vivos[f.getSheetId()]) return;
+    try { alvo.deleteSheet(f); } catch (e) {}
+  });
+  // O índice, com links para cada separador.
+  ind.clear();
+  ind.getRange(1, 1).setValue('FICHAS TÉCNICAS POR EXTENSO (' + linhas.length + ')  ·  atualizado a ' + agoraLisboa() + '  ·  só para ler: é refeito pela aplicação')
+    .setFontWeight('bold').setFontColor(COR_GERAL);
+  ind.getRange(2, 1).setValue('Cada ficha está no seu separador. Carregue no nome para a abrir. As fichas mudam-se na aplicação, não aqui.').setFontStyle('italic');
+  ind.getRange(3, 1, 1, 6).setValues([['Ficha', 'Classificação', 'Data', 'gid', 'id', 'versão']]).setFontWeight('bold').setBackground(COR_GERAL).setFontColor('#ffffff');
+  if (linhas.length) {
+    linhas.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0]), 'pt'); });
+    ind.getRange(4, 1, linhas.length, 6).setNumberFormat('@').setValues(linhas.map(function (l) { return l.map(String); }));
+    ind.getRange(4, 1, linhas.length, 1).setRichTextValues(linhas.map(function (l) {
+      return [SpreadsheetApp.newRichTextValue().setText(String(l[0])).setLinkUrl('#gid=' + l[3]).build()];
+    }));
   }
-  f.setFrozenRows(1);
-  [150, 120, 90, 160, 160, 120, 110, 110].forEach(function (w, i) { f.setColumnWidth(i + 1, w); });
-  try { f.setTabColor(COR_GERAL); } catch (e) {}
-  var gid = f.getSheetId(), links = {};
-  Object.keys(inicio).forEach(function (id) { links[id] = '#gid=' + gid + '&range=A' + inicio[id]; });
+  try { ind.hideColumns(4, 3); } catch (e) {}
+  ind.setFrozenRows(3); ind.setColumnWidth(1, 320); ind.setColumnWidth(2, 140); ind.setColumnWidth(3, 100);
+  try { alvo.setActiveSheet(ind); alvo.moveActiveSheet(1); } catch (e) {}
   return links;
 }
 
@@ -3083,7 +3205,7 @@ var SUMARIOS = {
   ],
   'FICHAS TÉCNICAS': [
     'PARA QUE SERVE: todas as fichas técnicas da escola, com o guião. Cada linha diz onde a ficha entrou (que plano, de que turma, ou que evento).',
-    'DE ONDE VEM E PARA ONDE VAI: o professor faz a ficha na aplicação; os alunos veem-na no plano da aula e avaliam-se nas técnicas dela. «abrir» leva à ficha por extenso (com o guião no fim), na folha FICHAS POR EXTENSO.',
+    'DE ONDE VEM E PARA ONDE VAI: o professor faz a ficha na aplicação; os alunos veem-na no plano da aula e avaliam-se nas técnicas dela. «abrir» abre a ficha por extenso (com o guião no fim), no seu separador do ficheiro «Avaliação ECL — Fichas técnicas por extenso».',
     'CORES: sem cores. Uma ficha que ainda não entrou em nenhum plano nem evento diz isso na coluna «Onde entrou».'
   ],
   'FICHAS POR EXTENSO': [
@@ -3129,7 +3251,7 @@ var SUMARIO_DADOS = {
   PAUTAS: 'As pautas enviadas.',
   RECUPERACOES: 'As recuperações. Para ler: RECUPERAÇÕES (todas) e o separador da turma.',
   EVIDENCIAS: 'O que cada aluno entregou numa recuperação. Para ler: coluna «O que entregou» em RECUPERAÇÕES (todas).',
-  FICHAS: 'As fichas técnicas. Para ler: FICHAS TÉCNICAS e FICHAS POR EXTENSO.',
+  FICHAS: 'As fichas técnicas. Para ler: FICHAS TÉCNICAS (com links para o ficheiro das fichas por extenso).',
   REQUISICOES: 'As requisições. Para ler: REQUISIÇÕES (todas).',
   REQUISICAO_LINHAS: 'Os produtos de cada requisição. Para ler: coluna «Produtos» em REQUISIÇÕES (todas).',
   GRUPOS: 'Em que grupo esteve cada aluno em cada aula. Para ler: «GRUPOS E COLEGAS» no separador da turma.',
@@ -3141,6 +3263,8 @@ var SUMARIO_DADOS = {
   TELEMOVEIS: 'Que telemóvel está ligado a cada aluno.',
   ELIMINADOS: 'O que foi apagado na aplicação: fica aqui registado e não volta.',
   NOTAS_APP: 'As notas como a aplicação as calcula (cada aula, média, bónus, nota da UC). O separador da turma usa-as. Atualiza-se quando um professor abre a aplicação.',
+  EMAILS_ALUNOS: 'O email da escola de cada aluno, escrito por ele ao entrar na aplicação. Serve para os avisos de autoavaliação em falta.',
+  AVISOS_EMAIL: 'Os avisos por email já enviados aos alunos (autoavaliações em falta). Cada aviso só se envia uma vez.',
   PRECOS: 'Os preços revistos das matérias-primas (coordenação). A aplicação usa-os na requisição.',
   PRECOS_A_REVER: 'Os preços que os professores pediram para rever. A coordenação revê na aplicação.',
   MATERIAS_PRIMAS: 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos.',
@@ -3179,20 +3303,20 @@ var ORDEM_FOLHAS = [
   ['FICHAS', '#2F5D8A'], ['REQUISICOES', '#2F5D8A'], ['REQUISICAO_LINHAS', '#2F5D8A'], ['PRECOS', '#2F5D8A'], ['PRECOS_A_REVER', '#2F5D8A'],
   ['GRUPOS', '#B5651D'], ['GRUPOS_INFO', '#B5651D'], ['AVALIACAO_PARES', '#B5651D'],
   ['EVENTOS', '#6B4C9A'], ['COMANDAS', '#6B4C9A'],
-  ['TELEMOVEIS', '#777777'], ['PROCURAR', '#777777'], ['ELIMINADOS', '#777777'], ['POR_ARRUMAR', '#777777'], ['NOTAS_APP', '#777777']
+  ['TELEMOVEIS', '#777777'], ['PROCURAR', '#777777'], ['ELIMINADOS', '#777777'], ['POR_ARRUMAR', '#777777'], ['NOTAS_APP', '#777777'], ['EMAILS_ALUNOS', '#777777'], ['AVISOS_EMAIL', '#777777']
 ];
 
 var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
-  ['FICHAS TÉCNICAS', 'Todas as fichas técnicas, com um link «abrir» para cada uma (a ficha por extenso, com o guião no fim). As folhas «F …» são as fichas por extenso.'],
+  ['FICHAS TÉCNICAS', 'Todas as fichas técnicas, com um link «abrir» para cada uma (a ficha por extenso, com o guião no fim, no ficheiro «Avaliação ECL — Fichas técnicas por extenso»).'],
   ['EXTERNOS (recuperações) · ALUNOS_EXTERNOS', 'Os alunos de fora das turmas que vêm recuperar UC, e as recuperações deles por UC (plano, o que entregaram, resultado, professor). A pauta de cada UC sai também da aplicação.'],
   ['TABELA_PRECOS', 'A tabela de preços completa da aplicação (todas as matérias-primas, com os preços que a aplicação usa). Atualiza-se sozinha quando um professor abre a aplicação. Sempre à vista.'],
   ['AUDITORIA', 'O que estava nos ficheiros antigos e não está aqui (corre auditarFolhasAntigas). As linhas vermelhas são as importantes.'],
   ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],
   ['MATERIAS_PRIMAS', 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos. Sempre à vista.'],
   ['FICHAS TÉCNICAS · REQUISIÇÕES (todas) · RECUPERAÇÕES (todas)', 'As coisas gerais da escola, à vista a seguir às turmas: cada ficha diz onde entrou (plano, turma, evento); cada requisição diz para que plano ou evento foi; as recuperações de todas as turmas. Refazem-se sozinhas de 10 em 10 minutos.'],
-  ['Como está arrumado (v25)', 'Cada separador tem em cima um resumo: para que serve, de onde vêm os dados, para quem vão e o que querem dizer as cores. Tudo de cada turma está no separador da turma (alunos, notas, recuperações, aulas, grupos e colegas, o que chegou a cada aluno). As fichas e os guiões estão em FICHAS TÉCNICAS e FICHAS POR EXTENSO; as requisições, com os produtos, em REQUISIÇÕES (todas).'],
+  ['Como está arrumado (v25)', 'Cada separador tem em cima um resumo: para que serve, de onde vêm os dados, para quem vão e o que querem dizer as cores. Tudo de cada turma está no separador da turma (alunos, notas, recuperações, aulas, grupos e colegas, o que chegou a cada aluno). As fichas e os guiões estão em FICHAS TÉCNICAS, com um link para cada ficha no ficheiro «Avaliação ECL — Fichas técnicas por extenso»; as requisições, com os produtos, em REQUISIÇÕES (todas).'],
   ['Folhas de dados (escondidas, no fim)', 'ALUNOS, PLANOS, PRESENCAS, SELECOES, VALIDACOES, GRUPOS, AVALIACAO_PARES, FICHAS, REQUISICOES… : é onde a aplicação grava. Ficam escondidas porque o que têm está nas turmas e nas folhas gerais. Cada uma tem o resumo na nota da célula A1. Para ver: menu Ver → Folhas ocultas. Não mexer, não ordenar, não apagar linhas. À vista ficam só EVENTOS, TELEMOVEIS e ELIMINADOS.'],
   ['ALUNOS', 'Os alunos de cada turma (nome, número, PIN).'],
   ['PLANOS', 'Os planos de aula: dia da aula, horas, unidade, estado (rascunho/publicado) e quando foram criados.'],
@@ -3572,4 +3696,76 @@ function juntarFicheiros() {
 
 function chaveDe(nome, o) {
   return FOLHAS[nome].chave.map(function (c) { return String(o[c] === undefined ? '' : o[c]); }).join('|');
+}
+
+/** (v25.3) O plano de uma ficha, para ler: «3º ACP · 23/09/2026 · Aula prática». */
+var _planosParaFichas = null;
+function descricaoDoPlanoDaFicha(id) {
+  if (!id) return '';
+  try {
+    if (!_planosParaFichas) { _planosParaFichas = {}; ler('PLANOS', {}).forEach(function (p) { _planosParaFichas[p.id] = p; }); }
+    var p = _planosParaFichas[id];
+    return p ? [p.turmaId || '', diaPT(p.data), p.titulo || 'aula'].filter(Boolean).join(' · ') : 'Plano já não existe';
+  } catch (e) { return ''; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// (v25.3) AVISOS POR EMAIL — autoavaliações em falta (Rosa, out/2026)
+// ══════════════════════════════════════════════════════════════
+// Todos os dias às 18h: a cada aluno que esteve numa aula dos últimos 7
+// dias e não se autoavaliou, um email para o email da escola, com as aulas
+// em falta. Enquanto não se autoavaliar, cada aula conta 0 na nota da UC.
+// Cada aula só é avisada uma vez. Para ligar: correr  instalarAvisosPorEmail  uma vez.
+var URL_APLICACAO = 'https://avaliacao-ecl.vercel.app';
+
+function instalarAvisosPorEmail() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'avisarAutoavaliacoesEmFalta') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('avisarAutoavaliacoesEmFalta').timeBased().everyDays(1).atHour(18).inTimezone('Europe/Lisbon').create();
+  Logger.log('Avisos por email ligados: todos os dias às 18h.');
+}
+
+function avisarAutoavaliacoesEmFalta() {
+  var hoje = hojeLisboa(0), desde = hojeLisboa(-7);
+  var emails = {};
+  ler('EMAILS_ALUNOS', {}).forEach(function (e) { if (/@eclisboa\.net$/i.test(String(e.email || '').trim())) emails[e.alunoId] = String(e.email).trim(); });
+  var jaAvisados = {};
+  ler('AVISOS_EMAIL', {}).forEach(function (a) { jaAvisados[a.alunoId + '|' + a.planoAulaId] = true; });
+  var abertaEm = {}; ler('SESSOES', {}).forEach(function (s) { if (s.abertaEm) abertaEm[s.planoAulaId] = s.abertaEm; });
+  var planos = ler('PLANOS', {}).filter(function (p) {
+    var dia = String(p.data || '').slice(0, 10);
+    return !p.tipoEvento && !p.eliminado && (p.estado === 'publicado' || p.estado === 'realizada') && dia >= desde && dia <= hoje && abertaEm[p.id];
+  });
+  if (!planos.length) return;
+  var presencas = {}; ler('PRESENCAS', {}).forEach(function (x) { presencas[x.alunoId + '|' + x.planoAulaId] = x; });
+  var respondeu = {}; ler('SELECOES', {}).forEach(function (s) { respondeu[s.alunoId + '|' + s.planoAulaId] = true; });
+  var alunos = ler('ALUNOS', {}).filter(function (a) { return a.ativo !== false && a.ativo !== 'false' && !a.removidoEm; });
+  var enviados = [];
+  alunos.forEach(function (a) {
+    if (!emails[a.id]) return;
+    var emFalta = planos.filter(function (p) {
+      if (p.turmaId !== a.turmaId) return false;
+      var k = a.id + '|' + p.id;
+      if (respondeu[k] || jaAvisados[k]) return false;
+      var x = presencas[k];
+      // Só quem esteve na aula: a falta já conta 0 por si.
+      var dec = x ? (x.decisaoProfessor || '') : '';
+      return !!x && dec !== 'falta_presenca' && (dec === 'sem_falta' || dec === 'falta_atraso' || dec === 'parcial' || (x.presente !== false && x.presente !== 'false'));
+    });
+    if (!emFalta.length || MailApp.getRemainingDailyQuota() < 1) return;
+    var primeiro = String(a.nome || '').split(' ')[0];
+    var lista = emFalta.map(function (p) { return '  · ' + diaPT(p.data) + ' — ' + (p.titulo || 'aula'); }).join('\n');
+    var corpo = 'Olá, ' + primeiro + '.\n\n'
+      + 'Ainda não te autoavaliaste ' + (emFalta.length === 1 ? 'nesta aula' : 'nestas aulas') + ':\n' + lista + '\n\n'
+      + 'Enquanto não te autoavaliares, ' + (emFalta.length === 1 ? 'esta aula conta' : 'cada uma destas aulas conta') + ' 0 na tua nota da UC. '
+      + 'A autoavaliação demora cerca de dois minutos: entra na aplicação em ' + URL_APLICACAO + ' e escolhe a aula no calendário.\n\n'
+      + 'Bom trabalho,\nAvaliação ECL';
+    try {
+      MailApp.sendEmail({ to: emails[a.id], subject: 'Avaliação ECL: tens ' + (emFalta.length === 1 ? 'uma autoavaliação' : emFalta.length + ' autoavaliações') + ' por fazer', body: corpo, name: 'Avaliação ECL' });
+      emFalta.forEach(function (p) { enviados.push({ id: a.id + '|' + p.id, alunoId: a.id, planoAulaId: p.id, email: emails[a.id], enviadoEm: new Date().toISOString() }); });
+    } catch (e) { Logger.log('Email para ' + a.id + ' falhou: ' + e); }
+  });
+  if (enviados.length) guardarVarios('AVISOS_EMAIL', enviados);
+  Logger.log('Avisos enviados: ' + enviados.length);
 }

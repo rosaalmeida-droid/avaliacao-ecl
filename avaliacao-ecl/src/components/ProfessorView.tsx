@@ -1,5 +1,8 @@
 import { getLibrary } from '../libraryService';
 import React, { useState } from 'react';
+import { REGRAS_PERGUNTAS, promptPerguntasDaFicha, lerPerguntasDaIA, type PerguntaTecnica } from '../bancoPerguntas';
+import { PerguntasDaFicha } from './PerguntasDaFicha';
+import { pedirAIA, iaDiretaDisponivel } from '../ia';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
@@ -332,7 +335,7 @@ PARA CADA APARELHO escreve:
 O aluno avalia-se por estas frases: têm de ser observáveis e deste prato.
 
 ${listaCompetenciasParaPrompt()}
-
+${REGRAS_PERGUNTAS}
 ═══════════════════════════════════════════════════
 FORMATO DE RESPOSTA (manter exatamente)
 ═══════════════════════════════════════════════════
@@ -402,6 +405,10 @@ APARELHOS DETECTADOS:
 [máx 4 aparelhos da REGRA 9 — só os que o aluno PRODUZ nesta receita, não o prato final]
 [formato: APP-XXXX — Nome (Nível N) | COMO: … | RESULTADO: … | ex: APP-0009 — Creme pasteleiro (Nível 1) | COMO: Aqueces o leite, bates as gemas com o açúcar e o amido, juntas o leite aos poucos e cozes a bater com as varas (fouet) até engrossar | RESULTADO: liso, brilhante, sem sabor a farinha]
 [ou "nenhum"]
+
+PERGUNTAS DE AUTOAVALIAÇÃO:
+[aplica a REGRA 11 — para cada subtécnica e cada aparelho acima, 6 linhas: EXECUCAO e RESULTADO, cada uma em NORMAL, SIMPLES e MUITO SIMPLES]
+[formato: ID | EXECUCAO ou RESULTADO | NORMAL ou SIMPLES ou MUITO SIMPLES | pergunta | resposta nível 1 | resposta nível 2 | resposta nível 3 | resposta nível 4]
 
 ---
 EXEMPLO DE REFERÊNCIA — Pudim de Ovos:
@@ -1019,6 +1026,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
     try { return localStorage.getItem('ecl_link_draft') || ''; } catch { return ''; }
   });
   const [textoManual, setTextoManual] = useState('');
+  const textoManualAtual = textoManual;
   const [nomePrato, setNomePrato] = useState(nomePratoInicial || '');
   const [erro, setErro] = useState('');
   const [fichasSimilares, setFichasSimilares] = useState<any[]>([]);
@@ -1059,7 +1067,42 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
     return () => clearTimeout(timer);
   }, [nomePrato]);
 
-  function carregar() {
+  // ── Ligação direta à IA e resposta copiada (Rosa, out/2026) ──
+  const [aGerar, setAGerar] = useState(false);
+  const [avisoIA, setAvisoIA] = useState('');
+  const [respostaCopiada, setRespostaCopiada] = useState('');
+  const pareceFicha = (t: string) => /NOME DO PRATO:/i.test(t) && /INGREDIENTES:/i.test(t);
+
+  async function criarComAIA() {
+    setAGerar(true); setAvisoIA(''); setErro('');
+    const pedido = promptUnificado + (nomePrato ? `\n\nNOME DO PRATO PEDIDO PELO PROFESSOR: ${nomePrato}` : '');
+    const r = await pedirAIA(pedido, 16000, { lerLinks: /^https?:\/\//i.test(link.trim()) });
+    setAGerar(false);
+    if (r.ok && pareceFicha(r.texto)) { setTextoManual(r.texto); carregar(r.texto); return; }
+    setAvisoIA(r.ok
+      ? 'A IA respondeu, mas a resposta não tem o formato de uma ficha técnica. Tente outra vez ou use o método de copiar e colar, mais abaixo.'
+      : `${r.mensagem} Pode usar o método de copiar e colar, mais abaixo.`);
+  }
+
+  // Quando o professor volta à aplicação depois de copiar a resposta da IA,
+  // a aplicação deteta-a e pergunta se a deve usar (um toque, sem colar).
+  async function lerAreaDeTransferencia(porToque = false) {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t && pareceFicha(t)) { if (porToque) { setTextoManual(t); carregar(t); } else setRespostaCopiada(t); }
+      else if (porToque) setAvisoIA('Não foi encontrada nenhuma ficha técnica copiada. Copie a resposta completa da IA e tente outra vez.');
+    } catch { if (porToque) setAvisoIA('O navegador não deixou ler o que foi copiado. Cole a resposta na caixa, mais abaixo.'); }
+  }
+  React.useEffect(() => {
+    const aoVoltar = () => { if (document.visibilityState === 'visible' && !textoManual) lerAreaDeTransferencia(false); };
+    window.addEventListener('focus', aoVoltar);
+    document.addEventListener('visibilitychange', aoVoltar);
+    return () => { window.removeEventListener('focus', aoVoltar); document.removeEventListener('visibilitychange', aoVoltar); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textoManual]);
+
+  function carregar(textoDado?: string) {
+    const textoManual = textoDado ?? textoManualAtual;
     if (!textoManual) return;
     // Detectar se colou o PROMPT em vez da RESPOSTA da IA
     const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(textoManual.slice(0, 500));
@@ -1115,8 +1158,19 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
+        {/* Ligação direta: a ficha (com as perguntas das técnicas) aparece sem sair da aplicação. */}
+        {iaDiretaDisponivel() && (
+          <div style={{ marginBottom: 12 }}>
+            <button type="button" className="btn btn-primary" disabled={aGerar || (!nomePrato && !link)}
+              onClick={criarComAIA} style={{ width: '100%', minHeight: 46 }}>
+              {aGerar ? '⏳ A IA está a criar a ficha… (pode demorar até um minuto)' : '✨ Criar a ficha com a IA, sem sair da aplicação'}
+            </button>
+            {!nomePrato && !link && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 4 }}>Escreva primeiro o nome do prato ou o link da receita.</div>}
+          </div>
+        )}
+        {avisoIA && <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: '#fff4e0', color: '#8a5a12', fontSize: 13 }}>{avisoIA}</div>}
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-          Claude e ChatGPT abrem já com o prompt preenchido — no Gemini o prompt é copiado automaticamente, basta colar com Ctrl+V
+          Em alternativa: o Claude e o ChatGPT abrem já com o pedido preenchido; no Gemini, o pedido é copiado automaticamente e basta colá-lo com Ctrl+V. Depois de copiar a resposta da IA, volte a esta janela: a aplicação deteta a resposta copiada.
         </div>
 
         {/* Selector de modo — fiel ao link ou versão profissional */}
@@ -1161,13 +1215,27 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
           Cole o resultado da ficha <strong>ou</strong> do guia. A aplicação deteta automaticamente qual dos dois é.
         </div>
+        {respostaCopiada && !textoManual && (
+          <div style={{ marginBottom: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(90,122,78,0.1)', border: '1px solid var(--sage)', fontSize: 13.5 }}>
+            <b>Foi encontrada a resposta da IA que copiou.</b> Pretende usá-la?
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button type="button" className="btn btn-primary" onClick={() => { setTextoManual(respostaCopiada); carregar(respostaCopiada); setRespostaCopiada(''); }}>Usar esta resposta</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setRespostaCopiada('')}>Não</button>
+            </div>
+          </div>
+        )}
+        {!textoManual && !respostaCopiada && (
+          <button type="button" className="btn btn-ghost" style={{ width: '100%', marginBottom: 8 }} onClick={() => lerAreaDeTransferencia(true)}>
+            📋 Colar a resposta da IA que copiei
+          </button>
+        )}
         <textarea className="input" value={textoManual}
           onChange={e => { setTextoManual(e.target.value); setErro(''); onAlteracao?.(); }}
           placeholder={'Cole aqui a resposta da IA...\n\nSe usou o pedido unificado, a aplicação separa automaticamente a Ficha Técnica e o Guião de Apoio.\n\nExemplo (Ficha):\nNOME DO PRATO: Mousse de Chocolate\nCLASSIFICAÇÃO: Sobremesa\n...\n\n===GUIÃO===\n## 1. MISE EN PLACE\n...'}
           style={{ minHeight:180, fontSize:13, fontFamily:'monospace', background:'#fff' }} />
         {textoManual && (
           <button type="button" className="btn btn-primary" style={{ width:'100%', marginTop:8 }}
-            onClick={carregar}>
+            onClick={() => carregar()}>
             Continuar com este texto →
           </button>
         )}
@@ -1667,6 +1735,14 @@ function PassoFichaTecnica({
             onMudar={(tecnicas, aparelhos) => setFicha(f => ({ ...f, tecnicasDetectadas: tecnicas, ...({ aparelhosDetectados: aparelhos } as any) }))} />
         )}
 
+        {/* PERGUNTAS AO ALUNO — escritas pela IA com a ficha; o professor aprova (Rosa, out/2026). */}
+        {(ficha.perguntasAuto || []).length > 0 ? (
+          <PerguntasDaFicha perguntas={ficha.perguntasAuto || []} prato={ficha.nomePrato}
+            quem={ficha.elaboradoPor || 'professor'} onMudar={l => setFicha(f => ({ ...f, perguntasAuto: l }))} />
+        ) : ((ficha.tecnicasDetectadas || []).length > 0 || ((ficha as any).aparelhosDetectados || []).length > 0) && (
+          <CriarPerguntasDaFicha ficha={ficha} onCriadas={l => setFicha(f => ({ ...f, perguntasAuto: l }))} />
+        )}
+
         {/* Adicionar técnica manualmente */}
         <div style={{ marginBottom: 10 }}>
           <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }}
@@ -1724,6 +1800,7 @@ function PassoFichaTecnica({
                   haccp: String(p?.haccp ?? ''),
                 })),
                 tecnicasDetectadas: Array.isArray(ficha.tecnicasDetectadas) ? ficha.tecnicasDetectadas.map(String) : [],
+                perguntasAuto: Array.isArray(ficha.perguntasAuto) ? ficha.perguntasAuto : [],
               };
               onContinuar(fichaSegura);
             }} disabled={!ficha.nomePrato}>
@@ -1909,6 +1986,7 @@ function fichaParaOEditor(f: any, nomeProfessor?: string): FichaTecnica {
       // abria sem as técnicas escolhidas (Rosa, out/2026).
       tecnicasDetectadas: (f as any).tecnicasDetectadas?.length ? (f as any).tecnicasDetectadas : (f as any).tecnicasSugeridas || [],
       aparelhosDetectados: (f as any).aparelhosDetectados || [],
+      perguntasAuto: (f as any).perguntasAuto || [],
     });
 }
 
@@ -2045,6 +2123,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         kitchenflow: fichaConfirmada.kitchenflow || '',
         tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
         ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
+        // As perguntas de autoavaliação das técnicas (as já aprovadas mantêm-se ao editar).
+        perguntasAuto: fichaConfirmada.perguntasAuto?.length ? fichaConfirmada.perguntasAuto : ((fichaOriginal as any)?.perguntasAuto || []),
         // A família (obrigatória para a avaliação), a secundária e as
         // etiquetas escolhiam-se no formulário mas não eram guardadas.
         ...({
@@ -2629,6 +2709,45 @@ function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
         <div style={{ fontSize: 14.5, fontWeight: 800, margin: '4px 0 6px' }}>No próprio prato</div>
       )}
       {tecs.map((t, i) => (!t.aparelhoId || !idsApp.has(t.aparelhoId)) ? <Tec key={i} t={t} i={i} /> : null)}
+    </div>
+  );
+}
+
+// ── Fichas sem perguntas ao aluno: pedi-las à IA (só as técnicas) ──
+function CriarPerguntasDaFicha({ ficha, onCriadas }: { ficha: FichaTecnica; onCriadas: (l: PerguntaTecnica[]) => void }) {
+  const [aCriar, setACriar] = React.useState(false);
+  const [manual, setManual] = React.useState('');
+  const [colado, setColado] = React.useState('');
+  const [aviso, setAviso] = React.useState('');
+  const prompt = promptPerguntasDaFicha(ficha.nomePrato, ficha.tecnicasDetectadas || [], (ficha as any).aparelhosDetectados || [],
+    (ficha.preparacao || []).map(p => p.descricao).filter(Boolean));
+  const usar = (texto: string) => {
+    const l = lerPerguntasDaIA(/PERGUNTAS DE AUTOAVALIA/i.test(texto) ? texto : 'PERGUNTAS DE AUTOAVALIAÇÃO:\n' + texto);
+    if (!l.length) { setAviso('A resposta não trouxe perguntas no formato pedido. Tente outra vez.'); return false; }
+    onCriadas(l); return true;
+  };
+  return (
+    <div style={{ border: '1.5px dashed rgba(107,63,160,0.4)', borderRadius: 12, padding: 12, margin: '12px 0' }}>
+      <div style={{ fontWeight: 700, color: '#6B3FA0', marginBottom: 4 }}>Perguntas ao aluno</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+        Esta ficha ainda não tem perguntas de autoavaliação para as técnicas. A IA pode escrevê-las, para o professor aprovar.
+      </div>
+      <button type="button" className="btn btn-primary" disabled={aCriar}
+        onClick={async () => {
+          setACriar(true); setAviso('');
+          const r = await pedirAIA(prompt, 12000);
+          setACriar(false);
+          if (r.ok) { usar(r.texto); return; }
+          setManual(prompt); setAviso(`${r.mensagem} Pode enviar o pedido a uma IA e colar a resposta abaixo.`);
+        }}>{aCriar ? '⏳ A IA está a escrever as perguntas…' : '✨ Criar as perguntas com a IA'}</button>
+      {aviso && <div style={{ marginTop: 8, fontSize: 13, color: '#8a5a12' }}>{aviso}</div>}
+      {manual && (
+        <div style={{ marginTop: 8 }}>
+          <SeletorIA prompt={manual} />
+          <textarea className="input" value={colado} onChange={e => setColado(e.target.value)} placeholder="Cole aqui a resposta da IA" style={{ minHeight: 90, fontSize: 13 }} />
+          <button type="button" className="btn btn-primary" style={{ marginTop: 6 }} disabled={!colado.trim()} onClick={() => { if (usar(colado)) { setManual(''); setColado(''); } }}>Usar esta resposta</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
 import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
+import { PedirEmailEscola } from './PedirEmailEscola';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano, rotuloDoPlano } from '../rotuloPlano';
 
@@ -35,7 +36,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -575,7 +576,14 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   } catch { return false; }
 }
 
-export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
+/** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
+export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
+  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id));
+  if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
+  return <AlunoViewInterno {...props} />;
+}
+
+function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   /** Atividade aberta só para ver (o aluno não esteve nela). */
   const [planoConsulta, setPlanoConsulta] = useState<PlanoAula | null>(null);
@@ -954,7 +962,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           titulo: t.foraDeTempo ? 'Ainda não entraste na aula' : 'Entrada aberta',
           detalhe: t.foraDeTempo
             ? 'Regista a entrada na mesma: é o professor quem decide se há falta.'
-            : `Faltam ${t.minutosRestantes} min de tolerância.`,
+            : t.semAtrasos ? 'Regista a tua entrada na aula.' : `Faltam ${t.minutosRestantes} min de tolerância.`,
           destino: 'entrar',
           urgente: t.foraDeTempo,
         });
@@ -1040,18 +1048,15 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       });
     }
 
-    // Aulas passadas em que esteve e não se autoavaliou.
-    const semAuto = planosOrdenados.filter(p =>
-      p.data < hojeISO &&
-      getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id) &&
-      !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id)
-    );
+    // Aulas em que esteve e não se autoavaliou: as mesmas que contam 0 na nota da UC.
+    const idsSemAuto = new Set(planosSemAutoavaliacao(aluno.id, aluno.turmaId).map(p => p.id));
+    const semAuto = planosOrdenados.filter(p => idsSemAuto.has(p.id));
     aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.includes(p))];
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
         titulo: 'A tua voz conta: autoavalia-te',
-        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quando te autoavalias, mostras ao professor o que fizeste bem, e o professor tem isso em conta. Leva 2 minutos.`,
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua autoavaliação. Enquanto não te autoavaliares, cada uma conta 0 na tua nota da UC. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
@@ -2401,7 +2406,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           <div style={{ fontSize:17, fontWeight:700, color: t.foraDeTempo ? '#B5651D' : '#3E7A31' }}>
             {t.foraDeTempo ? 'A tolerância terminou' : 'Entrada aberta'}
           </div>
-          {!t.foraDeTempo && (
+          {!t.foraDeTempo && !t.semAtrasos && (
             <div style={{ fontSize:38, fontWeight:700, color:'#3E7A31', marginTop:8, lineHeight:1 }}>
               {t.minutosRestantes} <span style={{ fontSize:16, fontWeight:400 }}>min</span>
             </div>

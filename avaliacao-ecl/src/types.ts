@@ -368,6 +368,9 @@ export interface FichaProducao {
    *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
    *  impedia um plano teórico com trabalhos e sem ficha. */
   tipoPlanAula?: TipoPlanAula;
+  /** Perguntas de autoavaliação das técnicas desta ficha (bancoPerguntas.ts),
+   *  propostas pela IA e aprovadas pelo professor (Rosa, out/2026). */
+  perguntasAuto?: import('./bancoPerguntas').PerguntaTecnica[];
 }
 
 // --------------------------------------------------------
@@ -513,6 +516,9 @@ export interface PlanoAula {
    *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
    *  impedia um plano teórico com trabalhos e sem ficha. */
   tipoPlanAula?: TipoPlanAula;
+  /** Perguntas de autoavaliação das técnicas desta ficha (bancoPerguntas.ts),
+   *  propostas pela IA e aprovadas pelo professor (Rosa, out/2026). */
+  perguntasAuto?: import('./bancoPerguntas').PerguntaTecnica[];
 }
 
 export interface Evidencia {
@@ -773,6 +779,9 @@ export interface MateriaPrimaCustom {
    *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
    *  impedia um plano teórico com trabalhos e sem ficha. */
   tipoPlanAula?: TipoPlanAula;
+  /** Perguntas de autoavaliação das técnicas desta ficha (bancoPerguntas.ts),
+   *  propostas pela IA e aprovadas pelo professor (Rosa, out/2026). */
+  perguntasAuto?: import('./bancoPerguntas').PerguntaTecnica[];
 }
 
 export type CategoriaManual =
@@ -802,6 +811,9 @@ export interface EntradaManual {
    *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
    *  impedia um plano teórico com trabalhos e sem ficha. */
   tipoPlanAula?: TipoPlanAula;
+  /** Perguntas de autoavaliação das técnicas desta ficha (bancoPerguntas.ts),
+   *  propostas pela IA e aprovadas pelo professor (Rosa, out/2026). */
+  perguntasAuto?: import('./bancoPerguntas').PerguntaTecnica[];
 }
 
 export const CATEGORIAS_MANUAL: CategoriaManual[] = [

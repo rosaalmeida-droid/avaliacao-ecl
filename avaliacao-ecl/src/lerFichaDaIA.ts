@@ -4,6 +4,7 @@
 // Tira o nome, a família, as doses, os ingredientes (quantidade, unidade,
 // produto) e os passos. É daqui que saem os ingredientes da requisição.
 // ============================================================
+import { lerPerguntasDaIA, type PerguntaTecnica } from './bancoPerguntas';
 import { FAMILIAS_FICHA, FamiliaFicha } from './types';
 import { detetarAlergenicos, formatarAlergenicos } from './alergenicos';
 
@@ -163,6 +164,8 @@ export interface FichaTecnica {
   tecnicasDetectadas?: string[];
   textoGuia?: string;       // texto do Guia de Apoio à Produção colado pelo professor
   aparelhosDetectados?: string[];
+  /** Perguntas de autoavaliação das técnicas, escritas pela IA com a ficha. */
+  perguntasAuto?: PerguntaTecnica[];
 }
 
 export const FICHA_VAZIA: FichaTecnica = {
@@ -499,7 +502,7 @@ export function extrairFicha(texto: string): FichaTecnica {
       .filter(l => l.length > 3);
 
     // Extrair aparelhos detectados (APP-xxx) — nova biblioteca V10
-    const secApp = texto.match(/APARELHOS DETECTADOS:\n([\s\S]*?)(?=\n---|$)/i)?.[1]?.trim() || '';
+    const secApp = texto.match(/APARELHOS DETECTADOS:\n([\s\S]*?)(?=\nPERGUNTAS DE AUTOAVALIA|\n---|$)/i)?.[1]?.trim() || '';
     const aparelhosDetectados = secApp === 'nenhum' ? [] : secApp
       .split('\n')
       .map(l => l.trim().replace(/^[-·•]\s*/, ''))
@@ -529,6 +532,8 @@ export function extrairFicha(texto: string): FichaTecnica {
       etiquetas: etiquetasArr,
       tecnicasDetectadas,
       aparelhosDetectados,
+      // As perguntas de autoavaliação das técnicas (Rosa, out/2026).
+      perguntasAuto: lerPerguntasDaIA(texto),
     };
   }
   // "sal q.b.", "2 colheres de sopa de azeite"

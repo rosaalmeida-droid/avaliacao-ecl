@@ -167,6 +167,12 @@ const SECCOES: Seccao[] = [
           esse valor soma-se o bónus dos eventos e concursos. Não existe bónus de assiduidade,
           porque quem falta já é penalizado: a aula a que faltou conta 0.
         </P>
+        <P>
+          <b>Aula sem autoavaliação:</b> se o aluno esteve na aula e não se autoavaliou, essa aula
+          conta 0 na nota da UC até o aluno se autoavaliar. Uma autoavaliação enviada e ainda por
+          validar não conta 0: aguarda a validação do professor. O aluno vê o aviso na aplicação e
+          recebe também um email no endereço da escola, que indica obrigatoriamente na primeira entrada.
+        </P>
 
         <H>As competências obrigatórias</H>
         <P>
@@ -279,6 +285,13 @@ const SECCOES: Seccao[] = [
           A tolerância de 10 minutos conta a partir do momento em que o professor <b>abre a
           aula</b>, e não a partir da hora marcada no plano. Mesmo que a aula seja aberta perto do
           fim, os atrasos só contam a partir desse momento.
+        </P>
+        <P>
+          <b>Ao abrir a aula, a aplicação pergunta se os atrasos contam.</b> Escolha «Não» quando o
+          atraso não é dos alunos (por exemplo, se a aula foi enviada mais tarde): nessa aula ninguém
+          fica com atraso. Nas aulas abertas depois do dia do plano (para os alunos se
+          autoavaliarem), a aplicação não marca atrasos nem faltas: conta apenas o que o professor
+          registou nas presenças.
         </P>
         <Destaque>
           <b>Uma aula que não foi aberta não conta contra o aluno.</b> Sem a aula aberta, o aluno
