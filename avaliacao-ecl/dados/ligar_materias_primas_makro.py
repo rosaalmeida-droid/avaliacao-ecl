@@ -9,6 +9,7 @@ def nome(q):
     m=[p[15] for p in P if p[3].strip()==q] or [p[15] for p in P if p[3].strip().startswith(q)];assert m,q;return m[0]
 # Escolhas revistas à mão. None = sem equivalente na Makro (fica o preço atual).
 O={
+ 'a001':nome('SIDUL Açúcar Branco Granulado Papel 1Kg'),
  'a006':nome('METRO Chef Mel Flores Frasco 1kg'),
  'g007':nome('GRESSO Nata Uht Bater 35% 1 L x 6UN'),
  'l005':nome('Nestlé Iogurte Natural 0% Yaos 850G'),
