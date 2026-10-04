@@ -13,6 +13,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { precoKgMakro } from './EscolherMakro';
+import { useBancoEmpratamento } from './BancoEmpratamento';
 
 export type Produto = [number, string, string, string, string, string, number | null, number | null, string,
   number | null, number | null, string, number | null, number | null, number, string, number[]?, number?];
@@ -51,6 +52,9 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   const [dieta, setDieta] = useState(-1);
 
   useEffect(() => { lerCatalogo().then(setCat); }, []);
+  // Imagens do banco de empratamento (431 produtos), por código.
+  const banco = useBancoEmpratamento();
+  const imagens = useMemo(() => new Map((banco?.itens || []).map(i => [i.codigo, i.imagem])), [banco]);
 
   const indice = useMemo(() => (cat?.produtos || []).map(p => semAcentos(`${p[3]} ${p[4]} ${p[2]}`)), [cat]);
   const q = semAcentos(pesquisa.trim());
@@ -151,6 +155,7 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
           return (
             <div key={p[15]} style={{ background: C.papel, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.linha}`, opacity: p[14] ? 1 : 0.6 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                {imagens.get(p[15]) && <img src={imagens.get(p[15])} alt="" loading="lazy" style={{ width: 52, height: 52, objectFit: 'contain', background: '#fff', borderRadius: 8, flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.tinta, lineHeight: 1.3 }}>{p[3]}</div>
                   <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>

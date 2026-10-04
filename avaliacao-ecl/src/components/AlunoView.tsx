@@ -1,4 +1,5 @@
 import { categoriaDaNota } from '../compatECL';
+import { ImagemDoIngrediente } from './BancoEmpratamento';
 import { BotaoPCC } from './BotaoPCC';
 import { ManuaisDoAluno, BotaoManualDaUC } from './BibliotecaManuais';
 import { conhecimentosDaAula } from '../compatECL';
@@ -2845,6 +2846,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                         <span style={{ fontSize:14, textDecoration:marcado?'line-through':'none' }}>
                           <strong>{ing.qt} {ing.un}</strong> {ing.produto}
                         </span>
+                        <span style={{ marginLeft:'auto' }}><ImagemDoIngrediente nome={ing.produto} tamanho={36} /></span>
                       </label>
                     );
                   })}
