@@ -332,6 +332,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
   const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
   const [aConfirmar, setAConfirmar] = useState(false);
+  /** Uma validação já feita abre só para ver; muda-se com «Alterar a validação»
+   *  (auditoria 5/out/2026, ponto 38: abria logo em modo de alteração). */
+  const [aAlterarVal, setAAlterarVal] = useState(false);
+  const soVer = !!validacaoExistente && !aAlterarVal;
   // Ao passar ao aluno seguinte, começa-se do topo.
   const topoRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start' }); }, []);
@@ -657,9 +661,15 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
           borderRadius: 12, padding: '12px 14px', marginBottom: 14,
           fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
-          Já validou esta autoavaliação. As notas abaixo são as que guardou: altere-as e guarde de novo.
+          {soVer ? 'Já validou esta autoavaliação. Abaixo estão as notas que guardou.' : 'Está a alterar a validação: guarde de novo no fim.'}
+          {soVer && (
+            <button onClick={() => setAAlterarVal(true)} style={{ display: 'block', marginTop: 10, padding: '10px 16px', borderRadius: 10,
+              border: '1.5px solid var(--copper)', background: '#fff', color: 'var(--copper)', fontSize: 15, fontWeight: 800,
+              cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Alterar a validação</button>
+          )}
         </div>
       )}
+      <fieldset disabled={soVer} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, color: 'var(--cream)' }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>{planoTitulo}</div>
@@ -1208,6 +1218,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       {/* Confirmação antes de gravar. A nota vai para o aluno — o
           professor tem de ver o que está a entregar, e onde discordou
           da proposta dele. */}
+      </fieldset>
       {aConfirmar && (() => {
         const alterou = autoavaliacoes.filter(auto => !auto.doProfessor).filter(auto => {
           const nAluno = (auto as any).nota || 0;
