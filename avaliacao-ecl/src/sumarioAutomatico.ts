@@ -117,7 +117,8 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
   }
   // Como se trabalhou.
   if (t) {
-    const como = t.trabalho === 'grupos' ? 'Trabalho em grupos' : t.trabalho === 'individual' ? 'Trabalho individual' : 'Trabalho com a turma toda';
+    const como = t.modo === 'individual_todos' ? 'Trabalho individual sobre todos os conteúdos da aula'
+      : t.trabalho === 'grupos' ? 'Trabalho em grupos' : t.trabalho === 'individual' ? 'Trabalho individual' : 'Trabalho com a turma toda';
     const onde = t.onde === 'fora' ? ', fora da escola' : '';
     linhas.push(`${como}${onde}${t.servico && (tipo === 'pratico' || tipo === 'misto') ? ', com serviço a clientes' : ''}.`);
   }

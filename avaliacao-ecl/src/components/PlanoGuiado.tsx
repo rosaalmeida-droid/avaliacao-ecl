@@ -220,11 +220,11 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // Teórica: na sala; a turma toda se é o professor a dar a matéria.
     if (('tipo' in parcial || 'modo' in parcial) && nova.tipo === 'teorico') {
       if (nova.onde === 'cozinha') nova.onde = 'sala';
-      nova.trabalho = nova.modo === 'grupo' ? 'grupos' : nova.modo === 'individual' ? 'individual' : 'turma';
+      nova.trabalho = nova.modo === 'grupo' ? 'grupos' : nova.modo === 'individual' || nova.modo === 'individual_todos' ? 'individual' : 'turma';
     }
     // O modo do trabalho decide como trabalham (as perguntas de grupo dependem disto).
     if (parcial.modo === 'grupo') nova.trabalho = 'grupos';
-    if (parcial.modo === 'individual') nova.trabalho = 'individual';
+    if (parcial.modo === 'individual' || parcial.modo === 'individual_todos') nova.trabalho = 'individual';
     if (nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; delete nova.fase; delete nova.fases; delete nova.continuaDe; }
     if (!escolheTema(nova)) { delete nova.fases; delete nova.continuaDe; }
     // Um trabalho novo começa pela investigação.
@@ -233,6 +233,11 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     if (nova.fases && !nova.fases.length) nova.fases = ['investigacao'];
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
+    // A forma de trabalhar decide como os alunos respondem: todos a tudo
+    // (exposição, ou trabalho individual com todos os conteúdos) ou cada um
+    // o seu conteúdo (trabalho com tema). Já não se escolhe outra vez no
+    // passo dos conteúdos (Rosa, 5/out/2026).
+    if ('modo' in parcial) novo.alunoEscolheTema = escolheTema(nova);
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
     // triagem. Também numa atividade extra: escolher «Prática» e ficar
     // «atitudinal» no registo, na nota e no Sheets era grave (Rosa, out/2026).
@@ -321,10 +326,13 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   }
   let n = 1;
   const ModoOpcoes = ({ semProfessor }: { semProfessor?: boolean }) => (<>
-    {!semProfessor && <Opcao ativo={!!definida && !ehTrabalho} onClick={() => gravar({ modo: 'professor' })}>Dou eu a matéria</Opcao>}
-    {semProfessor && <Opcao ativo={!!definida && !ehTrabalho} onClick={() => gravar({ modo: undefined })}>Não</Opcao>}
-    <Opcao ativo={!!definida && valor.modo === 'grupo'} onClick={() => gravar({ modo: 'grupo' })}>Trabalho de grupo (cada grupo o seu tema)</Opcao>
-    <Opcao ativo={!!definida && valor.modo === 'individual'} onClick={() => gravar({ modo: 'individual' })}>Trabalho individual (cada aluno o seu tema)</Opcao>
+    {/* (Rosa, 5/out/2026) Quatro formas, sem a palavra «matéria»; a forma
+        decide também como os alunos respondem (o passo dos conteúdos só o mostra). */}
+    {!semProfessor && <Opcao ativo={!!definida && !ehTrabalho && valor.modo !== 'individual_todos'} onClick={() => gravar({ modo: 'professor' })}>Exposição do professor — todos os conteúdos da aula</Opcao>}
+    {semProfessor && <Opcao ativo={!!definida && !ehTrabalho && valor.modo !== 'individual_todos'} onClick={() => gravar({ modo: undefined })}>Não</Opcao>}
+    <Opcao ativo={!!definida && valor.modo === 'individual_todos'} onClick={() => gravar({ modo: 'individual_todos' })}>Trabalho individual — todos os conteúdos da aula</Opcao>
+    <Opcao ativo={!!definida && valor.modo === 'individual'} onClick={() => gravar({ modo: 'individual' })}>Trabalho individual — cada aluno o seu conteúdo</Opcao>
+    <Opcao ativo={!!definida && valor.modo === 'grupo'} onClick={() => gravar({ modo: 'grupo' })}>Trabalho de grupo — cada grupo o seu conteúdo</Opcao>
   </>);
 
   return (
