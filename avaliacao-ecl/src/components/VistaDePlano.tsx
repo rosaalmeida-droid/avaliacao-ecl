@@ -1658,7 +1658,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           deNovo = (plano as any).pedirDeNovoEm || (plano as any).reabertaPara
             ? est.filter(e => e.autoavaliou && !e.validado && getValidacoes().some(v => v.alunoId === e.alunoId && v.planoAulaId === plano.id)).length : 0;
         } catch { /* sem dados: não mostra */ }
-        if (!porValidar && !porDecidir) return null;
+        // Alterações ao plano que os alunos ainda não receberam: é a primeira
+        // coisa a fazer (Rosa, 5/out/2026: a faixa ficava esquecida).
+        const porFinalizar = alteracoesPorEnviar(getPlanosAula().find(x => x.id === plano.id) || plano).length > 0;
+        if (!porValidar && !porDecidir && !porFinalizar) return null;
         const btn = (cheio: boolean): React.CSSProperties => ({ display: 'block', width: '100%', minHeight: 54, borderRadius: 12, marginTop: 10,
           border: cheio ? 'none' : '1px solid rgba(26,23,20,0.2)', background: cheio ? 'var(--sage, #5a7a4e)' : '#fff',
           color: cheio ? '#fff' : 'rgba(26,23,20,0.7)', fontSize: cheio ? 17 : 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' });
@@ -1667,6 +1670,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <div style={{ background: '#fff', borderRadius: 18, padding: '22px 22px 18px', maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
               <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--copper)' }}>O que tem de fazer nesta aula</div>
+              {porFinalizar && (<>
+                <div style={{ fontSize: 19, fontWeight: 800, marginTop: 8, lineHeight: 1.35 }}>
+                  Mudou o plano, mas os alunos ainda têm a versão antiga.
+                  <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
+                    Carregue no botão para ver o que mudou e enviar a versão nova aos alunos.</span>
+                </div>
+                <button style={btn(true)} onClick={() => { fecharAviso(); abrirFinalizar(); }}>Enviar a versão nova aos alunos →</button>
+              </>)}
               {porValidar > 0 && (
                 <div style={{ fontSize: 19, fontWeight: 800, marginTop: 8, lineHeight: 1.35 }}>
                   {porValidar === 1 ? '1 autoavaliação' : `${porValidar} autoavaliações`} à espera de validação
@@ -1679,9 +1690,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {porDecidir === 1 ? '1 aluno' : `${porDecidir} alunos`} com a presença por decidir (não entrou ou chegou fora de tempo).
                 </div>
               )}
-              <button style={btn(true)} onClick={() => { fecharAviso(); if (porValidar) setModulo('validacao'); else setTabInicio('turma'); }}>
-                {porValidar ? 'Validar agora →' : 'Decidir as presenças agora →'}
-              </button>
+              {(porValidar > 0 || porDecidir > 0) && (
+                <button style={btn(!porFinalizar)} onClick={() => { fecharAviso(); if (porValidar) setModulo('validacao'); else setTabInicio('turma'); }}>
+                  {porValidar ? 'Validar agora →' : 'Decidir as presenças agora →'}
+                </button>
+              )}
               {porValidar > 0 && porDecidir > 0 && (
                 <button style={btn(false)} onClick={() => { fecharAviso(); setTabInicio('turma'); }}>Primeiro, decidir as presenças</button>
               )}
@@ -1781,10 +1794,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
           background: '#fff7e6', border: '2px solid #b5651d', borderRadius: 14, padding: '10px 14px', margin: '0 0 14px' }}>
           <div style={{ flex: 1, minWidth: 200, fontSize: 14.5, fontWeight: 700, color: '#7a4310' }}>
-            Há alterações por finalizar neste plano.
+            Mudou o plano, mas os alunos ainda têm a versão antiga. Carregue no botão para lhes enviar a versão nova.
           </div>
           <button onClick={() => abrirFinalizar()} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#b5651d',
-            color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Finalizar alterações</button>
+            color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Enviar a versão nova aos alunos</button>
         </div>
       )}
       <EstadoEnvioPlano plano={plano} />

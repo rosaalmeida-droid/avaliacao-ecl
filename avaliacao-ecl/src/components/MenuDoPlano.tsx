@@ -8,7 +8,7 @@
 // Aqui vê tudo: qual é o plano, o que tem, o que falta, e a saída.
 // ============================================================
 
-import { ehEventoForaDoHorario, rotuloEvento, codigoEvento, rotuloDoPlano } from '../rotuloPlano';
+import { ehEventoForaDoHorario, rotuloEvento, codigoEvento, rotuloDoPlano, rotuloPlano } from '../rotuloPlano';
 import { gruposDaAula, contextoDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO } from '../backend';
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
@@ -129,9 +129,9 @@ export function MenuDoPlano({
           color: BRANCO_TENUE }}>
           {ehEventoForaDoHorario(plano)
             ? rotuloEvento(plano).toUpperCase()
-            : (posicao && totalPlanos
-              ? `PLANO ${posicao} DE ${totalPlanos}`
-              : 'PLANO DE AULA') + ((plano as any).tipoEvento ? ` · ${codigoEvento(plano)}` : '')}
+            // O mesmo rótulo do resto da aplicação, com as horas da UC. Antes
+            // dizia «PLANO 13 DE 4» (Rosa, 5/out/2026).
+            : (posicao ? rotuloPlano(plano).toUpperCase() : 'PLANO DE AULA') + ((plano as any).tipoEvento ? ` · ${codigoEvento(plano)}` : '')}
         </div>
         <div style={{ fontSize: 15.5, fontWeight: 800, marginTop: 3, color: BRANCO_FORTE }}>
           {dataCurta}

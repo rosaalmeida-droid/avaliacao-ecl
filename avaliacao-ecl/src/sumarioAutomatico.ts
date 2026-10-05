@@ -11,7 +11,7 @@
 import type { PlanoAula, FichaProducao } from './types';
 import { codigosDasLinhas, encontrarSubtecnica, encontrarAparelho, ATITUDES } from './compatECL';
 import { triagemDoPlano, tipoDe, escolheTema, fasesDoTrabalho, type FaseProjeto } from './contextoAula';
-import { manualDaUC, capituloDoCampo } from './bancoManuais';
+import { manualDaUC, capituloDoCampo, camposDoCapitulo } from './bancoManuais';
 
 const semPonto = (t: string) => t.trim().replace(/[.;:]+$/, '');
 const minuscula = (t: string) => t ? t[0].toLowerCase() + t.slice(1) : t;
@@ -38,7 +38,10 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
   if (atividade) linhas.push(`${atividade}.`);
 
   // Tema e conteúdos (do manual) e os indicadores trabalhados.
-  const conh: { texto: string; capitulo?: string; tema?: string }[] = Array.isArray(p.conhecimentosProf) ? p.conhecimentosProf : [];
+  // Os retirados nas Competências não entram (Rosa, 5/out/2026).
+  const tirados: string[] = Array.isArray(p.compRemovidas) ? p.compRemovidas : [];
+  const conh: { id?: string; texto: string; capitulo?: string; tema?: string }[] = (Array.isArray(p.conhecimentosProf) ? p.conhecimentosProf : [])
+    .filter((k: any) => !tirados.includes(String(k.id || '')));
   const porConteudo = new Map<string, { tema?: string; indicadores: string[] }>();
   const soltos: string[] = [];
   for (const k of conh) {
@@ -56,9 +59,15 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
   const caps = new Set(conh.map((k: any) => capituloDoCampo(String(k.id || ''))?.capitulo.n).filter((n): n is number => n != null));
   const resumoDoManual = () => {
     if (!md) return '';
-    if (!caps.size || caps.size === md.capitulos.length) return `todos os conteúdos do Manual do Aluno «${md.titulo}»`;
+    // «Todos os conteúdos» só quando estão marcados todos os subtítulos de
+    // todos os conteúdos. Com só alguns subtítulos, diz-se isso (Rosa, 5/out/2026:
+    // «marquei só subtítulos e o sumário dizia todos os conteúdos»).
+    const nTodos = md.capitulos.reduce((n, c) => n + camposDoCapitulo(c).length, 0);
+    const nMarcados = conh.filter((k: any) => capituloDoCampo(String(k.id || ''))).length;
+    if (!caps.size || (caps.size === md.capitulos.length && nMarcados >= nTodos)) return `todos os conteúdos do Manual do Aluno «${md.titulo}»`;
+    const so = nMarcados < nTodos ? ` (${nMarcados} subtítulo${nMarcados === 1 ? '' : 's'} escolhido${nMarcados === 1 ? '' : 's'})` : '';
     const titulos = md.capitulos.filter(c => caps.has(c.n)).map(c => c.titulo);
-    return titulos.length <= 6 ? `conteúdos do Manual do Aluno: ${lista(titulos)}` : `${titulos.length} conteúdos do Manual do Aluno «${md.titulo}»`;
+    return titulos.length <= 6 ? `conteúdos do Manual do Aluno: ${lista(titulos)}${so}` : `${titulos.length} conteúdos do Manual do Aluno «${md.titulo}»${so}`;
   };
   const trabalho = !!t && escolheTema(t);
   let linhaDosTemas = '';

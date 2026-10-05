@@ -264,13 +264,24 @@ export function microsPorFamilia(
 
 // ── Sugestão — devolve string[] (IDs) para compatibilidade ──
 
+// Antes bastava uma palavra em comum: uma sopa «creme de cenoura» trazia o
+// creme pasteleiro, o creme diplomata e o creme de queijo (Rosa, 5/out/2026).
+// Agora a maior parte das palavras da técnica tem de estar na receita.
+const raizes = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .split(/[^a-z]+/).filter(p => p.length >= 4).map(p => p.slice(0, 4));
 export function sugerirSubtecnicas(texto: string): SubtecnicaLegacy[] {
   if (!texto || texto.length < 3) return [];
-  const palavras = texto.toLowerCase().split(/\s+/).filter(p => p.length > 3);
-  return SUBTECNICAS.filter(s => {
-    const nome = (s.nome || '').toLowerCase();
-    return palavras.some(p => nome.includes(p));
-  }).slice(0, 12);
+  const naReceita = new Set(raizes(texto));
+  return SUBTECNICAS
+    .map(s => {
+      const r = [...new Set(raizes(s.nome || ''))];
+      const comuns = r.filter(p => naReceita.has(p)).length;
+      return { s, nota: r.length ? comuns / r.length : 0, comuns };
+    })
+    .filter(x => x.comuns >= 2 && x.nota >= 0.6 || (x.comuns === 1 && x.nota === 1))
+    .sort((a, b) => b.nota - a.nota || b.comuns - a.comuns)
+    .map(x => x.s)
+    .slice(0, 12);
 }
 
 // Devolve IDs (string[]) para compatibilidade com Comanda.tecnicasSugeridas

@@ -455,7 +455,12 @@ function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: Triage
       <div style={{ fontWeight: 800, fontSize: 15, color: C.azul }}>Ficou assim</div>
       {linha((plano as any).tipoEvento ? 'A atividade' : 'O plano de aula', fraseDaAula(triagem, !!(plano as any).tipoEvento) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
       {linha('Sumário', <span style={{ whiteSpace: 'pre-line' }}>{sumarioDoPlano(plano, fichas)}</span>)}
-      {linha(`O aluno responde`, ecras.length ? `${ecras.length}: ${ecras.map(e => e.nome).join(' → ')}` : '—')}
+      {/* Uma pergunta por linha, para o professor ver ao certo o que vai ser
+          perguntado (Rosa, 5/out/2026: a lista com setas não se lia). */}
+      {linha(`O aluno responde`, ecras.length ? (<>
+        <div>O aluno responde a {ecras.length} pergunta{ecras.length === 1 ? '' : 's'}:</div>
+        <ol style={{ margin: '4px 0 0', paddingLeft: 20 }}>{ecras.map((e, i) => <li key={i}>{e.nome}</li>)}</ol>
+      </>) : '—')}
       {linha('Conta para a nota', pesos.map(x => `${x.nome} ${x.pct}%`).join(' · ') || '—')}
       {escolheTema(triagem) && linha('Tema', triagem.modo === 'grupo'
         ? `cada grupo escolhe o seu, na autoavaliação.${grupos.length ? ` Grupos: ${grupos.length}; ${alunos.filter(a => !emGrupo.has(a.id)).length} alunos sem grupo.` : ' Os alunos formam os grupos na aplicação.'}`
