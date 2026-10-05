@@ -16,7 +16,7 @@ import { BotaoPublicar } from './BotaoPublicar';
 import { estadoPublicacao, subscreverPublicacao } from '../backend';
 
 export type ModuloPlano =
-  | 'inicio' | 'ficha' | 'guia' | 'requisicao'
+  | 'inicio' | 'fichas' | 'ficha' | 'guia' | 'requisicao'
   | 'competencias' | 'turma' | 'validacao' | 'registos' | 'editar' | 'grupos';
 
 const BRANCO_FORTE = '#ffffff';
@@ -244,12 +244,21 @@ export function MenuDoPlano({
 
       {/* O que o plano tem */}
       <div style={{ paddingTop: 5 }}>
+        {/* (Rosa, 5/out/2026) «Fichas» abria o plano geral (turma, validar,
+            plano organizacional): a palavra não dizia o que lá estava. Agora o
+            plano geral tem a sua linha, e «Fichas» abre as fichas. */}
+        <Linha
+          marca="neutro"
+          texto={ehEventoForaDoHorario(plano) ? 'Atividade: vista geral' : 'Plano de aula: vista geral'}
+          activo={moduloActivo === 'inicio'}
+          aoClicar={() => aoIrPara('inicio')} />
+
         <Linha
           marca={fichas.length > 0 ? 'feito' : 'falta'}
-          texto="Fichas"
+          texto="Fichas técnicas"
           contador={fichas.length || '—'}
-          activo={moduloActivo === 'ficha' || moduloActivo === 'inicio'}
-          aoClicar={() => aoIrPara('inicio')} />
+          activo={moduloActivo === 'ficha' || moduloActivo === 'fichas'}
+          aoClicar={() => aoIrPara('fichas')} />
 
         <Linha
           marca={fichas.length > 0 && comGuiao === fichas.length ? 'feito' : 'falta'}

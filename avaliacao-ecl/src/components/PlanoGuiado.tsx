@@ -94,13 +94,26 @@ export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura
     try { const v = localStorage.getItem(chave); if (v === '1' || v === '0') return v === '1'; } catch { /* */ }
     return !!abertaAoInicio;
   });
+  // (Rosa, 5/out/2026) O menu do plano pode pedir para abrir esta gaveta
+  // («Fichas» abre a gaveta das fichas): abre-se e o ecrã vai até ela.
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const abrir = (e: Event) => {
+      if ((e as CustomEvent).detail !== id) return;
+      setAberta(true);
+      try { localStorage.setItem(chave, '1'); } catch { /* */ }
+      setTimeout(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+    window.addEventListener('ecl-abrir-gaveta', abrir);
+    return () => window.removeEventListener('ecl-abrir-gaveta', abrir);
+  }, [id, chave]);
   const mudar = () => {
     const nova = !aberta;
     setAberta(nova);
     try { localStorage.setItem(chave, nova ? '1' : '0'); } catch { /* */ }
   };
   return (
-    <div style={{ ...cartao, padding: 0, overflow: 'hidden', ...(feito === false ? { border: `2px solid ${C.ambarL}` } : {}) }}>
+    <div ref={ref} style={{ ...cartao, padding: 0, overflow: 'hidden', ...(feito === false ? { border: `2px solid ${C.ambarL}` } : {}) }}>
       <button onClick={mudar} aria-expanded={aberta} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%',
         padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: C.tinta }}>
         <span style={{ width: 30, height: 30, borderRadius: '50%', background: feito ? C.verde : C.tinta, color: '#fff', fontWeight: 800,

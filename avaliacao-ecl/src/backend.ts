@@ -6519,8 +6519,12 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
   const selecoes = selecoesQueContam(selecoesDoProfessor().filter(s => s.planoAulaId === planoAulaId));
   const validacoes = getValidacoes();
   const liderId = liderKFdoGrupo(planoAulaId);
+  // (Rosa, 5/out/2026) Os alunos de teste («TESTE ensaio», nº 99…) não
+  // aparecem nas listas da turma («Não entraram», «Falta avaliarem-se»),
+  // a não ser que tenham mesmo entrado nesta aula (num ensaio do professor).
+  const comTeste = new Set([...presencas.map(p => p.alunoId), ...selecoes.map(s => s.alunoId)]);
 
-  return alunos.map(a => {
+  return alunos.filter(a => !alunoDeTeste(a) || comTeste.has(a.id)).map(a => {
     const pres = presencas.find(p => p.alunoId === a.id);
     const sel = selecoes.find(s => s.alunoId === a.id);
     const val = sel ? validacaoDaSelecao(sel, validacoes) : undefined;
