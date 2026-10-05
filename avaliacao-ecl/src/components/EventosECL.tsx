@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   getTurmas, gravarEvento, apagarEvento, lerEventosLocais, sincronizarEventos, proximoNumeroEvento,
   getFichasProducao, getRequisicoes, getPlanosAula, eventoForaDoHorario, modoParticipacao, inscritosNoEvento, participantesDoEvento,
+  addOrUpdatePlanoAula,
 } from '../backend';
 import Requisicao, { custoDaFicha } from './Requisicao';
 import { LOGO_ECL } from '../logo_ecl';
@@ -531,47 +532,77 @@ type Secao = 'pedido' | 'perguntas' | 'local' | 'quantidades' | 'fichas' | 'prep
  */
 function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?: string }) {
   const [, redesenhar] = useState(0);
-  const [turma, setTurma] = useState(e.turmasIds[0] || '');
-  const [modo, setModo] = useState<'turma' | 'inscricao'>('turma');
   const planos = planosDoEvento(e.id);
   const semPlano = getTurmas().map(t => t.id).filter(t => !planos.some(p => p.turmaId === t));
-  if (planos.length) return (
-    <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
-      {planos[0]?.tipoEvento ? (<>
-        <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.map(p => p.turmaId).join(', ')}
-        {p0Modo(planos[0])}. Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.
-      </>) : (<>
-        <b style={{ color: C.verde }}>✓ O evento está no plano de aula da turma</b> — {planos.map(p => p.turmaId).join(', ')}.
-        Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
+  // Várias turmas de uma vez (Rosa, out/2026): antes só se escolhia uma (vinha
+  // a primeira, o 1.º BCR) e, criada essa, já não se podiam juntar as outras.
+  const [turmas, setTurmas] = useState<string[]>(() => e.turmasIds.filter(t => semPlano.includes(t)));
+  const [modo, setModo] = useState<'turma' | 'inscricao'>('turma');
+  const [maisTurmas, setMaisTurmas] = useState(false);
+  const escolhidas = turmas.filter(t => semPlano.includes(t));
+  const criadas = planos.length > 0 && (
+    <div style={{ marginBottom: semPlano.length ? 10 : 0 }}>
+      {planos.some(p => p.tipoEvento) && (<>
+        <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.filter(p => p.tipoEvento).map(p => `${p.turmaId}${p0Modo(p)}`).join(', ')}.
+        {' '}Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.<br />
+        {planos.filter(p => p.tipoEvento && p.modoParticipacao !== 'inscricao').map(p => (
+          <button key={p.id} onClick={() => { addOrUpdatePlanoAula({ ...p, modoParticipacao: 'inscricao', estado: 'publicado' }); redesenhar(n => n + 1); }}
+            style={{ ...botao('claro'), margin: '6px 6px 0 0', minHeight: 38, fontSize: 13.5 }}>Abrir às inscrições dos alunos — {p.turmaId}</button>
+        ))}
+      </>)}
+      {planos.some(p => !p.tipoEvento) && (<>
+        <b style={{ color: C.verde }}>✓ O evento está no plano de aula da turma</b> — {planos.filter(p => !p.tipoEvento).map(p => p.turmaId).join(', ')}.
+        {' '}Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
       </>)}
     </div>
   );
+  if (planos.length && (!semPlano.length || !maisTurmas)) return (
+    <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
+      {criadas}
+      {semPlano.length > 0 && (
+        <button onClick={() => setMaisTurmas(true)} style={{ ...botao('claro'), marginTop: 8 }}>+ Juntar outras turmas</button>
+      )}
+    </div>
+  );
+  function criar() {
+    if (!escolhidas.length || !e.data) return;
+    for (const t of escolhidas) criarAvaliacaoDoEvento(e, t, modo, nomeProfessor || '');
+    setTurmas([]); setMaisTurmas(false); redesenhar(n => n + 1);
+  }
   return (
     <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
+      {criadas}
       <div style={{ fontWeight: 800, color: C.bordeaux }}>Avaliação dos alunos</div>
       <div style={{ color: C.suave, margin: '4px 0 10px' }}>
         Sem ela, o evento não conta para a nota. Os alunos autoavaliam-se (esforço e compromisso) e tu validas.
       </div>
       {!e.data && <div style={{ color: '#8e2418', fontWeight: 700 }}>Falta a data do evento.</div>}
-      <select value={turma} onChange={x => setTurma(x.target.value)} style={{ width: '100%', padding: 10, borderRadius: 10, fontSize: 15, marginBottom: 8, fontFamily: 'inherit' }}>
-        <option value="">Escolha a turma…</option>
-        {semPlano.map(t => <option key={t} value={t}>{t}</option>)}
-      </select>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Que turmas? (pode escolher várias)</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        {semPlano.map(t => {
+          const on = escolhidas.includes(t);
+          return <button key={t} onClick={() => setTurmas(on ? turmas.filter(x => x !== t) : [...turmas, t])}
+            style={{ ...botao(on ? 'principal' : 'claro'), minHeight: 40, fontSize: 14 }}>{on ? '✓ ' : ''}{t}</button>;
+        })}
+        {semPlano.length > 1 && (
+          <button onClick={() => setTurmas(escolhidas.length === semPlano.length ? [] : semPlano)} style={{ ...botao('claro'), minHeight: 40, fontSize: 14 }}>
+            {escolhidas.length === semPlano.length ? 'Tirar todas' : 'Todas as turmas'}</button>
+        )}
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só alguns alunos']] as const).map(([v, t]) => (
+        {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só os alunos que se inscreverem']] as const).map(([v, t]) => (
           <button key={v} onClick={() => setModo(v)} style={{ ...botao(modo === v ? 'principal' : 'claro'), flex: '1 1 160px', minHeight: 44, fontSize: 14 }}>{t}</button>
         ))}
       </div>
-      {turma && e.data && (
+      {escolhidas.length > 0 && e.data && (
         <div style={{ color: C.suave, fontSize: 13.5, marginBottom: 8 }}>
-          {modo === 'inscricao' ? 'Atividade extra: dá bónus, não conta faltas.'
-            : modulosAtivos(turma, e.data).length > 0 ? 'A turma toda, dentro do ano letivo: é um plano de aula com o evento lá dentro, e conta como aula.'
-            : 'A turma toda, fora do ano letivo: atividade extra, com bónus no plano de aula seguinte da UC.'}
+          {modo === 'inscricao' ? 'Atividade extra: os alunos destas turmas veem-na e inscrevem-se; tu aceitas quem vai. Dá bónus, não conta faltas.'
+            : escolhidas.map(t => `${t}: ${modulosAtivos(t, e.data).length > 0 ? 'plano de aula com o evento lá dentro (conta como aula)' : 'atividade extra (fora do ano letivo)'}`).join(' · ')}
         </div>
       )}
-      <button disabled={!turma || !e.data} onClick={() => { criarAvaliacaoDoEvento(e, turma, modo, nomeProfessor || ''); redesenhar(n => n + 1); }}
-        style={{ ...botao('principal'), width: '100%', opacity: !turma || !e.data ? 0.5 : 1 }}>
-        Criar a avaliação dos alunos
+      <button disabled={!escolhidas.length || !e.data} onClick={criar}
+        style={{ ...botao('principal'), width: '100%', opacity: !escolhidas.length || !e.data ? 0.5 : 1 }}>
+        {escolhidas.length > 1 ? `Criar a avaliação para ${escolhidas.length} turmas` : 'Criar a avaliação dos alunos'}
       </button>
     </div>
   );
