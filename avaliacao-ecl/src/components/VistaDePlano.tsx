@@ -551,6 +551,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
+  /** O plano abre só para ver; muda-se depois de carregar em «Alterar o plano»
+   *  e grava-se com «Gravar e terminar» (Rosa, out/2026: mudava-se sem querer
+   *  e não havia botão para gravar). */
+  const [aAlterar, setAAlterar] = useState(false);
   // O menu da esquerda marca onde o professor está. As competências abrem-se
   // dentro do Início: antes o menu ficava em «Fichas» (Rosa, out/2026).
   React.useEffect(() => {
@@ -2138,16 +2142,36 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div style={{ minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
           color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>{eventoForaDoHorario(plano) ? 'Preparar a atividade extra' : 'Preparar a aula'}</div>
-      <Gaveta id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
+      {!aAlterar ? (
+        <button onClick={() => setAAlterar(true)} style={{ display:'block', width:'100%', margin:'0 0 10px', padding:'12px 16px',
+          borderRadius:12, border:'1.5px solid var(--copper)', background:'#fff', color:'var(--copper)', fontSize:15.5, fontWeight:800,
+          cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+          ✏️ Alterar o plano
+          <span style={{ display:'block', fontSize:13, fontWeight:500, color:'rgba(26,23,20,0.6)', marginTop:2 }}>
+            Abaixo está só para ver. Para mudar alguma coisa, carregue aqui.</span>
+        </button>
+      ) : (
+        <div style={{ position:'sticky', top:0, zIndex:40, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+          background:'#fff7e6', border:'2px solid var(--copper)', borderRadius:12, padding:'10px 14px', margin:'0 0 10px' }}>
+          <span style={{ flex:'1 1 180px', fontSize:14.5, fontWeight:700, color:'#7a4310' }}>Está a alterar o plano.</span>
+          <button onClick={() => {
+              setAAlterar(false);
+              const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
+              if (atual.estado === 'publicado' && alteracoesPorEnviar(atual).length > 0) abrirFinalizar();
+            }} style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'var(--sage, #5a7a4e)', color:'#fff',
+            fontSize:15, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>✓ Gravar e terminar</button>
+        </div>
+      )}
+      <Gaveta soLeitura={!aAlterar} id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
         resumo={`${fmtDataCurta(plano.data)} · ${String(plano.horaInicio || '').slice(0, 5)}–${String(plano.horaFim || '').slice(0, 5)} · ${plano.ucId || 'sem unidade'}`}>
         <QuandoEUnidade plano={plano} onPlanoActualizado={onPlanoActualizado} onAbrirCriar={() => setModulo('editar')} />
       </Gaveta>
-      <Gaveta id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
+      <Gaveta soLeitura={!aAlterar} id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
         resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!, !!(plano as any).tipoEvento) : 'Falta escolher o tipo de aula'}
         feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       </Gaveta>
-      <Gaveta id="conteudos" n={3} titulo="Conteúdos e sumário"
+      <Gaveta soLeitura={!aAlterar} id="conteudos" n={3} titulo="Conteúdos e sumário"
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
@@ -2273,7 +2297,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       </Gaveta>
       {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
           cozinha» tirava a requisição aos eventos e aos planos antigos). */}
-      <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
+      <Gaveta soLeitura={!aAlterar} id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato
@@ -2443,7 +2467,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ))}
         </div>
       </Gaveta>
-      <Gaveta id="responde" n={5} titulo="O que o aluno responde"
+      <Gaveta soLeitura={!aAlterar} id="responde" n={5} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolha primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
