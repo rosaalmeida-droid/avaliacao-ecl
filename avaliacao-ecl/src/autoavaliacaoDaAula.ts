@@ -290,7 +290,7 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
   }
 
   const perguntasQueSeFazem = (id: string) => {
-    const ps = perguntasDe(id, evento) || [];
+    const ps = perguntasDe(id, evento, ctx) || [];
     const aplica = perguntasAplicaveis(id, ctx, evento);
     ps.forEach((q, i) => { if (!aplica[i]) fora.push({ nome: `«${q.pergunta}»`, motivo: porqueNaoSeFaz(id, i, ctx) }); });
     return ps.filter((_, i) => aplica[i]).map(q => q.pergunta);

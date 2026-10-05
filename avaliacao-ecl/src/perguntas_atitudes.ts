@@ -433,9 +433,10 @@ const REQUISITOS: Record<string, [Requisito[], Requisito[]]> = {
 /** Que perguntas desta atitude se fazem nesta aula (uma por posição). Num
  *  evento ou concurso fazem-se sempre as do evento. */
 export function perguntasAplicaveis(id: string, ctx: ContextoAula | undefined, evento = false): boolean[] {
-  const ps = perguntasDe(id, evento);
+  const ps = perguntasDe(id, evento, ctx);
   if (!ps) return [];
   if (!ctx || (evento && PERGUNTAS_EVENTO[id])) return ps.map(() => true);
+  if (!ctx.cozinha && FORA_DA_COZINHA[id] && !(evento && PERGUNTAS_EVENTO[id])) return ps.map(() => true);
   const req = REQUISITOS[id] || [[], []];
   return ps.map((_, i) => cumpre(req[i], ctx));
 }
@@ -485,9 +486,33 @@ export function perguntaSubstituta(id: string, evento = false): PerguntaAtitude 
   return par ? par.perguntas[1] : null;
 }
 
-/** As perguntas desta atitude: as do evento, num evento ou concurso; senão as de sempre. */
-export function perguntasDe(id: string, evento = false): [PerguntaAtitude, PerguntaAtitude] | undefined {
-  return (evento && PERGUNTAS_EVENTO[id]) || PERGUNTAS_ATITUDES[id];
+// Fora da cozinha (aula atitudinal, teórica): a apresentação pessoal é a roupa
+// com que se vem para a escola, e não a farda. Regras da escola: sem calças
+// rotas, calções, boné, costas ou barriga à mostra; roupa casual e cuidada,
+// à altura da formação (Rosa, 5/out/2026).
+const FORA_DA_COZINHA: Record<string, [PerguntaAtitude, PerguntaAtitude]> = {
+  'ATI-003': [
+    P('Hoje, como vieste vestido/a para a escola?', [
+      'Vim com roupa que não se usa na escola (calças rotas, calções, boné, costas ou barriga à mostra).',
+      'Vim quase bem, mas com uma peça que não se usa na escola (o boné, por exemplo).',
+      'Vim com roupa casual e cuidada, como se pede na escola.',
+      'Vim com roupa casual e cuidada, e lembrei um colega das regras da escola.',
+    ]),
+    P('Hoje, como cuidaste da tua apresentação durante a aula?', [
+      'Estive de boné ou com a roupa desarrumada, e não me importei.',
+      'Estive bem, mas tiveram de me lembrar de um pormenor.',
+      'Estive sempre arranjado/a e com uma postura cuidada.',
+      'Estive sempre arranjado/a e ajudei um colega a corrigir-se.',
+    ]),
+  ],
+};
+
+/** As perguntas desta atitude: as do evento, num evento ou concurso; fora da
+ *  cozinha, as que fazem sentido fora dela; senão as de sempre. */
+export function perguntasDe(id: string, evento = false, ctx?: ContextoAula): [PerguntaAtitude, PerguntaAtitude] | undefined {
+  if (evento && PERGUNTAS_EVENTO[id]) return PERGUNTAS_EVENTO[id];
+  if (ctx && !ctx.cozinha && FORA_DA_COZINHA[id]) return FORA_DA_COZINHA[id];
+  return PERGUNTAS_ATITUDES[id];
 }
 
 export function temPerguntas(id: string): boolean {
@@ -513,8 +538,8 @@ export function nivelDaAtitude(r: (number | null | undefined)[] | undefined): nu
 }
 
 /** O que o aluno respondeu, em texto — para o professor ver na validação. */
-export function textoDasRespostas(id: string, r: (number | null | undefined)[] | undefined, evento = false): { pergunta: string; resposta: string }[] {
-  const ps = perguntasDe(id, evento);
+export function textoDasRespostas(id: string, r: (number | null | undefined)[] | undefined, evento = false, ctx?: ContextoAula): { pergunta: string; resposta: string }[] {
+  const ps = perguntasDe(id, evento, ctx);
   if (!ps || !r) return [];
   const lista = ps.map((p, i) => ({
     pergunta: p.pergunta,
