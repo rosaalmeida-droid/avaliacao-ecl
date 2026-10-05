@@ -13,6 +13,7 @@
 import React from 'react';
 import { VistaProf } from './Header';
 import { PlanosForaDoHorario, PlanosAMaisNaUC } from './PlanosForaDoHorario';
+import { ProximosNoCalendario } from './ProximosNoCalendario';
 
 const C = {
   fundo:         '#F5F2F3',
@@ -252,6 +253,7 @@ export function PainelProfessor({
               As suas aulas
             </div>
             {calendario}
+            <ProximosNoCalendario />
           </div>
         )}
         </div>

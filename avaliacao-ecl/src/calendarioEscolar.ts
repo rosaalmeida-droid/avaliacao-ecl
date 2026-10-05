@@ -98,3 +98,22 @@ export function proximosDoCalendario(hojeISO: string, dias = 21): (DiaMarcado & 
       && !(x.tipo === 'feriado' && [0, 6].includes(new Date(x.inicio + 'T00:00:00').getDay())))
     .sort((a, b) => a.inicio.localeCompare(b.inicio));
 }
+
+/** «hoje», «amanhã», «daqui a 5 dias». */
+export function quandoEmTexto(faltam: number): string {
+  if (faltam <= 0) return 'Agora';
+  if (faltam === 1) return 'Amanhã';
+  return `Daqui a ${faltam} dias`;
+}
+
+/** A frase de cada coisa do calendário que vem aí, em frase inteira. */
+export function fraseDoCalendario(x: DiaMarcado & { faltam: number }): string {
+  const fmt = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const quando = x.inicio === x.fim ? fmt(x.inicio) : `de ${fmt(x.inicio)} a ${fmt(x.fim)}`;
+  const semAulas = x.tipo !== 'agenda' ? ' Não há aulas: não se pode criar um plano de aula, só atividades.' : '';
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (x.faltam <= 0 && x.fim === hoje) return `Hoje: ${x.nome}.${semAulas}`;
+  return x.faltam <= 0
+    ? `A decorrer, até ${fmt(x.fim)}: ${x.nome}.${semAulas}`
+    : `${quandoEmTexto(x.faltam)}, ${quando}: ${x.nome}.${semAulas}`;
+}
