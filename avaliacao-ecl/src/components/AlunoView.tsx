@@ -1952,7 +1952,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
                 </div>
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
-                onContinuar={() => { if (soConsulta) { setSecAberta(fichas.length ? 'ficha' : 'orientacao'); return; }
+                onContinuar={() => { if (soConsulta) { if (fichas.length) setSecAberta('ficha'); else { setEcra(false); onVoltar(); } return; }
                   setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
             )}
             {secAberta==='entrada' && (
