@@ -1,6 +1,7 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { janelaConfirmar } from './janelaConfirmar';
 import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
+import { BotaoWhatsApp, mensagemAberturaAula, mensagemInscricoes } from './AvisarWhatsApp';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
@@ -656,6 +657,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [reqSelecionadasIds, setReqSelecionadasIds] = useState<Set<string>>(new Set());
   const temFichas = fichasDoPlano.length > 0;
   const temRequisicao = !!requisicao;
+  // A gaveta das fichas só numa aula com cozinha, num evento, ou se já houver fichas ou requisição.
+  const comGavetaFichas = contextoDoPlano(plano).producao || !contextoDoPlano(plano).definido || !!(plano as any).tipoEvento || temFichas || temRequisicao;
   const publicado = plano.estado === 'publicado';
   // ── Competências ────────────────────────────────────────────
   // Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas nem
@@ -1662,6 +1665,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </div>
               </div>
               <EstadoAberturaAula planoAulaId={plano.id} />
+              {/* (Rosa, 5/out/2026) A mensagem para o grupo da turma: «já está aberta» ou «já podem fazer a autoavaliação». */}
+              <div style={{ marginTop: 10 }}><BotaoWhatsApp texto={mensagemAberturaAula(plano)} /></div>
               <button onClick={async () => { if (await anularAberturaComConfirmacao(plano, nomeProfessor || 'professor')) onPlanoActualizado?.({ ...plano }); }}
                 style={{ marginTop: 10, padding: '7px 12px', borderRadius: 9, border: '1.5px solid #c0392b', background: '#fff', color: '#c0392b',
                   fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -2458,6 +2463,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       </Gaveta>
       {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
           cozinha» tirava a requisição aos eventos e aos planos antigos). */}
+      {/* (Rosa, 5/out/2026) Numa aula sem cozinha não aparece, como no menu;
+          fica num evento ou se o plano já tiver fichas ou requisição. */}
+      {comGavetaFichas && (
       <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
@@ -2628,7 +2636,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ))}
         </div>
       </Gaveta>
-      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="responde" n={5} titulo="O que o aluno responde"
+      )}
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="responde" n={comGavetaFichas ? 5 : 4} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolha primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
@@ -2879,6 +2888,10 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
           <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 6 }}>
             {inscritos.length} inscrito{inscritos.length === 1 ? '' : 's'} · {aceites.length} aceite{aceites.length === 1 ? '' : 's'}. Os alunos inscrevem-se em «Atividades e concursos».
           </div>
+          {/* (Rosa, 5/out/2026) Inscrições abertas: a mensagem para o grupo da turma. */}
+          {String(plano.data || '').slice(0, 10) >= new Date().toISOString().slice(0, 10) && (
+            <div style={{ margin: '4px 0 8px' }}><BotaoWhatsApp texto={mensagemInscricoes(plano)} rotulo="Avisar no WhatsApp que as inscrições estão abertas" /></div>
+          )}
           {lista.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda ninguém se inscreveu.</div>}
           {/* Atividade feita de urgência: o professor põe logo quem foi (Rosa, out/2026). */}
           {foraDaLista.length > 0 && (
