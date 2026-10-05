@@ -73,9 +73,9 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
         );
         return (
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Como respondem os alunos? ({nCaps} conteúdos marcados)</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Marcou {nCaps} conteúdos. Como é que os alunos respondem?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {opcao(!escolhe, 'Todos respondem a tudo', 'Cada aluno responde a todos os indicadores marcados, em todos os conteúdos.', () => mudar(false))}
+              {opcao(!escolhe, 'Todos os alunos respondem a tudo', 'Cada aluno responde a todos os indicadores marcados, em todos os conteúdos.', () => mudar(false))}
               {opcao(escolhe, 'Cada aluno escolhe um conteúdo', 'O aluno escolhe um dos conteúdos marcados e responde só aos indicadores desse.', () => mudar(true))}
             </div>
           </div>

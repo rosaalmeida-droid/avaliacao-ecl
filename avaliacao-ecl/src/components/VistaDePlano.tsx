@@ -831,35 +831,36 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <button onClick={() => setVerFicaTira(true)}
         style={{ display:'block', width:'100%', marginBottom:14, padding:'12px 14px', borderRadius:10, border:'2px solid var(--copper)', background:'var(--copper-pale)',
           color:'var(--copper)', fontSize:15, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
-        📋 Ver o que fica e o que se tira ({nFica} ficam · {nTira} tiradas)
+        📋 Ver o que fica na aula e o que foi tirado
+        <div style={{ fontSize:13, fontWeight:600, marginTop:2 }}>Ficam {nFica} competências na aula e foram tiradas {nTira}.</div>
       </button>
       {verFicaTira && (
         <div onClick={() => setVerFicaTira(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
             style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:620, maxHeight:'88vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.3)' }}>
             <div style={{ padding:'16px 18px 8px' }}>
-              <div style={{ fontSize:18, fontWeight:800 }}>O que fica e o que se tira</div>
+              <div style={{ fontSize:18, fontWeight:800 }}>O que fica na aula e o que foi tirado</div>
               <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:4, lineHeight:1.45 }}>
-                O que está em «Fica» é o que vai ser perguntado aos alunos.
-                {capsDoManual.size > 0 && <> Do manual: <b>{temaAEscolher ? 'cada aluno escolhe um conteúdo' : 'todos respondem a tudo'}</b>.</>}
+                Só o que fica na aula vai ser perguntado aos alunos. Pode tirar ou pôr de volta aqui mesmo.
+                {capsDoManual.size > 0 && <> Nas perguntas do manual, <b>{temaAEscolher ? 'cada aluno escolhe um conteúdo e responde só aos indicadores desse' : 'todos os alunos respondem a tudo o que ficou marcado'}</b>.</>}
               </div>
             </div>
             <div style={{ overflowY:'auto', padding:'0 18px 8px' }}>
-              <div style={{ fontSize:15, fontWeight:800, color:'#2e6b2e', marginTop:8 }}>✓ Fica na aula ({nFica})</div>
-              {!nFica && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Nada. Os alunos não teriam nada para responder.</div>}
+              <div style={{ fontSize:15, fontWeight:800, color:'#2e6b2e', marginTop:8 }}>✓ Isto fica na aula e vai ser perguntado aos alunos ({nFica}):</div>
+              {!nFica && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Não fica nada na aula, por isso os alunos não teriam nada para responder.</div>}
               {ficaGrupos.map(g => (<React.Fragment key={g.titulo}>
                 {subtitulo(g.titulo)}
                 {g.itens.map(i => linha(i.id, i.nome, bTirar([i.id])))}
               </React.Fragment>))}
               {ficaManual.length > 0 && subtitulo('Do manual')}
               {ficaManual.map(g => linha(g.ch, <>{g.titulo} <span style={{ color:'rgba(26,23,20,0.55)' }}>({g.ids.length} indicador{g.ids.length === 1 ? '' : 'es'})</span></>, bTirar(g.ids)))}
-              <div style={{ fontSize:15, fontWeight:800, color:'#8e2418', marginTop:18 }}>✗ Tira-se ({nTira})</div>
-              {!nTira && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Não tirou nada.</div>}
+              <div style={{ fontSize:15, fontWeight:800, color:'#8e2418', marginTop:18 }}>✗ Isto foi tirado e não vai ser perguntado aos alunos ({nTira}):</div>
+              {!nTira && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Não tirou nada desta aula.</div>}
               {[...porCap.entries()].map(([ch, g]) => linha('r' + ch, <span style={{ color:'rgba(26,23,20,0.65)' }}>{g.titulo} ({g.ids.length} indicador{g.ids.length === 1 ? '' : 'es'})</span>, bRepor(g.ids)))}
               {retiradas.map(id => linha('r' + id, <span style={{ color:'rgba(26,23,20,0.65)' }}>{nomeDe(id)}</span>, bRepor([id])))}
             </div>
             <div style={{ padding:'12px 18px 16px', borderTop:'1px solid rgba(26,23,20,0.1)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-              <span style={{ flex:1, fontSize:13.5, color:'#2e6b2e', fontWeight:700 }}>✓ Cada mudança fica gravada logo.</span>
+              <span style={{ flex:1, fontSize:13.5, color:'#2e6b2e', fontWeight:700 }}>✓ Cada mudança fica gravada no momento em que carrega no botão.</span>
               <button onClick={() => setVerFicaTira(false)} style={{ fontSize:15, padding:'10px 22px', borderRadius:10, border:'none', background:'var(--copper)', color:'#fff', cursor:'pointer', fontWeight:800, fontFamily:'inherit' }}>Fechar</button>
             </div>
           </div>
