@@ -20,7 +20,7 @@ import {
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
   TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe, TEXTO_MODO, TEXTO_FORMATO, escolheTema,
-  FASES, NOME_FASE, fasesDoTrabalho, faseSeguinte,
+  FASES, NOME_FASE, fasesDoTrabalho, faseSeguinte, TIPOS_PAP,
   type TriagemAula, type OndeAula, type TrabalhoAula, type TipoAula,
 } from '../contextoAula';
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
@@ -28,6 +28,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import { sumarioDoPlano, ehAtividadeComServico } from '../sumarioAutomatico';
 import { janelaConfirmar } from './janelaConfirmar';
 import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
+import { anoDaTurma as anoPeloNomeDaTurma } from '../cronograma';
 
 const C = {
   tinta: '#1F1A16', suave: 'rgba(26,23,20,0.62)', linha: 'rgba(26,23,20,0.12)',
@@ -217,7 +218,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     if ('tipo' in parcial && nova.cozinham && !('onde' in parcial) && nova.onde === 'sala') nova.onde = 'cozinha';
     if ('tipo' in parcial && nova.tipo === 'teorico' && nova.onde === 'cozinha') nova.onde = 'sala';
     // O que se deduz (Rosa, out/2026: não perguntar o que já se sabe).
-    // Teórica: na sala; a turma toda se é o professor a dar a matéria.
+    // Teórica: na sala; a turma toda se é o professor a dar os conteúdos.
     if (('tipo' in parcial || 'modo' in parcial) && nova.tipo === 'teorico') {
       if (nova.onde === 'cozinha') nova.onde = 'sala';
       nova.trabalho = nova.modo === 'grupo' ? 'grupos' : nova.modo === 'individual' || nova.modo === 'individual_todos' ? 'individual' : 'turma';
@@ -292,6 +293,10 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   const ehTrabalho = escolheTema(valor);
   const fases = fasesDoTrabalho(valor);
   const [outraSituacao, setOutraSituacao] = useState(false);
+  // PAP (3.º ano): com quem ou onde, numa visita ou masterclass. Grava ao sair da caixa.
+  const ehPAP = (anoPeloNomeDaTurma(plano.turmaId) ?? anoDaTurma(plano.turmaId)) === 3 && !p.tipoEvento;
+  const papTipos = valor.pap?.tipos || [];
+  const [entidadePAP, setEntidadePAP] = useState<string>(valor.pap?.entidade || '');
   const dataCurta = (iso: string) => `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}`;
   const fasesPossiveis = FASES.filter(f => !f.so || valor.cozinham);
   const Q = ({ n, titulo, ajuda, children }: { n: number; titulo: string; ajuda?: string; children: React.ReactNode }) => (
@@ -368,6 +373,28 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           </div>
         </div>
 
+        {/* 3.º ano: a maior parte das aulas é para a PAP (Rosa, out/2026). Vai para o sumário. */}
+        {definida && ehPAP && (
+          <Q n={n++} titulo="É uma aula de PAP (Prova de Aptidão Profissional)?" ajuda="Pode escolher mais do que um. Vai para o sumário.">
+            <Opcao ativo={!papTipos.length} onClick={() => gravar({ pap: undefined })}>Não</Opcao>
+            {TIPOS_PAP.map(x => {
+              const on = papTipos.includes(x.id);
+              return <Opcao key={x.id} ativo={on} onClick={() => {
+                const novos = on ? papTipos.filter(y => y !== x.id) : [...papTipos, x.id];
+                gravar({ pap: novos.length ? { ...valor.pap, tipos: TIPOS_PAP.map(z => z.id).filter(z => novos.includes(z)) } : undefined });
+              }}>{x.nome}</Opcao>;
+            })}
+          </Q>
+        )}
+        {definida && ehPAP && (papTipos.includes('visita') || papTipos.includes('masterclass')) && (
+          <div style={{ marginLeft: 34, marginTop: -8 }}>
+            <input value={entidadePAP} onChange={e => setEntidadePAP(e.target.value)}
+              onBlur={() => { if (entidadePAP.trim() !== (valor.pap?.entidade || '')) gravar({ pap: { tipos: papTipos, entidade: entidadePAP.trim() || undefined } }); }}
+              placeholder={papTipos.includes('visita') ? 'Onde é a visita (opcional), ex.: Mercado da Ribeira' : 'Com quem é a masterclass (opcional), ex.: chef João Rodrigues'}
+              style={{ width: '100%', maxWidth: 520, boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, fontSize: 14.5,
+                fontFamily: 'inherit', border: '1.5px solid rgba(26,23,20,0.22)' }} />
+          </div>
+        )}
         {definida && (tipo === 'teorico' || tipo === 'misto') && (
           <Q n={n++} titulo={tipo === 'misto' ? 'Como se trabalha a parte teórica?' : 'Como se trabalha?'}>
             <ModoOpcoes />

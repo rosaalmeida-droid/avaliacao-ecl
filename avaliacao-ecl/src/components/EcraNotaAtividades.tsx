@@ -320,6 +320,10 @@ export function EcraAtividades({
         {a.horaInicio && ` · ${a.horaInicio}${a.horaFim ? `–${a.horaFim}` : ''}`}
         {a.local && ` · ${a.local}`}
       </div>
+      {(a as any).aviso && (
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#8a4a00', background: '#fff3df', border: '1.5px solid #e8b866',
+          borderRadius: 10, padding: '8px 12px', marginTop: 8, lineHeight: 1.5 }}>🚐 {(a as any).aviso}</div>
+      )}
       {a.descricao && (
         <div style={{ fontSize: 14.5, color: C.texto, marginTop: 8, lineHeight: 1.55 }}>
           {a.descricao}

@@ -65,8 +65,11 @@ export interface EventoECL {
   data: string;            // YYYY-MM-DD
   horaInicio: string;
   horaFim: string;
-  onde: 'ecl' | 'fora' | 'por_definir' | '';
+  /** «misto»: uma parte na escola e outra fora (Rosa, out/2026). */
+  onde: 'ecl' | 'fora' | 'misto' | 'por_definir' | '';
   morada: string;
+  /** Num evento «misto»: onde e a que horas é cada parte (o aluno vê-o). */
+  partes?: string;
   pessoas: number;
   // 2. O serviço
   momentos: MomentoServico[];
@@ -174,7 +177,7 @@ export function eventoNovo(numero: number, professor: string): EventoECL {
 
 export const temAlcool = (e: EventoECL) => e.momentos.some(m => ['welcome', 'cocktail', 'jantar', 'almoco'].includes(m.tipo));
 export const temCafe = (e: EventoECL) => e.momentos.some(m => ['coffee_manha', 'coffee_tarde', 'pequeno_almoco', 'brunch', 'almoco', 'jantar', 'lanche'].includes(m.tipo));
-export const eFora = (e: EventoECL) => e.onde === 'fora';
+export const eFora = (e: EventoECL) => e.onde === 'fora' || e.onde === 'misto';
 
 export function precisaVisita(e: EventoECL): boolean {
   if (!eFora(e)) return false;
