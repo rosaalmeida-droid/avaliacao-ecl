@@ -2099,6 +2099,9 @@ function atualizarTurmasJa_(quais, comGerais) {
   var grupos = porTurma(lerOuNada('GRUPOS')), gruposInfo = porTurma(lerOuNada('GRUPOS_INFO'));
   var pares = porTurma(lerOuNada('AVALIACAO_PARES')), lideres = porTurma(lerOuNada('LIDERES_KF'));
   var notasApp = porTurma(lerOuNada('NOTAS_APP'));
+  // (v26.1) O email da escola de cada aluno (o que ele escreveu ao entrar).
+  var emailDe = {};
+  lerOuNada('EMAILS_ALUNOS').forEach(function (e) { if (e.alunoId && e.email) emailDe[e.alunoId] = String(e.email).trim(); });
   var fichasTodas = lerOuNada('FICHAS');
   var nomesComp = nomesDasCompetenciasDasFichas(fichasTodas);
   var nomeFicha = {}; fichasTodas.forEach(function (f) { nomeFicha[f.id] = f.nomePrato || ''; });
@@ -2122,7 +2125,7 @@ function atualizarTurmasJa_(quais, comGerais) {
         finais: finais[turma] || [], telemoveis: telemoveis[turma] || [],
         recuperacoes: recuperacoes[turma] || [], planoPorId: porIdPlano,
         grupos: grupos[turma] || [], gruposInfo: gruposInfo[turma] || [], pares: pares[turma] || [], lideres: lideres[turma] || [],
-        nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || []
+        nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || [], emailDe: emailDe
       }, hoje); }, 'Turma ' + turma);
       SpreadsheetApp.flush();
       nomesFolhas = nomesFolhas.concat(feitas || [nomeDoSeparador(turma)]);
@@ -2427,7 +2430,14 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // 1. Os alunos
   novaFolha('Alunos', 'Um aluno por linha: presenças, faltas, atrasos, autoavaliações e a média das aulas. As aulas em que esteve e não se autoavaliou contam 0, como na aplicação.');
   titulo('OS ALUNOS (' + alunos.length + ')');
-  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado']);
+  // (v26.1) O email da escola: serve para os avisos das autoavaliações em
+  // falta (todos os dias às 18h). Quem não o deu não recebe avisos.
+  var emailDe = d.emailDe || {};
+  var semEmail = alunos.filter(function (a) { return !emailDe[a.id]; }).length;
+  junta([(alunos.length - semEmail) + ' de ' + alunos.length + ' alunos já deram o email da escola.'
+    + (semEmail ? ' ' + (semEmail === 1 ? 'O aluno que ainda não o deu não recebe' : 'Os ' + semEmail + ' que ainda não o deram não recebem') + ' os avisos das autoavaliações em falta: ' + (semEmail === 1 ? 'é-lhe pedido' : 'é-lhes pedido') + ' quando entrar na aplicação.' : '')]);
+  formatos.push({ tipo: 'legenda', linha: linhas.length });
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
   alunos.forEach(function (a) {
     // (v25.9) A média das aulas conta 0 nas aulas em que o aluno esteve e não
     // se autoavaliou, como na aplicação. Antes era a média só das validadas,
@@ -2442,7 +2452,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       else if (!auto[k] && esteve(x, pl.id) && !faltou(x, pl.id)) semResposta++;
     });
     var nMedia = va + semResposta;
-    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não']);
+    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não',
+      emailDe[a.id] || 'Ainda não deu']);
   });
   vazia();
 
