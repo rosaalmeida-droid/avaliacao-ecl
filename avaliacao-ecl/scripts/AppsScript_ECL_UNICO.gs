@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.11';
+var VERSAO = 'ECL único v25.12';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1885,6 +1885,10 @@ var COR_TURMA = '#7B2233';
  *  1.º ACP já não existe (Rosa, 5/out/2026): os alunos antigos ficam nos
  *  dados, mas não têm folha. No ano que vem, muda-se esta lista. */
 var TURMAS_DO_ANO = ['1º BCR', '1º ACR', '2º ACP', '3º ACP'];
+/** (v25.12) Os planos de aula de antes disto são testes (junho a agosto): não entram nas folhas das turmas. */
+var INICIO_ANO_LETIVO = '2026-09-01';
+/** Os alunos de ensaio (88, 99, «TESTE») não entram nas folhas das turmas. */
+function alunoDeEnsaio_(a) { return Number(a.numero) === 88 || Number(a.numero) === 99 || /teste|ensaio/i.test(String(a.nome || '')); }
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
 var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'EXTERNOS (recuperações)', 'ALUNOS_EXTERNOS', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
@@ -2148,6 +2152,10 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       var n20 = v ? Number(String(v.notaMedia20 === undefined ? '' : v.notaMedia20).replace(',', '.')) : NaN;
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.titulo || '', a.numero || '', a.nome || '', presenca,
         respondeu.join('\n'), respostas.join('\n'), notasProf.join('\n'), isNaN(n20) ? '' : virgula(Math.round(n20 * 10) / 10), casos.join('\n')]);
+      // (v25.12) A mesma linha vai para a ficha do aluno.
+      if (d.fichaLinhas) d.fichaLinhas.push([String(a.numero || '') + ' — ' + (a.nome || ''), diaCurto(p.data) + '/' + String(p.data).slice(0, 4),
+        p.ucId || '', p.titulo || '', presenca || 'Sem registo', respondeu.join('\n') || '—', respostas.join('\n') || '—',
+        notasProf.join('\n') || '—', isNaN(n20) ? '' : virgula(Math.round(n20 * 10) / 10), casos.join('\n')]);
     });
     vazia();
   });
@@ -2155,9 +2163,11 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
 }
 
 function escreverSeparadorDaTurma(ss, turma, d, hoje) {
-  var alunos = d.alunos.filter(function (a) { return a.ativo !== false && !a.removidoEm; })
+  var alunos = d.alunos.filter(function (a) { return a.ativo !== false && !a.removidoEm && !alunoDeEnsaio_(a); })
     .sort(function (a, b) { return (Number(a.numero) || 0) - (Number(b.numero) || 0); });
-  // As aulas que já aconteceram (ou são hoje) e não são rascunho.
+  // As aulas que já aconteceram (ou são hoje) e não são rascunho — e não os
+  // testes de antes do ano letivo (v25.12).
+  d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO; });
   var aulas = d.planos.filter(function (p) {
     var dia = String(p.data || '').slice(0, 10);
     return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
@@ -2324,12 +2334,11 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     vazia();
   }
 
-  // (v25.8) A FICHA DE CADA ALUNO: tudo do aluno num sítio só — as faltas em
-  // horas em cada UC, as notas, as recuperações e aula a aula (Rosa, 5/out/2026:
-  // para as reuniões com os pais e com o diretor de turma).
-  novaFolha('Por aluno', 'A ficha de cada aluno: faltas em horas, notas de cada UC, recuperações e o que se passou em cada aula. Carregue no nome do aluno no índice da turma.');
+  // (v25.12) A ficha de cada aluno: o resumo (notas, faltas em horas,
+  // recuperações) guarda-se aqui; as aulas, com as perguntas e as respostas,
+  // vêm de «Por aula». A folha «Ficha do aluno» faz-se no fim.
+  var fichaResumo = [];
   alunos.forEach(function (a) {
-    titulo(String(a.numero || '') + ' — ' + (a.nome || ''), '#5B4A7A', 1);
     var resumo = [];
     Object.keys(daApp).forEach(function (kk) {
       var ap = daApp[kk];
@@ -2344,16 +2353,9 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       resumo.push('Recuperação da ' + (r.ucId || 'UC') + ': ' + (NOME_ESTADO_RECUP[r.estado] || r.estado || '') + '.');
     });
     if (!resumo.length) resumo.push('Ainda sem notas nem faltas registadas.');
-    resumo.forEach(function (t) { junta([t]); });
-    cabecalho(['Dia', 'UC', 'Aula', 'Presença', 'Autoavaliou-se', 'Nota da aula (0-20)']);
-    contam.slice().reverse().forEach(function (p) {
-      var k = chave(a.id, p.id), x = pres[k];
-      var presenca = faltou(x, p.id) ? 'Faltou' : atrasou(x, p.id) ? 'Atrasado' : esteve(x, p.id) ? 'Presente' : '';
-      junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.ucId || '', p.titulo || '', presenca,
-        auto[k] ? 'Sim' : 'Não', nota[k] !== undefined ? virgula(nota[k]) : (!auto[k] && presenca && presenca !== 'Faltou' ? '0 (sem resposta)' : '')]);
-    });
-    vazia();
+    fichaResumo.push([String(a.numero || '') + ' — ' + (a.nome || ''), resumo.join('\n')]);
   });
+  d.fichaLinhas = [];
 
   // 2. As notas de cada UC: um aluno por linha, uma aula por coluna (a UC mais recente primeiro).
   var ucs = [];
@@ -2442,6 +2444,33 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
   novaFolha('Por aula', 'Cada aula com o que chegou de cada aluno: o que respondeu, a nota do professor e os casos à parte. A mais recente primeiro.');
   seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
+
+  // (v25.12) A FICHA DO ALUNO: escolhe-se o aluno numa caixa e aparece só ele,
+  // com cada plano de aula: presença, competências avaliadas e o que
+  // respondeu, as perguntas e as respostas, as notas do professor e os casos
+  // à parte (Rosa, 5/out/2026: «se um pai me perguntar, tenho de saber tudo»).
+  var nomeDados = base + ' · dados da ficha';
+  var dadosF = { curto: '', nome: nomeDados, linhas: [], formatos: [], secoes: [], largura: 13, oculta: true };
+  var nDados = Math.max(d.fichaLinhas.length, fichaResumo.length);
+  dadosF.linhas.push(['Aluno', 'Dia', 'UC', 'Plano de aula', 'Presença', 'Competências avaliadas e o que o aluno respondeu', 'Perguntas e respostas',
+    'Notas do professor', 'Nota da aula (0-20)', 'Casos à parte', '', 'Aluno', 'Resumo']);
+  for (var iD = 0; iD < nDados; iD++) {
+    var lf = d.fichaLinhas[iD] || ['', '', '', '', '', '', '', '', '', ''];
+    var rf = fichaResumo[iD] || ['', ''];
+    dadosF.linhas.push(lf.concat(['']).concat(rf));
+  }
+  novaFolha('Ficha do aluno', 'Escolha o aluno na caixa amarela. Aparece só esse aluno: o resumo da UC e, em cada plano de aula, a presença, as competências avaliadas, as perguntas e o que respondeu, e as notas do professor.');
+  titulo('FICHA DO ALUNO', '#5B4A7A');
+  junta(['Aluno:', fichaResumo.length ? fichaResumo[0][0] : '']);
+  var linhaEscolha = linhas.length;
+  formatos.push({ tipo: 'escolha', linha: linhaEscolha });
+  vazia();
+  junta(['Resumo:']); var linhaResumo = linhas.length;
+  vazia();
+  cabecalho(['Dia', 'UC', 'Plano de aula', 'Presença', 'Competências avaliadas e o que o aluno respondeu', 'Perguntas e respostas', 'Notas do professor', 'Nota da aula (0-20)', 'Casos à parte']);
+  var linhaDados = linhas.length + 1;
+  atualF.ficha = { linhaEscolha: linhaEscolha, linhaResumo: linhaResumo, linhaDados: linhaDados, nomeDados: nomeDados,
+    nAlunos: fichaResumo.length, nLinhas: d.fichaLinhas.length };
   fecharFolhas();
 
   // (v25.7) A folha da turma: o que falta fazer e o índice. Escreve-se no fim,
@@ -2498,9 +2527,13 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var gidP = fp.getSheetId();
   var estiloLig = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).build();
   var estiloForte = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).setBold(true).build();
+  // Os dados da ficha (folha escondida, não se mexe): primeiro, para a ficha os ler.
+  var foDados = escreverFolhaDaTurma_(ss, dadosF);
+  try { if (!foDados.isSheetHidden()) foDados.hideSheet(); } catch (e) {}
   folhasT.forEach(function (F) {
     var fo = escreverFolhaDaTurma_(ss, F);
     F.gid = fo.getSheetId();
+    if (F.ficha) try { prepararFichaDoAluno_(fo, F.ficha); } catch (e) { Logger.log('Ficha do aluno ' + turma + ': ' + e); }
     try {
       fo.getRange(2, 1).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('← Voltar ao índice da turma ' + turma)
         .setLinkUrl('#gid=' + gidP + '&range=A1').setTextStyle(estiloForte).build());
@@ -2514,12 +2547,38 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     });
   } catch (e) { Logger.log('Índice da turma ' + turma + ': ' + e); }
   // As partes que já não existem (por exemplo, sem recuperações) saem.
-  var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; }));
+  var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; })).concat([nomeDados]);
   ss.getSheets().forEach(function (fo) {
     var n = fo.getName();
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ss.deleteSheet(fo); } catch (e) {}
   });
-  return nomesAgora;
+  // A folha dos dados fica escondida: não vai para a lista das que se mostram.
+  return nomesAgora.filter(function (n) { return n !== nomeDados; });
+}
+
+/** (v25.12) A ficha do aluno: a caixa para escolher o aluno e as fórmulas que
+ *  mostram só esse aluno (lidas da folha escondida dos dados da ficha). */
+function prepararFichaDoAluno_(f, x) {
+  var q = "'" + x.nomeDados.replace(/'/g, "''") + "'";
+  var ult = Math.max(2, x.nAlunos + 1), ultL = Math.max(2, x.nLinhas + 1);
+  var caixa = f.getRange(x.linhaEscolha, 2);
+  var dadosSheet = f.getParent().getSheetByName(x.nomeDados);
+  caixa.setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(dadosSheet.getRange(2, 12, ult - 1, 1), true).setAllowInvalid(false).build());
+  caixa.setBackground('#FFF4C2').setFontWeight('bold').setFontSize(12);
+  f.getRange(x.linhaEscolha, 1).setFontWeight('bold');
+  var resumo = f.getRange(x.linhaResumo, 2);
+  resumo.setNumberFormat('General').setWrap(true).setVerticalAlignment('top');
+  resumo.setFormula('=IFERROR(VLOOKUP($B$' + x.linhaEscolha + ',' + q + '!L2:M' + ult + ',2,FALSE),"")');
+  f.getRange(x.linhaResumo, 1).setFontWeight('bold');
+  // As linhas para a lista das aulas (a fórmula estende-se para baixo).
+  var precisa = x.linhaDados + x.nLinhas + 5;
+  if (f.getMaxRows() < precisa) f.insertRowsAfter(f.getMaxRows(), precisa - f.getMaxRows());
+  var zona = f.getRange(x.linhaDados, 1, Math.max(1, precisa - x.linhaDados), 9);
+  zona.setNumberFormat('General').setWrap(true).setVerticalAlignment('top');
+  f.getRange(x.linhaDados, 1).setFormula('=IFERROR(FILTER(' + q + '!B2:J' + ultL + ',' + q + '!A2:A' + ultL + '=$B$' + x.linhaEscolha
+    + '),"Ainda não há planos de aula registados para este aluno.")');
+  f.setColumnWidth(5, 280); f.setColumnWidth(6, 320); f.setColumnWidth(7, 200); f.setColumnWidth(9, 220);
 }
 
 /** (v25.7) Escreve uma folha da turma (a do índice ou uma das partes). */
