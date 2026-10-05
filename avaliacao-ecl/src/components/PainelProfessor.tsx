@@ -12,6 +12,7 @@
 
 import React from 'react';
 import { VistaProf } from './Header';
+import { PlanosForaDoHorario } from './PlanosForaDoHorario';
 
 const C = {
   fundo:         '#F5F2F3',
@@ -135,6 +136,8 @@ export function PainelProfessor({
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
       <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
+        {/* Planos com horas fora do horário da turma (Rosa, 5/out/2026). */}
+        <PlanosForaDoHorario turmaId={turmaId} />
 
         {/* A aula de hoje. O aluno tinha um botão grande para a aula; o
             professor tinha de ir a Planos, encontrar o plano e só lá
