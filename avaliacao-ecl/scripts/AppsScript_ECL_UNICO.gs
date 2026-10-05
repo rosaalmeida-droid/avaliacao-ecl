@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.1';
+var VERSAO = 'ECL único v26.2';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2588,8 +2588,12 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
     { nome: 'ATIVIDADES EXTRA — contam como bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && p.tipoEvento; }) },
+    // (v26.2) As atividades extra dos próximos dias à parte das aulas: não
+    // contam para a nota, só dão bónus (Rosa, out/2026).
     { nome: 'AULAS PUBLICADAS PARA OS PRÓXIMOS DIAS', cor: '#2F5D8A', fundo: '#E3EDF7',
-      lista: d.planos.filter(function (p) { return !p.eliminado && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
+      lista: d.planos.filter(function (p) { return !p.eliminado && !p.tipoEvento && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
+    { nome: 'ATIVIDADES EXTRA DOS PRÓXIMOS DIAS — não contam para a nota, só bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
+      lista: d.planos.filter(function (p) { return !p.eliminado && p.tipoEvento && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
     { nome: 'NUM DIA EM QUE A TURMA NÃO TEM AULAS — não contam (confirme na aplicação se houve aula ou arquive)', cor: '#A23A2E', fundo: '#F8D7DA',

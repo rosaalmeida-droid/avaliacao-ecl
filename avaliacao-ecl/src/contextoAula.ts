@@ -40,7 +40,31 @@ export interface TriagemAula {
   fases?: FaseProjeto[];
   /** Num trabalho que vem de aulas anteriores: o plano da aula anterior. */
   continuaDe?: string;
+  /** 3.º ano: aula de trabalho para a Prova de Aptidão Profissional. */
+  pap?: AulaPAP;
 }
+
+// ── PAP — Prova de Aptidão Profissional (Rosa, out/2026) ──────
+// No 3.º ano, a maior parte das aulas é à volta da PAP. O trabalho pode
+// ser de muitas formas, e cada uma tem o seu registo formal no sumário.
+// Toda a aula de PAP deixa evidências, mesmo sem a parte escrita.
+export type TipoPAP = 'investigacao' | 'pratica' | 'relatorio' | 'defesa' | 'patrocinios' | 'visita' | 'masterclass';
+export interface AulaPAP {
+  tipos: TipoPAP[];
+  /** Visita de estudo ou masterclass: com quem ou onde (opcional). */
+  entidade?: string;
+}
+export const TIPOS_PAP: { id: TipoPAP; nome: string }[] = [
+  { id: 'investigacao', nome: 'Investigação' },
+  { id: 'pratica', nome: 'Prova prática (ensaio)' },
+  { id: 'relatorio', nome: 'Relatório escrito' },
+  { id: 'defesa', nome: 'Ensaio da defesa oral' },
+  { id: 'patrocinios', nome: 'Empresas e patrocínios' },
+  { id: 'visita', nome: 'Visita de estudo' },
+  { id: 'masterclass', nome: 'Masterclass' },
+];
+/** A aula é de PAP (com pelo menos um tipo de trabalho escolhido). */
+export const aulaDePAP = (t: TriagemAula | null | undefined): AulaPAP | null => t?.pap?.tipos?.length ? t.pap : null;
 
 // ── Trabalhos sobre o manual (Rosa, out/2026) ─────────────────
 // Aula dada pelo professor (todos o mesmo conteúdo), trabalho de grupo

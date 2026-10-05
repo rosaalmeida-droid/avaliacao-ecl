@@ -101,8 +101,10 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // Técnicas gerais da UC, quando as fichas não trazem técnicas: só nas aulas
   // mistas. Numa aula só prática, não faz sentido avaliar técnicas que não
   // estão nas fichas técnicas (Rosa, out/2026).
-  const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 || tipoPlanAula !== 'misto' ? []
-    : tecnicasDeRecurso(ucId, fichas as any[]).map(m => m.id).filter(id => !compRemovidas.includes(id)).slice(0, 6);
+  // Já não: as técnicas «de recurso» da UC davam cremes de pastelaria numa
+  // sopa (Rosa, out/2026). Avalia-se só o que o professor escolheu na ficha.
+  const recursoIds: string[] = [];
+  void usarRecurso; void tecnicasDeRecurso; void ucId;
 
   const conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[] =
     (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto')

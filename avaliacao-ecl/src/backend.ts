@@ -781,6 +781,13 @@ function juntarSelecoes(dados: any[]): void {
  *  mais recente que existir; um texto vazio nunca apaga um com conteúdo. */
 function comTextosLongos(f: any, loc: any, nova: any): any {
   const novaMaisRecente = String(nova?.atualizadoEm || '') > String(loc?.atualizadoEm || '');
+  // Uma cópia que chega sem estes campos (vazios no Sheets) não apaga o que
+  // o professor escolheu: as técnicas da ficha mudavam depois de ela ir para
+  // a biblioteca (Rosa, out/2026). Uma lista vazia de propósito ([]) passa.
+  for (const campo of ['tecnicasSugeridas', 'aparelhosDetectados', 'etiquetas', 'familia1', 'familia2', 'perguntasAuto', 'linkOrigem']) {
+    const n = nova?.[campo];
+    if ((n === undefined || n === null || n === '') && loc?.[campo] != null && loc[campo] !== '') f[campo] = loc[campo];
+  }
   for (const campo of ['textoGuia', 'htmlCompleto', 'planoAulaId']) {
     const l = loc?.[campo], n = nova?.[campo];
     if (n && (!l || novaMaisRecente)) f[campo] = n;
@@ -9791,7 +9798,7 @@ export function eventosComoAtividades(turmaId: string): Atividade[] {
       id: 'ev_' + p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: String(p.data || '').slice(0, 10),
       horaInicio: p.horaInicio, horaFim: p.horaFim, descricao: p.sumario || p.observacoes || '',
       participantesIds: participantesDoEvento(p), inscritosIds: inscritosNoEvento(p.id), criadaEm: p.criadoEm || '',
-      doPlano: true, modo: modoParticipacao(p), planoId: p.id,
+      doPlano: true, modo: modoParticipacao(p), planoId: p.id, aviso: p.avisoDeslocacao || '',
     } as any));
 }
 

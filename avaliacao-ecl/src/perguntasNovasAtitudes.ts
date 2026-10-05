@@ -217,7 +217,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Experimentei até me sair razoável.',
         'Experimentei até me sair bem e pedi para me corrigirem.',
       ], 'Hoje não aprendi nenhuma técnica nova.'),
-      P('Hoje, sobre a matéria da aula, o que fizeste?', [
+      P('Hoje, sobre os conteúdos da aula, o que fizeste?', [
         'Não li nada.',
         'Li à pressa.',
         'Li com atenção o que era pedido.',
