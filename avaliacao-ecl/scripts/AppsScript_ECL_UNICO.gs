@@ -1955,10 +1955,27 @@ function nomeDoSeparador(turma) {
  *  execução fica curta e não passa dos 6 minutos do Google). */
 function atualizarFolhasDasTurmas() {
   var props = PropertiesService.getScriptProperties();
+  // (v26.1) Primeiro a turma onde houve novidades desde a última vez (uma
+  // aula publicada, uma autoavaliação…), a que espera há mais tempo. Antes
+  // ia sempre pela ordem e uma aula nova podia levar horas a aparecer
+  // (Rosa, 5/out/2026: «mandei uma aula e há uma hora não aparece»).
+  var feitas = {};
+  try { feitas = JSON.parse(props.getProperty('FOLHAS_FEITAS') || '{}'); } catch (e) {}
+  var c = contadores();
+  var comNovidades = TURMAS_DO_ANO.filter(function (t) { return Number(c[t] || 0) > Number(feitas[t] || 0); })
+    .sort(function (a, b) { return Number(feitas[a] || 0) - Number(feitas[b] || 0); });
   var i = Number(props.getProperty('PROXIMA_TURMA') || 0) || 0;
-  var turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
-  props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
-  atualizarTurmas_([turma], i % TURMAS_DO_ANO.length === 0);
+  var turma, comGerais;
+  if (comNovidades.length) { turma = comNovidades[0]; comGerais = false; }
+  else {
+    turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
+    comGerais = i % TURMAS_DO_ANO.length === 0;
+    props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
+  }
+  var inicio = new Date().getTime();
+  atualizarTurmas_([turma], comGerais);
+  feitas[turma] = inicio;
+  props.setProperty('FOLHAS_FEITAS', JSON.stringify(feitas));
 }
 /** Para correr à mão: uma turma já. */
 function atualizar1BCR() { atualizarTurmas_(['1º BCR'], true); }
