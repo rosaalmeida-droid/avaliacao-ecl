@@ -35,7 +35,7 @@ import {
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
-  validacaoDaAula, notaFinalUC, alunoDeTeste,
+  validacaoDaAula, notaFinalUC, alunoDeTeste, planosSemAutoavaliacao,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { pesoNoModulo } from './contextoAula';
@@ -193,11 +193,15 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const regs = validados.filter(r => r.alunoId === a.id);
 
       // Produtos: média dos planos do grupo; falta = 0 (ou a recuperação).
+      // Aulas em que esteve e não se autoavaliou: contam 0, como em todos os
+      // outros ecrãs (Rosa, out/2026; auditoria 5/out: aqui ficavam em branco).
+      const semAuto = new Set(planosSemAutoavaliacao(a.id, turmaId, ucId).map(p => p.id));
       const notasProd = Array.from({ length: colunasDeProdutos(produtos) }, (_, j) => {
         const p = produtos[j];
         if (!p) return null;
         const notas = p.planosIds.map(id => {
           if (faltou.has(id)) return recup ?? 0;
+          if (semAuto.has(id)) return 0;
           return notaDoPlano(a.id, id, tipoDe(id));
         });
         const m = media(notas);
