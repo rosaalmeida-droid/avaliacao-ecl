@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.5';
+var VERSAO = 'ECL único v25.6';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -2089,9 +2089,12 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
   var sel = ultimoPor(d.selecoes, function (s) { return s.alunoId + '|' + s.planoAulaId; }, function (s) { return s.criadaEm; });
   var val = ultimoPor(d.validacoes, function (v) { return v.alunoId + '|' + v.planoAulaId; }, function (v) { return v.validadoEm; });
   var pres = presencaQueConta_(d.presencas);
-  cabecalho(['Dia', 'Aula', 'Nº', 'Nome', 'Presença', 'O que respondeu', 'Respostas às perguntas', 'Nota do professor', 'Nota da aula (0-20)', 'Casos à parte']);
   var ini = linhas.length + 1;
   ultimas.forEach(function (p) {
+    // (v25.6) Cada aula com o seu título e o seu cabeçalho, para o índice
+    // levar lá diretamente.
+    titulo('Aula de ' + diaCurto(p.data) + '/' + String(p.data).slice(0, 4) + (p.titulo ? ' — ' + p.titulo : ''), '#8E7CB8', 1);
+    cabecalho(['Dia', 'Aula', 'Nº', 'Nome', 'Presença', 'O que respondeu', 'Respostas às perguntas', 'Nota do professor', 'Nota da aula (0-20)', 'Casos à parte']);
     var quem = p.tipoEvento && Array.isArray(p.participantesIds) && p.participantesIds.length
       ? alunos.filter(function (a) { return p.participantesIds.indexOf(a.id) >= 0; }) : alunos;
     quem.forEach(function (a) {
@@ -2211,7 +2214,13 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var linhas = [], formatos = [];
   var largura = 12;
   var junta = function (l) { linhas.push(l); return linhas.length; };
-  var titulo = function (texto, cor) { var n = junta([texto]); formatos.push({ tipo: 'titulo', linha: n, cor: cor || COR_TURMA }); };
+  // (v25.6) Cada título entra no índice do topo (Rosa, 5/out/2026: «um índice
+  // com ligações, em vez de andar a descer a folha»). nivel 1 = dentro de outro.
+  var secoes = [];
+  var titulo = function (texto, cor, nivel) {
+    var n = junta([texto]); formatos.push({ tipo: 'titulo', linha: n, cor: cor || COR_TURMA });
+    secoes.push({ texto: texto, linha: n, nivel: nivel || 0 });
+  };
   var cabecalho = function (cols) { var n = junta(cols); formatos.push({ tipo: 'cab', linha: n, n: cols.length }); largura = Math.max(largura, cols.length); };
   var vazia = function () { junta(['']); };
 
@@ -2220,6 +2229,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // (v25) O resumo do separador: para que serve, para quem vai, as cores.
   SUMARIOS.TURMA.forEach(function (t) { junta([t]); formatos.push({ tipo: 'sumario', linha: linhas.length }); });
   vazia();
+  // O índice entra aqui no fim, quando já se sabe onde fica cada parte.
+  var inicioCorpo = linhas.length;
 
   // 1. Os alunos
   titulo('OS ALUNOS (' + alunos.length + ')');
@@ -2236,6 +2247,28 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), va ? virgula(Math.round(soma / va * 10) / 10) : '', ligado[a.id] ? 'Sim' : 'Não']);
   });
   vazia();
+
+  // (v25.6) AS FALTAS: um aluno por linha, um dia de aula por coluna (todas as
+  // aulas que contam, de todas as UC). P = presente · F = faltou · A = atrasado.
+  if (contam.length) {
+    titulo('FALTAS — todas as aulas (' + contam.length + ')', '#A23A2E');
+    junta(['Um dia de aula por coluna, da mais antiga para a mais recente. P = esteve presente · F = faltou · A = chegou atrasado · vazio = sem registo. Conta o que o professor decidiu.']);
+    formatos.push({ tipo: 'legenda', linha: linhas.length });
+    cabecalho(['Nº', 'Nome'].concat(contam.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : '') + (p.ucId ? '\n' + p.ucId : ''); })).concat(['Faltas', 'Atrasos']));
+    var iniF = linhas.length + 1;
+    alunos.forEach(function (a) {
+      var nf = 0, na = 0;
+      var cel = contam.map(function (p) {
+        var x = pres[chave(a.id, p.id)];
+        if (faltou(x, p.id)) { nf++; return 'F'; }
+        if (atrasou(x, p.id)) { na++; return 'A'; }
+        return esteve(x, p.id) ? 'P' : '';
+      });
+      junta([a.numero || '', a.nome || ''].concat(cel).concat([nf, na]));
+    });
+    formatos.push({ tipo: 'grelhaFaltas', linha: iniF, ate: linhas.length, n: contam.length + 4 });
+    vazia();
+  }
 
   // 2. As notas de cada UC: um aluno por linha, uma aula por coluna (a UC mais recente primeiro).
   var ucs = [];
@@ -2297,7 +2330,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   formatos.push({ tipo: 'legenda', linha: linhas.length });
   gruposAulas.forEach(function (g) {
     if (!g.lista.length) return;
-    titulo(g.nome + ' (' + g.lista.length + ')', g.cor);
+    titulo(g.nome + ' (' + g.lista.length + ')', g.cor, 1);
     cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Plano da UC', 'Criado em']);
     g.lista.slice().sort(function (a, b) { return String(b.data || '').localeCompare(String(a.data || '')); }).forEach(function (p) {
       var pr = 0, fa = 0, aa = 0, va = 0;
@@ -2318,6 +2351,16 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
   seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
 
+  // (v25.6) O índice: depois do resumo, uma linha por parte, com ligação.
+  var indice = [['ÍNDICE — carregue num nome para ir lá. Em cada título, «↑ Índice» (na última coluna) volta aqui.']]
+    .concat(secoes.map(function (sc) { return [(sc.nivel ? '      ' : '') + sc.texto]; })).concat([['']]);
+  var k = indice.length;
+  formatos.forEach(function (fm) { if (fm.linha > inicioCorpo) fm.linha += k; if (fm.ate && fm.ate > inicioCorpo) fm.ate += k; });
+  secoes.forEach(function (sc) { sc.linha += k; });
+  Array.prototype.splice.apply(linhas, [inicioCorpo, 0].concat(indice));
+  var linhaIndice = inicioCorpo + 1;
+  formatos.push({ tipo: 'titulo', linha: linhaIndice, cor: '#444444' });
+
   // Escrever tudo de uma vez.
   var nome = nomeDoSeparador(turma);
   var f = ss.getSheetByName(nome) || ss.insertSheet(nome);
@@ -2337,7 +2380,26 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     if (fm.tipo === 'cor') f.getRange(fm.linha, 1, 1, fm.n).setBackground(fm.cor);
     if (fm.tipo === 'sumario') f.getRange(fm.linha, 1).setFontColor('#444444').setFontStyle('italic').setFontSize(9);
     if (fm.tipo === 'wrap') f.getRange(fm.linha, 1, fm.ate - fm.linha + 1, fm.n).setWrap(true).setVerticalAlignment('top');
+    if (fm.tipo === 'grelhaFaltas' && fm.ate >= fm.linha) {
+      var gr = f.getRange(fm.linha, 3, fm.ate - fm.linha + 1, fm.n - 2);
+      gr.setHorizontalAlignment('center');
+      gr.setFontColors(gr.getValues().map(function (l) { return l.map(function (v) { return v === 'F' ? '#C0392B' : v === 'A' ? '#B5651D' : '#333333'; }); }));
+    }
   });
+  // (v25.6) As ligações do índice e o «↑ Índice» de cada título.
+  try {
+    var gid = f.getSheetId();
+    var estiloLig = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).build();
+    f.getRange(linhaIndice + 1, 1, secoes.length, 1).setRichTextValues(secoes.map(function (sc) {
+      var t = (sc.nivel ? '      ' : '') + sc.texto;
+      return [SpreadsheetApp.newRichTextValue().setText(t).setLinkUrl('#gid=' + gid + '&range=A' + sc.linha).setTextStyle(estiloLig).build()];
+    }));
+    var estiloVolta = SpreadsheetApp.newTextStyle().setForegroundColor('#ffffff').setUnderline(true).setBold(true).build();
+    secoes.forEach(function (sc) {
+      f.getRange(sc.linha, largura).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('↑ Índice')
+        .setLinkUrl('#gid=' + gid + '&range=A' + linhaIndice).setTextStyle(estiloVolta).build());
+    });
+  } catch (e) { Logger.log('Índice da turma ' + turma + ': ' + e); }
   f.setFrozenRows(1);
   f.setFrozenColumns(2);
   f.setColumnWidth(1, 44); f.setColumnWidth(2, 230);
@@ -3289,7 +3351,7 @@ function respostaCurta(texto) {
 // estas folhas ficam escondidas, porque o que têm está nas turmas.
 var SUMARIOS = {
   TURMA: [
-    'PARA QUE SERVE: tudo desta turma num só sítio — os alunos, as notas de cada UC, as recuperações, as aulas, os grupos e o que os colegas disseram, e o que chegou a cada aluno (o que respondeu, a nota do professor e os casos à parte).',
+    'PARA QUE SERVE: tudo desta turma num só sítio. Logo abaixo há um ÍNDICE: carregue num nome para ir a essa parte. Tem os alunos, as faltas de todas as aulas, as notas de cada UC, as recuperações, as aulas, os grupos e o que os colegas disseram, e o que chegou a cada aluno (o que respondeu, a nota do professor e os casos à parte).',
     'DE ONDE VEM E PARA ONDE VAI: os alunos respondem no telemóvel; o professor valida na aplicação; a nota validada é a que o aluno vê e a que entra na nota da UC. A coordenação vê aqui o mesmo. Só para ler: refaz-se sozinho de 10 em 10 minutos; mexer aqui não muda nada na aplicação.',
     'CORES: verde = aula publicada, conta para a nota · vermelho = arquivada/anulada, não conta · roxo = atividade extra, só dá bónus. Faltas: F · Autoavaliou-se e falta validar: AA.'
   ],
