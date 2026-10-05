@@ -355,9 +355,12 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
         {(semEvidencia.length > 0 || semProposta.length > 0) && (
           <div style={{ background: '#fdf0e6', border: '1px solid var(--copper)', borderRadius: 10,
             padding: '11px 13px', fontSize: 13.5, lineHeight: 1.55, marginBottom: 10 }}>
+            {/* Não é só quem não veio: também quem veio e não se autoavaliou
+                (auditoria 5/out/2026). Diz-se quem são. */}
             {semEvidencia.map(x => (
               <div key={x.c}>{MAPA_5C[x.c].sigla} ({MAPA_5C[x.c].nome}): {x.n} aluno{x.n === 1 ? '' : 's'} sem
-                nenhuma evidência (não vieram a nenhuma aula desta UC) — conta 0 (N.R.).</div>
+                nenhuma evidência neste C (faltaram ou não se autoavaliaram nas aulas que contam) — conta 0 (N.R.).
+                {' '}N.º {escolhidas.filter(l => l.c5[x.c] === null).map(l => l.numero).join(', ')}.</div>
             ))}
             {semProposta.length > 0 && (
               <div>Ainda sem a autoavaliação final: {semProposta.map(l => l.numero).join(', ')}.</div>

@@ -150,6 +150,11 @@ export function TurmaNaAula({
                 {e.entrou && !e.foraDeTempo && !e.decisaoFalta && e.horaEntrada && (
                   <Pastilha texto={`entrou ${e.horaEntrada}`} cor={C.verde} fundo={C.verdeSuave} />
                 )}
+                {/* Entrada registada depois da hora de fim da aula (auditoria 5/out/2026). */}
+                {e.entrou && e.horaEntrada && (plano as any)?.horaFim
+                  && String(e.horaEntrada).slice(0, 5) > String((plano as any).horaFim).slice(0, 5) && (
+                  <Pastilha texto="entrou depois do fim da aula" cor={C.bordeaux} fundo={C.bordeauxSuave} />
+                )}
 
                 {/* A farda só se sabe de quem entrou pela aplicação. */}
                 {pedeFardaEHigiene(plano) && e.entrou && !!e.horaEntrada && !e.fardamentoOk && (
