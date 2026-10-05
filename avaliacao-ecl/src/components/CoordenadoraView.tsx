@@ -93,7 +93,7 @@ export function CoordenadoraView() {
       {tab === 'presencas' && <PresencasTab />}
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'cronograma' && <CronogramaTab />}
-      {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º ACP'} />}
+      {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º BCR'} />}
       {tab === 'externos' && <AlunosExternos nomeProfessor="Coordenação" />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && <EventosECL nomeProfessor="Coordenadora" />}
@@ -297,7 +297,7 @@ function PresencasTab() {
 // ── Biblioteca de Planos e Fichas (Coordenadora) ─────────────
 function BibliotecaPlanosTab() {
   const turmas = getTurmas();
-  const [turmaFiltro, setTurmaFiltro] = useState<string>(turmas[0]?.id || '1º ACP');
+  const [turmaFiltro, setTurmaFiltro] = useState<string>(turmas[0]?.id || '1º BCR');
   const [pesquisa, setPesquisa] = useState('');
   const [fichaAberta, setFichaAberta] = useState<FichaProducao | null>(null);
 

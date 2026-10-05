@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.10';
+var VERSAO = 'ECL único v25.11';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1881,6 +1881,10 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 // em baixo, à esquerda).
 
 var COR_TURMA = '#7B2233';
+/** (v25.11) As turmas que existem este ano letivo. Só estas têm folhas. O
+ *  1.º ACP já não existe (Rosa, 5/out/2026): os alunos antigos ficam nos
+ *  dados, mas não têm folha. No ano que vem, muda-se esta lista. */
+var TURMAS_DO_ANO = ['1º BCR', '1º ACR', '2º ACP', '3º ACP'];
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
 var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'EXTERNOS (recuperações)', 'ALUNOS_EXTERNOS', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
@@ -1957,7 +1961,16 @@ function atualizarFolhasDasTurmas() {
   var nomesComp = nomesDasCompetenciasDasFichas(fichasTodas);
   var nomeFicha = {}; fichasTodas.forEach(function (f) { nomeFicha[f.id] = f.nomePrato || ''; });
 
-  var turmas = Object.keys(alunos).sort();
+  var turmas = Object.keys(alunos).filter(function (t) { return TURMAS_DO_ANO.indexOf(t) >= 0; }).sort();
+  // As folhas de turmas que já não existem (o 1.º ACP) saem. Os dados ficam.
+  ss.getSheets().forEach(function (fo) {
+    var n = fo.getName();
+    Object.keys(alunos).forEach(function (t) {
+      if (TURMAS_DO_ANO.indexOf(t) >= 0) return;
+      var b = nomeDoSeparador(t);
+      if (n === b || n.indexOf(b + ' · ') === 0) { try { ss.deleteSheet(fo); Logger.log('Saiu a folha antiga: ' + n); } catch (e) {} }
+    });
+  });
   var nomesFolhas = [];
   turmas.forEach(function (turma) {
     try {

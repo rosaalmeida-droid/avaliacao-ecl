@@ -354,7 +354,7 @@ function AppInterno() {
     if (perfilRecebido === 'aluno' && alunoId) {
       const partes = alunoId.split('-');
       const numero = parseInt(partes[partes.length - 1], 10) || 0;
-      const tId = turmaIdRecebida || turmaId || '1º ACP';
+      const tId = turmaIdRecebida || turmaId || '1º BCR';
       // Derivar ano do turmaId — '1º ACP' → 1, '2º ACP' → 2, '3º ACP' → 3
       const anoMatch = tId.match(/[123]/);
       const ano = anoMatch ? (parseInt(anoMatch[0]) as 1|2|3) : 1;
