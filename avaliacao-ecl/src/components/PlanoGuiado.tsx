@@ -85,7 +85,7 @@ export function CabecalhoPasso({ n, titulo, sub, direita }: { n: number; titulo:
  *  neste aparelho, de como o professor a deixou. */
 export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura = false, children }: {
   id: string; n: number; titulo: string; resumo?: string; feito?: boolean; abertaAoInicio?: boolean;
-  /** Só para ver: nada se muda sem carregar em «Alterar o plano» (Rosa, out/2026). */
+  /** Só para ver: nada se muda sem carregar em «Editar o plano» (Rosa, out/2026). */
   soLeitura?: boolean; children: React.ReactNode;
 }) {
   const chave = `ecl_gaveta_${id}`;

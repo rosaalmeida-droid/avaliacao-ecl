@@ -551,7 +551,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
-  /** O plano abre só para ver; muda-se depois de carregar em «Alterar o plano»
+  /** O plano abre só para ver; muda-se depois de carregar em «Editar o plano»
    *  e grava-se com «Gravar e terminar» (Rosa, out/2026: mudava-se sem querer
    *  e não havia botão para gravar). */
   const [aAlterar, setAAlterar] = useState(false);
@@ -2146,14 +2146,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <button onClick={() => setAAlterar(true)} style={{ display:'block', width:'100%', margin:'0 0 10px', padding:'12px 16px',
           borderRadius:12, border:'1.5px solid var(--copper)', background:'#fff', color:'var(--copper)', fontSize:15.5, fontWeight:800,
           cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-          ✏️ Alterar o plano
+          ✏️ Editar o plano
           <span style={{ display:'block', fontSize:13, fontWeight:500, color:'rgba(26,23,20,0.6)', marginTop:2 }}>
             Abaixo está só para ver. Para mudar alguma coisa, carregue aqui.</span>
         </button>
       ) : (
         <div style={{ position:'sticky', top:0, zIndex:40, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
           background:'#fff7e6', border:'2px solid var(--copper)', borderRadius:12, padding:'10px 14px', margin:'0 0 10px' }}>
-          <span style={{ flex:'1 1 180px', fontSize:14.5, fontWeight:700, color:'#7a4310' }}>Está a alterar o plano.</span>
+          <span style={{ flex:'1 1 180px', fontSize:14.5, fontWeight:700, color:'#7a4310' }}>Está a editar o plano.</span>
           <button onClick={() => {
               setAAlterar(false);
               const atual = getPlanosAula().find(x => x.id === plano.id) || plano;

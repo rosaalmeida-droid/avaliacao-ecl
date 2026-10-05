@@ -661,11 +661,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
           borderRadius: 12, padding: '12px 14px', marginBottom: 14,
           fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
-          {soVer ? 'Já validou esta autoavaliação. Abaixo estão as notas que guardou.' : 'Está a alterar a validação: guarde de novo no fim.'}
+          {soVer ? 'Já validou esta autoavaliação. Abaixo estão as notas que guardou.' : 'Está a editar a validação: guarde de novo no fim.'}
           {soVer && (
             <button onClick={() => setAAlterarVal(true)} style={{ display: 'block', marginTop: 10, padding: '10px 16px', borderRadius: 10,
               border: '1.5px solid var(--copper)', background: '#fff', color: 'var(--copper)', fontSize: 15, fontWeight: 800,
-              cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Alterar a validação</button>
+              cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar a validação</button>
           )}
         </div>
       )}
