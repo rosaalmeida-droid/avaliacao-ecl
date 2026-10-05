@@ -83,8 +83,10 @@ export function CabecalhoPasso({ n, titulo, sub, direita }: { n: number; titulo:
 /** Uma parte do plano que abre e fecha (Rosa, out/2026: «campo a campo»).
  *  Fechada, mostra só o resumo e se está feita ou por fazer. Lembra-se,
  *  neste aparelho, de como o professor a deixou. */
-export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, children }: {
-  id: string; n: number; titulo: string; resumo?: string; feito?: boolean; abertaAoInicio?: boolean; children: React.ReactNode;
+export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura = false, children }: {
+  id: string; n: number; titulo: string; resumo?: string; feito?: boolean; abertaAoInicio?: boolean;
+  /** Só para ver: nada se muda sem carregar em «Alterar o plano» (Rosa, out/2026). */
+  soLeitura?: boolean; children: React.ReactNode;
 }) {
   const chave = `ecl_gaveta_${id}`;
   const [aberta, setAberta] = useState<boolean>(() => {
@@ -116,7 +118,11 @@ export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, children 
       {aberta && (
         <div style={{ padding: '2px 18px 18px', borderTop: `1px solid ${C.linha}` }}>
           <div style={{ height: 14 }} />
-          <ModoDoPasso.Provider value="gaveta">{children}</ModoDoPasso.Provider>
+          {soLeitura ? (
+            <fieldset disabled style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: 0.85 }}>
+              <ModoDoPasso.Provider value="gaveta">{children}</ModoDoPasso.Provider>
+            </fieldset>
+          ) : <ModoDoPasso.Provider value="gaveta">{children}</ModoDoPasso.Provider>}
         </div>
       )}
     </div>
