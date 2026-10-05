@@ -775,6 +775,15 @@ function fazerExtra(x) {
   } catch (err) { Logger.log(err); }
 }
 
+/** (v26.1) Tira as n primeiras linhas de POR_ARRUMAR. O Google não deixa
+ *  apagar TODAS as linhas de uma folha («Não é possível eliminar todas as
+ *  linhas na página»): quando são todas, junta-se uma vazia antes. Era por
+ *  isto que tratarPendentes e arrumacaoDaNoite falhavam (Rosa, 5/out/2026). */
+function tirarDoTopo_(f, n) {
+  if (n >= f.getMaxRows()) f.insertRowAfter(f.getMaxRows());
+  f.deleteRows(1, n);
+}
+
 /** Logo a seguir a um envio: um bocadinho do que está por arrumar, só se
  *  o script estiver livre agora (não faz ninguém esperar). */
 function arrumarUmPouco() {
@@ -788,7 +797,7 @@ function arrumarUmPouco() {
       if (n < 1) return;
       var linhas = f.getRange(1, 1, n, 2).getValues();
       linhas.forEach(function (l) { try { fazerExtra(JSON.parse(l[1])); } catch (e) {} });
-      f.deleteRows(1, n);
+      tirarDoTopo_(f, n);
     } finally { try { lock.releaseLock(); } catch (e) {} }
   } catch (err) { Logger.log('arrumarUmPouco: ' + err); }
 }
@@ -810,7 +819,7 @@ function tratarPendentes() {
     try {
       linhas.forEach(function (l) { try { fazerExtra(JSON.parse(l[1])); feitos++; } catch (e) {} });
       // Só se tiram as linhas feitas: as que chegaram entretanto ficam no fim.
-      f.deleteRows(1, n);
+      tirarDoTopo_(f, n);
     } finally { try { lock.releaseLock(); } catch (e) {} }
   }
   if (feitos) Logger.log('Por arrumar: ' + feitos + ' feitos.');
