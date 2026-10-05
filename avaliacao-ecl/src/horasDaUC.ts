@@ -81,8 +81,8 @@ export function fraseDasHorasDaUC(h: HorasDaUC): { frase: string; estado: 'certo
   const dif = Math.round((h.previstas - h.total) * 10) / 10;
   if (Math.abs(dif) < 0.5) return { frase: partes.join(' ') + ' As horas chegam certas.', estado: 'certo' };
   if (dif < 0) return { frase: partes.join(' ') + ` ${Math.round(-dif * 10) / 10 === 1 ? "Falta" : "Faltam"} ${horas(-dif)} para chegar às ${horas(h.total)}: é preciso acertar o cronograma ou marcar mais planos de aula.`, estado: 'faltam' };
-  // Sobram menos horas do que um dia de aula: chega encurtar o último plano.
+  // Sobram menos horas do que um dia de aula: basta encurtar o último plano.
   const umDia = h.diasNoHorario ? h.noHorario / h.diasNoHorario : 0;
-  if (umDia && dif < umDia) return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: no último dia de aula da UC, chega dar ${horas(umDia - dif)}.`, estado: 'sobram' };
+  if (umDia && dif < umDia) return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: no último dia de aula da UC, basta dar ${horas(umDia - dif)}.`, estado: 'sobram' };
   return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: a UC pode acabar mais cedo, ou é preciso acertar o cronograma.`, estado: 'sobram' };
 }
