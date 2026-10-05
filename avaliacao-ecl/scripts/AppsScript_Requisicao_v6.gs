@@ -27,10 +27,10 @@
 //
 // 6. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
 //    pessoas das compras, segue logo uma mensagem formal com a requisição
-//    em PDF, em anexo (só aquela requisição; nunca a ligação para o
+//    em PDF e em Excel, em anexo (só aquela requisição; nunca a ligação para o
 //    ficheiro, que dava acesso a todas, com edição). Sem e-mails, nada é
 //    enviado. Ao implementar esta versão, o Google pede outra vez
-//    autorização (para criar o PDF): aceite.
+//    autorização (para criar o PDF e o Excel): aceite.
 //    Na primeira implementação, o Google pede autorização para enviar
 //    e-mails em seu nome: é normal, aceite.
 //
@@ -462,18 +462,39 @@ function escreverNotaDoses(folha, texto, est, log) {
 // E-MAIL ÀS COMPRAS
 // ══════════════════════════════════════════════════════════════
 
-/** A requisição (só aquela folha) em PDF. As compras recebem o PDF e nunca
- *  uma ligação para o ficheiro: a ligação dava acesso, com edição, a todas
- *  as requisições (auditoria de 5/out/2026). */
-function pdfDaRequisicao(ss, folha, nome) {
-  // DriveApp.getFiles() — esta linha (comentada) faz o Google pedir a
-  // autorização de leitura do Drive, precisa para exportar em PDF.
-  var u = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=pdf'
-    + '&gid=' + folha.getSheetId()
-    + '&size=A4&portrait=true&fitw=true&gridlines=false&printtitle=false&sheetnames=false&pagenum=UNDEFINED&fzr=false';
+/** A requisição (só aquela folha) em PDF e em Excel. As compras recebem os
+ *  dois ficheiros em anexo e nunca uma ligação para o ficheiro: a ligação
+ *  dava acesso, com edição, a todas as requisições (auditoria de 5/out/2026). */
+function nomeDoAnexo_(nome) {
+  return String(nome || 'Requisição').replace(/[\\\/:*?"<>|]/g, ' ').slice(0, 120);
+}
+function exportar_(id, params) {
+  var u = 'https://docs.google.com/spreadsheets/d/' + id + '/export?' + params;
   var r = UrlFetchApp.fetch(u, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) throw new Error('PDF da requisição: erro ' + r.getResponseCode());
-  return r.getBlob().setName(String(nome || 'Requisição').replace(/[\\\/:*?"<>|]/g, ' ') + '.pdf');
+  if (r.getResponseCode() !== 200) throw new Error('erro ' + r.getResponseCode());
+  return r.getBlob();
+}
+function pdfDaRequisicao(ss, folha, nome) {
+  return exportar_(ss.getId(), 'format=pdf&gid=' + folha.getSheetId()
+    + '&size=A4&portrait=true&fitw=true&gridlines=false&printtitle=false&sheetnames=false&pagenum=UNDEFINED&fzr=false')
+    .setName(nomeDoAnexo_(nome) + '.pdf');
+}
+/** O Excel leva o ficheiro todo; por isso copia-se só a folha da requisição
+ *  para um ficheiro temporário (com os valores, sem fórmulas), exporta-se e
+ *  apaga-se o temporário. */
+function excelDaRequisicao(folha, nome) {
+  var tmp = SpreadsheetApp.create('tmp requisição ' + new Date().getTime());
+  try {
+    var copia = folha.copyTo(tmp);
+    copia.setName(String(folha.getName()).slice(0, 90));
+    var r = copia.getDataRange();
+    r.setValues(folha.getRange(r.getA1Notation()).getValues());
+    tmp.getSheets().forEach(function (f) { if (f.getSheetId() !== copia.getSheetId()) tmp.deleteSheet(f); });
+    SpreadsheetApp.flush();
+    return exportar_(tmp.getId(), 'format=xlsx').setName(nomeDoAnexo_(nome) + '.xlsx');
+  } finally {
+    try { DriveApp.getFileById(tmp.getId()).setTrashed(true); } catch (e) { /* fica no lixo do Drive */ }
+  }
 }
 
 function enviarEmailCompras(d, ss, folha, log) {
@@ -495,17 +516,20 @@ function enviarEmailCompras(d, ss, folha, log) {
       dataIng ? 'Os ingredientes deverão estar disponíveis na cozinha até ' + dataIng + '.' : '',
       d.dataDaAula ? 'A aula realiza-se a ' + formatarData(d.dataDaAula) + '.' : '',
       '',
-      'Segue em anexo a requisição, em PDF.',
+      'Segue em anexo a requisição, em PDF e em Excel.',
       '',
       'Com os melhores cumprimentos,',
       d.formador || '',
       'Escola de Comércio de Lisboa'
     ].filter(function (l, i, a) { return l !== '' || (i > 0 && a[i - 1] !== ''); });
-    // Sem o PDF, não se envia nada (nunca a ligação para o ficheiro).
-    var pdf;
-    try { pdf = pdfDaRequisicao(ss, folha, assunto); }
-    catch (e) { log.push('e-mail NÃO enviado: ' + e); return ''; }
-    MailApp.sendEmail({ to: emails.join(','), subject: assunto, body: linhas.join('\n'), name: 'Requisições ECL', attachments: [pdf] });
+    // Sem o PDF, não se envia nada (nunca a ligação para o ficheiro). Se só
+    // o Excel falhar, segue o PDF e fica escrito no registo.
+    var anexos = [];
+    try { anexos.push(pdfDaRequisicao(ss, folha, assunto)); }
+    catch (e) { log.push('e-mail NÃO enviado: PDF ' + e); return ''; }
+    try { anexos.push(excelDaRequisicao(folha, assunto)); }
+    catch (e2) { log.push('Excel não seguiu: ' + e2); }
+    MailApp.sendEmail({ to: emails.join(','), subject: assunto, body: linhas.join('\n'), name: 'Requisições ECL', attachments: anexos });
     log.push('E-mail enviado a ' + emails.join(', '));
     return new Date().toISOString();
   } catch (e) {
