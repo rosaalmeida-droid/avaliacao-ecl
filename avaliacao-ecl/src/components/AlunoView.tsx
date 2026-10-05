@@ -61,7 +61,7 @@ import {
 } from './InicioAluno';
 import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
-import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, type Triagem5C } from '../triagem5c';
+import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
@@ -2198,13 +2198,16 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
       <div style={{ background:'#fff', borderRadius:16, padding:18, marginBottom:12,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
-          {fichas.length === 0 ? 'Sem fichas atribuídas'
+          {fichas.length === 0 ? (cozinhamNaAula(plano) ? 'Sem fichas atribuídas' : 'O trabalho de hoje')
             : fichas.length === 1 ? 'Hoje vais fazer' : `Hoje vais fazer ${fichas.length} fichas`}
         </div>
         {fichas.length === 0 ? (
-          <div style={{ fontSize:15.5, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.55 }}>
-            O professor ainda não te atribuiu nenhuma ficha para esta aula.
-            Pergunta-lhe o que vais trabalhar.
+          // Numa aula sem cozinha (teórica, visita) não se fala de fichas: o
+          // trabalho é o do sumário (auditoria 5/out/2026).
+          <div style={{ fontSize:15.5, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.55, whiteSpace:'pre-wrap' }}>
+            {cozinhamNaAula(plano)
+              ? 'O professor ainda não te atribuiu nenhuma ficha para esta aula. Pergunta-lhe o que vais trabalhar.'
+              : (sumarioDoPlano(plano, fichas) || 'O professor explica na aula o trabalho de hoje.')}
           </div>
         ) : (
           fichas.map((f:any, n:number) => (
@@ -2803,11 +2806,19 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
   }
 
   if (fichas.length===0) {
+    const semCozinha = !cozinhamNaAula(plano);
     return (
       <div>
-        <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
-          📄 Não há fichas de produção para esta aula.
-        </div>
+        {semCozinha ? (
+          <div style={{ padding:'16px 4px', fontSize:15.5, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', marginBottom:6 }}>O trabalho de hoje</div>
+            {sumarioDoPlano(plano, fichas) || 'O professor explica na aula o trabalho de hoje.'}
+          </div>
+        ) : (
+          <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
+            📄 Não há fichas de produção para esta aula.
+          </div>
+        )}
         <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
           border:'none', background:T.sage, color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
           Continuar →
@@ -3326,7 +3337,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({
     ...(!partes.atitudes ? { naoPerguntado: true } : {}),
     cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
-    ...(regras.clSempre ? { clId: CL_SEMPRE.id } : {}),
+    ...(regras.clSempre ? { clId: CL_SEMPRE.id } : regras.clAula ? { clId: CL_AULA.id } : {}),
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
   const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId);
   // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.

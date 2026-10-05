@@ -538,7 +538,7 @@ export const ATITUDES_DETALHADAS: AtitudeDetalhada[] = [
   {
     id: 'ATI-015', nome: 'Respeito pelas regras e normas definidas',
     descricao: 'Cumpre os procedimentos definidos para a cozinha, mesmo que discorde. Chega a horas, usa o equipamento correctamente.',
-    exemploCozinha: 'Respeita as hierarquias da brigada. Não usa o telemóvel durante a produção. Segue os protocolos.',
+    exemploCozinha: 'Respeita as hierarquias da brigada. Só usa o telemóvel para o trabalho. Segue os protocolos.',
     nivelComplexidade: {
       n1: 'Cumpre as regras básicas da cozinha escolar sem necessitar de lembretes.',
       n2: 'Respeita normas em contexto de serviço e com clientes presentes.',

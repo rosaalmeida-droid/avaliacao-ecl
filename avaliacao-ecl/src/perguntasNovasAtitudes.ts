@@ -149,10 +149,10 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Continuei concentrado e ajudei a acalmar.',
       ], 'Hoje não houve barulho nem confusão.'),
       P('Hoje, com o telemóvel durante o trabalho, como foi?', [
-        'Usei-o várias vezes sem autorização.',
-        'Usei-o uma vez sem autorização.',
-        'Não o usei sem autorização.',
-        'Não o usei e lembrei um colega de o guardar.',
+        'Usei-o várias vezes para coisas que não eram do trabalho.',
+        'Usei-o uma vez para uma coisa que não era do trabalho.',
+        'Só o usei para o trabalho (ou não o usei).',
+        'Só o usei para o trabalho e lembrei um colega de fazer o mesmo.',
       ])),
   ],
   'ATI-011': [ // Sentido de organização
@@ -452,7 +452,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Ouvi até ao fim e fiz uma pergunta sobre a ideia.',
       ], 'Hoje nenhum colega deu ideias.', ['colegas']),
       P('Hoje, quando o professor falou para a turma, o que fizeste?', [
-        'Falei por cima ou mexi no telemóvel.',
+        'Falei por cima ou mexi no telemóvel noutra coisa.',
         'Ouvi só uma parte.',
         'Ouvi tudo, a olhar para ele.',
         'Ouvi tudo e repeti para mim o mais importante.',
@@ -699,7 +699,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Fiz sem me pedirem e avisei a equipa.',
       ], 'Hoje não vi nada para fazer.'),
       P('Hoje, quando a aula acabou mais cedo para ti, o que fizeste?', [
-        'Fiquei parado ou no telemóvel.',
+        'Fiquei parado ou no telemóvel sem ser para o trabalho.',
         'Fui conversar.',
         'Ajudei uma equipa.',
         'Ajudei e pedi ao professor uma tarefa extra.',

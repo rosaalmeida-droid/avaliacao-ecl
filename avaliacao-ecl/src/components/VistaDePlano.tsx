@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -1367,14 +1367,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       const valAluno = validacoes.find(v => v.alunoId === aluno.id);
       const submeteu = !!selAluno || regsAluno.length > 0;
       const validado = !!valAluno;
-      // Notas por componente
-      const notaOBR = regsAluno.filter(r => r.microcompetenciaId?.startsWith('OBR_')).map(r => r.nota);
-      const notaSUB = regsAluno.filter(r => r.microcompetenciaId?.startsWith('SUB-')).map(r => r.nota);
-      const notaAPP = regsAluno.filter(r => r.microcompetenciaId?.startsWith('APP-')).map(r => r.nota);
-      const notaKNW = regsAluno.filter(r => r.microcompetenciaId?.startsWith('KNW-')).map(r => r.nota);
-      const notaATI = regsAluno.filter(r => r.microcompetenciaId?.startsWith('ATI-')).map(r => r.nota);
-      const media = (arr: number[]) => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : '—';
-      return { aluno, submeteu, validado, notaOBR: media(notaOBR), notaSUB: media(notaSUB), notaAPP: media(notaAPP), notaKNW: media(notaKNW), notaATI: media(notaATI) };
+      // (Auditoria 5/out/2026) Os mesmos valores do detalhe da validação e do
+      // aluno, na mesma escala (/20): a última validação desta aula. Antes
+      // eram médias dos registos em /5 (ATI 4.5 aqui, 20/20 no detalhe).
+      const calc = validado ? calculoDaAulaValidada(validacaoDaAula(aluno.id, plano.id, validacoes)) : null;
+      const em20 = (cat: string) => calc && calc.porCategoria[cat] !== undefined
+        ? String(Math.round(calc.porCategoria[cat] * 10) / 10).replace('.', ',') : '—';
+      return { aluno, submeteu, validado, notaOBR: em20('OBR'), notaSUB: em20('SUB'), notaKNW: em20('KNW'), notaATI: em20('ATI'),
+        notaAula: calc ? String(Math.round(calc.nota20 * 10) / 10).replace('.', ',') : '—' };
     });
 
     const nSubmeteram = resumoTurma.filter(r => r.submeteu).length;
@@ -1413,11 +1413,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <thead>
                 <tr style={{ background:'var(--charcoal)', color:'var(--cream)' }}>
                   <th style={{ padding:'8px 10px', textAlign:'left', borderRadius:'8px 0 0 0' }}>Aluno</th>
-                  <th style={{ padding:'8px 6px', textAlign:'center' }}>OBR</th>
-                  <th style={{ padding:'8px 6px', textAlign:'center' }}>SUB</th>
-                  <th style={{ padding:'8px 6px', textAlign:'center' }}>APP</th>
-                  <th style={{ padding:'8px 6px', textAlign:'center' }}>KNW</th>
-                  <th style={{ padding:'8px 6px', textAlign:'center' }}>ATI</th>
+                  <th style={{ padding:'8px 6px', textAlign:'center' }}>Nota da aula</th>
+                  <th style={{ padding:'8px 6px', textAlign:'center' }}>Higiene</th>
+                  <th style={{ padding:'8px 6px', textAlign:'center' }}>Técnicas</th>
+                  <th style={{ padding:'8px 6px', textAlign:'center' }}>Conhecimentos</th>
+                  <th style={{ padding:'8px 6px', textAlign:'center' }}>Atitudes</th>
                   <th style={{ padding:'8px 10px', textAlign:'center', borderRadius:'0 8px 0 0' }}>Estado</th>
                 </tr>
               </thead>
@@ -1425,11 +1425,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 {resumoTurma.map((r, i) => (
                   <tr key={r.aluno.id} style={{ background: i%2===0?'#fff':'#fafaf8', borderBottom:'1px solid var(--border)' }}>
                     <td style={{ padding:'8px 10px', fontWeight:600 }}>{r.aluno.nome || `Nº ${r.aluno.numero}`}</td>
-                    <td style={{ padding:'8px 6px', textAlign:'center', color: r.notaOBR!=='—'&&Number(r.notaOBR)>=3?'var(--sage)':r.notaOBR!=='—'?'var(--copper)':'rgba(26,23,20,0.3)' }}>{r.notaOBR}</td>
-                    <td style={{ padding:'8px 6px', textAlign:'center', color: r.notaSUB!=='—'&&Number(r.notaSUB)>=3?'var(--sage)':r.notaSUB!=='—'?'var(--copper)':'rgba(26,23,20,0.3)' }}>{r.notaSUB}</td>
-                    <td style={{ padding:'8px 6px', textAlign:'center', color: r.notaAPP!=='—'&&Number(r.notaAPP)>=3?'var(--sage)':r.notaAPP!=='—'?'var(--copper)':'rgba(26,23,20,0.3)' }}>{r.notaAPP}</td>
-                    <td style={{ padding:'8px 6px', textAlign:'center', color: r.notaKNW!=='—'&&Number(r.notaKNW)>=3?'var(--sage)':r.notaKNW!=='—'?'var(--copper)':'rgba(26,23,20,0.3)' }}>{r.notaKNW}</td>
-                    <td style={{ padding:'8px 6px', textAlign:'center', color: r.notaATI!=='—'&&Number(r.notaATI)>=3?'var(--sage)':r.notaATI!=='—'?'var(--copper)':'rgba(26,23,20,0.3)' }}>{r.notaATI}</td>
+                    {[r.notaAula, r.notaOBR, r.notaSUB, r.notaKNW, r.notaATI].map((v, k) => (
+                      <td key={k} style={{ padding:'8px 6px', textAlign:'center', fontWeight: k === 0 ? 800 : 400,
+                        color: v === '—' ? 'rgba(26,23,20,0.3)' : Number(v.replace(',', '.')) >= 10 ? 'var(--sage)' : 'var(--copper)' }}>{v}</td>
+                    ))}
                     <td style={{ padding:'8px 10px', textAlign:'center' }}>
                       {r.validado ? <span style={{ color:'var(--sage)', fontWeight:700 }}>✓ Validado</span>
                         : r.submeteu ? <span style={{ color:'var(--copper)', fontWeight:700 }}>⏳ Pendente</span>

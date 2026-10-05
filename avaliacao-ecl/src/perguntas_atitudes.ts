@@ -112,11 +112,13 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
       'Cumpri todas as regras sem ninguém me lembrar.',
       'Cumpri todas e lembrei um colega que se estava a esquecer.',
     ]),
-    P('Hoje, com o telemóvel, o que fizeste?', [
-      'Usei-o durante o trabalho.',
-      'Estava guardado, mas fui ver uma vez.',
-      'Esteve guardado a aula toda.',
-      'Esteve guardado a aula toda e lembrei um colega de guardar o dele.',
+    // O telemóvel pode usar-se na aula para o trabalho (Rosa, out/2026):
+    // conta só o uso para outras coisas.
+    P('Hoje, com o telemóvel, o que fizeste? (Usá-lo para o trabalho é permitido.)', [
+      'Usei-o várias vezes para coisas que não eram do trabalho.',
+      'Usei-o uma vez para uma coisa que não era do trabalho.',
+      'Só o usei para o trabalho (ou não o usei).',
+      'Só o usei para o trabalho e lembrei um colega de fazer o mesmo.',
     ]),
   ],
   'ATI-016': [ // Higiene e segurança alimentar
@@ -263,7 +265,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   // ── 3.º ano ──────────────────────────────────────────────
   'ATI-004': [ // Iniciativa
     P('Hoje, quando acabaste a tua tarefa, o que fizeste?', [
-      'Fiquei parado/a ou fui ver o telemóvel.',
+      'Fiquei parado/a ou fui ao telemóvel sem ser para o trabalho.',
       'Esperei que o professor me desse outra tarefa.',
       'Perguntei o que faltava e comecei.',
       'Vi o que faltava e comecei sem ninguém me pedir.',
@@ -325,9 +327,9 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
       'Respondi, fiz e avisei quando estava feito.',
     ]),
     P('Hoje, na forma como estiveste na aula (linguagem, telemóvel, horário), o que fizeste?', [
-      'Disse palavrões, usei o telemóvel ou cheguei atrasado/a.',
+      'Disse palavrões, usei o telemóvel sem ser para o trabalho ou cheguei atrasado/a.',
       'Estive quase sempre bem, mas falhei uma vez.',
-      'Falei com educação, cheguei a horas e não usei o telemóvel.',
+      'Falei com educação, cheguei a horas e só usei o telemóvel para o trabalho.',
       'Tudo isto, e fui um exemplo para os colegas.',
     ]),
   ],
@@ -418,6 +420,14 @@ const REQUISITOS: Record<string, [Requisito[], Requisito[]]> = {
   'ATI-004': [[], ['cozinha']],            // lixo, loiça, material fora do sítio
   'ATI-014': [['producao'], []],           // produtos, sobras, cascas
   'ATI-021': [['producao'], []],           // provar o trabalho de um colega
+  // Perguntas sobre os colegas: só numa aula em que se trabalha com eles
+  // (auditoria 5/out/2026: «quando não concordaste com alguém» numa aula em
+  // que cada um trabalhava sozinho).
+  'ATI-006': [['colegas'], []],            // discordar de alguém; pedir o que precisas (sempre)
+  'ATI-005': [[], ['colegas']],            // pressão; o tom com os colegas
+  'ATI-007': [['colegas'], ['colegas']],   // colega com dificuldades; como falaste com os colegas
+  'ATI-018': [['colegas'], []],            // colega triste; o ambiente à tua volta (sempre)
+  'ATI-022': [['colegas'], ['colegas']],   // ideia diferente; colegas diferentes de ti
 };
 
 /** Que perguntas desta atitude se fazem nesta aula (uma por posição). Num

@@ -20,7 +20,7 @@ import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO, atitudesSugeridasEvento } from 
 import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
-import { perguntasDaAula, CL_SEMPRE } from './triagem5c';
+import { perguntasDaAula, CL_SEMPRE, CL_AULA } from './triagem5c';
 import { porqueNao, triagemDoPlano, escolheTema, fasesDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
 import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
@@ -55,6 +55,8 @@ export interface RegrasAutoavaliacao {
   tecEvento: boolean;
   /** O Colaborativo não se pergunta (sozinho e fora da cozinha). */
   clNaoSePergunta: boolean;
+  /** Fora da cozinha e sem grupos: o CL pergunta-se adaptado (participar e ajudar). */
+  clAula: boolean;
   /** Sozinho na cozinha: pergunta-se pelo espaço e o material partilhados. */
   clSempre: boolean;
   /** Trabalho sobre o manual: o aluno escolhe o tema (um conteúdo do manual). */
@@ -185,7 +187,10 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
     tecEvento: p.tipoEvento === 'evento',
-    clNaoSePergunta: !ctx.colegas && !ctx.cozinha,
+    // O CL tem sempre possibilidade de avaliação (Rosa, auditoria 5/out/2026):
+    // fora da cozinha e sem grupos, pergunta-se se participou ou ajudou.
+    clNaoSePergunta: false,
+    clAula: !ctx.cozinha && !ctx.equipa,
     clSempre: !ctx.colegas && ctx.cozinha,
     escolheTema: temTema, temasPossiveis, formatos,
   };
@@ -307,11 +312,12 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
   if (R.tecEvento) ecras.push({ tipo: 'evento', rotulo: 'Evento', nome: NOME_TEC_EVENTO, perguntas: [], porque: 'é um evento', c: 'cl' });
 
   if (R.semAtitudes) return { ecras, fora, regras: R };
-  const qs = perguntasDaAula(perguntaCOId, perguntaCRId, R.clSempre ? CL_SEMPRE.id : undefined);
+  const qs = perguntasDaAula(perguntaCOId, perguntaCRId, R.clSempre ? CL_SEMPRE.id : R.clAula ? CL_AULA.id : undefined);
   const qcl = qs.find(q => q.chave === 'cl')!;
   if (R.clNaoSePergunta) fora.push({ nome: 'Trabalho com os colegas (CL)', motivo: porqueNao(['colegas'], ctx) + ', fora da cozinha' });
   else ecras.push({ tipo: 'cl', rotulo: 'Trabalho com os colegas', nome: qcl.titulo, perguntas: [qcl.pergunta],
-    porque: R.clSempre ? 'sozinho na cozinha: o espaço e o material partilhados' : ctx.equipa ? 'trabalham em grupos' : 'todas as aulas', c: 'cl' });
+    porque: R.clSempre ? 'sozinho na cozinha: o espaço e o material partilhados' : R.clAula ? 'fora da cozinha: participar e ajudar'
+      : ctx.equipa ? 'trabalham em grupos' : 'todas as aulas', c: 'cl' });
   const qcr = qs.find(q => q.chave === 'cr')!;
   ecras.push({ tipo: 'cr', rotulo: 'Criativo', nome: qcr.titulo, perguntas: [qcr.pergunta], porque: 'pergunta do dia, igual para a turma', c: 'cr' });
   const qco = qs.find(q => q.chave === 'co')!;
