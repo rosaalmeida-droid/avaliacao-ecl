@@ -8455,6 +8455,18 @@ const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
 };
 
 /** O registo ainda existe neste aparelho (se não, já não há nada a enviar). */
+/** Foi apagado de vez noutro aparelho: sai deste também (fica marcado, para
+ *  nenhuma leitura o trazer de volta). */
+function esquecerEliminado(p: PorConfirmar): void {
+  try {
+    if (p.tipo === 'plano') {
+      const ja = new Set(load<string>(KEYS.eliminadosPlanos));
+      if (!ja.has(String(p.id))) save(KEYS.eliminadosPlanos, [...ja, String(p.id)]);
+      save(KEYS.planos, load<any>(KEYS.planos).filter(x => x?.id !== p.id));
+    }
+  } catch { /* fica para a próxima */ }
+}
+
 function existeAinda(p: PorConfirmar): boolean {
   try {
     if (p.tipo === 'plano') return getPlanosAula().some(x => x.id === p.id) && !load<string>(KEYS.eliminadosPlanos).includes(String(p.id));
@@ -8616,6 +8628,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   // tomada por "não consegui ler" — e o que estava à espera nunca mais era
   // reenviado: a aula criada não chegava ao Sheets nem aos alunos.
   const lidoComSucesso = new Set<string>();
+  /** O que o Sheets diz ter sido eliminado de propósito (apagado de vez).
+   *  O Sheets recusa gravá-lo outra vez («eliminado»), e o aparelho que ainda
+   *  o tinha insistia para sempre: «9.ª tentativa», «62.ª tentativa» (Rosa,
+   *  5/out/2026). Sai da lista e deste aparelho também. */
+  const eliminadosNoSheets = new Map<string, Set<string>>();
 
   for (const tipo of tipos) {
     const [url, pedido] = LEITURA_POR_TIPO[tipo];
@@ -8625,6 +8642,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
         if (json?.ok) algumaLeitura = true;
+        if (Array.isArray(json?.eliminados)) {
+          const el = eliminadosNoSheets.get(tipo) || new Set<string>();
+          json.eliminados.forEach((id: any) => el.add(String(id)));
+          eliminadosNoSheets.set(tipo, el);
+        }
         (json?.dados || []).forEach((x: any) => {
           ids.add(String(x.id));
           if (tipo === 'plano') versaoNoSheets.set(String(x.id), Date.parse(String(x.atualizadoEm || '')));
@@ -8668,6 +8690,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     // enviar, sai da lista. Antes ficava «a caminho do arquivo» para sempre e
     // o botão não fazia nada (Rosa, 5/out/2026).
     if (!existeAinda(p)) { continue; }
+    if (eliminadosNoSheets.get(p.tipo)?.has(String(p.id))) { esquecerEliminado(p); continue; }
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }

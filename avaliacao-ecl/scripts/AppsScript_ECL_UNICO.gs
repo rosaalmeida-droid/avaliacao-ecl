@@ -948,16 +948,16 @@ function doGet(e) {
 
     if (tipo === 'get_planos')       return comDados('planos',       ler('PLANOS',       { turmaId: turma }), { eliminados: eliminadosDe('PLANOS') });
     if (tipo === 'get_requisicoes')  return comDados('requisicoes',  ler('REQUISICOES',  { turmaId: turma }));
-    if (tipo === 'get_fichas')       return comDados('fichas',       ler('FICHAS',       {}));
+    if (tipo === 'get_fichas')       return comDados('fichas',       ler('FICHAS',       {}), { eliminados: eliminadosDe('FICHAS') });
     if (tipo === 'buscar_similar')   return comDados('similares',    parecidas(p.nome || ''));
     // (v22) Os PIN só vão para quem entrou como professor ou coordenação.
-    if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token));
+    if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token), { eliminados: eliminadosDe('ALUNOS') });
     if (tipo === 'entrar')           return respostaDados(entrarPessoal(p.quem, p.codigo));
     if (tipo === 'entrar_aluno')     return respostaDados(entrarAluno(p.alunoId, p.pin));
-    if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }));
+    if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }), { eliminados: eliminadosDe('AVALIACOES') });
     if (tipo === 'get_presencas')    return comDados('presencas',    ler('PRESENCAS',    { turmaId: turma }));
-    if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }));
-    if (tipo === 'get_validacoes')   return comDados('validacoes',   ler('VALIDACOES',   { turmaId: turma }));
+    if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }), { eliminados: eliminadosDe('SELECOES') });
+    if (tipo === 'get_validacoes')   return comDados('validacoes',   ler('VALIDACOES',   { turmaId: turma }), { eliminados: eliminadosDe('VALIDACOES') });
     if (tipo === 'get_sessoes')      return comDados('sessoes',      ler('SESSOES',      { turmaId: turma }));
     if (tipo === 'get_aula')         return respostaAula(turma);
     if (tipo === 'get_grupos')       return comDados('membros',      ler('GRUPOS',       { turmaId: turma }), { info: ler('GRUPOS_INFO', { turmaId: turma }) });
