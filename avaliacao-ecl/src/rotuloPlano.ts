@@ -112,8 +112,10 @@ export function horasDoPlanoNaUC(plano: PlanoAula): { de: number; ate: number; t
   const h = horasDoPlano(plano);
   if (!total || !h || ehEventoForaDoHorario(plano)) return null;
   const n = posicaoNaUC(plano);
+  const iniUC = String(mod?.dataInicio || '0000-00-00');
   const antes = getPlanosAula()
-    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.id !== plano.id && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p))
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.id !== plano.id && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p)
+      && String(p.data || '').slice(0, 10) >= iniUC)
     .filter(p => posicaoNaUC(p) < n)
     .reduce((s, p) => s + horasDoPlano(p), 0);
   return { de: Math.floor(antes) + 1, ate: Math.round(antes + h), total };
