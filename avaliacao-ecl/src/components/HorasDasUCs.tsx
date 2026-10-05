@@ -16,7 +16,7 @@ export function HorasDasUCs({ turmaId, professor }: { turmaId?: string; professo
         return (
           <div key={h.ucId} style={{ padding: '12px 16px', borderRadius: 14, border: `2px solid ${c}`, background: fundo, marginBottom: 10 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: c }}>
-              {f.estado === 'certo' ? '✓' : '⚠️'} As horas da {h.ucId}{h.nome ? ` (${h.nome})` : ''}, {h.turmaId}
+              {f.estado === 'certo' ? '✓' : '⚠️'} {h.inicio > new Date().toISOString().slice(0, 10) ? `A próxima UC, a começar a ${h.inicio.slice(8, 10)}/${h.inicio.slice(5, 7)}: ` : ''}As horas da {h.ucId}{h.nome ? ` (${h.nome})` : ''}, {h.turmaId}
             </div>
             <div style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 1.5 }}>{f.frase}</div>
           </div>
