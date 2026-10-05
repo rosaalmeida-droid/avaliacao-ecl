@@ -60,7 +60,11 @@ export function planosDoEvento(eventoId: string): any[] {
  * evento, sem faltas, e o bónus na UC que estava a decorrer nesse dia.
  */
 export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' | 'inscricao', professor = ''): any | null {
-  const ucs = modulosAtivos(turmaId, ev.data);
+  // O módulo é o do professor que cria o evento nessa turma (Rosa, out/2026):
+  // antes ia o primeiro a decorrer, e o evento ficava em Tecnologia Alimentar.
+  const ativos = modulosAtivos(turmaId, ev.data);
+  const meus = ativos.filter(m => professor && m.docente === professor);
+  const ucs = meus.length ? meus : ativos.filter(m => !m.docente || !professor);
   const agora = new Date().toISOString();
   // Regra «Quem vai?» (Rosa, out/2026): a turma toda, dentro do ano letivo, é
   // um PLANO DE AULA com o evento lá dentro (conta como aula). Fica em
@@ -97,4 +101,34 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
   };
   addOrUpdatePlanoAula(p);
   return p;
+}
+
+/**
+ * O evento ficou como plano de aula («a turma toda»), mas não é obrigatório
+ * (Rosa, out/2026): passa a atividade extra, com inscrições. Se o evento entrou
+ * na aula normal desse dia, a aula fica como estava (sem o evento) e cria-se a
+ * atividade à parte; se o plano foi criado só para o evento, muda ele próprio.
+ */
+export function passarParaInscricoes(ev: any, plano: any, professor = ''): any | null {
+  const agora = new Date().toISOString();
+  if (plano.tipoEvento) {
+    const p = { ...plano, modoParticipacao: 'inscricao', estado: 'publicado', atualizadoEm: agora };
+    addOrUpdatePlanoAula(p);
+    return p;
+  }
+  const criadoParaOEvento = String(plano.id || '').startsWith(`plano_ev_${ev.id}_`);
+  if (criadoParaOEvento) {
+    const meu = modulosAtivos(plano.turmaId, ev.data).find(m => professor && m.docente === professor);
+    const p: any = { ...plano, ucId: meu?.id || '', ucNome: meu?.nome || '', tipoAtividade: 'Evento externo', tipoEvento: 'evento', tipoPlanAula: 'atitudinal',
+      compAdicionadas: atitudesSugeridasEvento('Evento externo'), modoParticipacao: 'inscricao', contaAssiduidade: false,
+      estado: 'publicado', atualizadoEm: agora };
+    delete p.eventoNaAula; delete p.triagemAula;
+    addOrUpdatePlanoAula(p);
+    return p;
+  }
+  // A aula normal do dia: tira-se o evento dela e cria-se a atividade à parte.
+  const aula: any = { ...plano, atualizadoEm: agora };
+  delete aula.eventoNaAula; delete aula.eventoId;
+  addOrUpdatePlanoAula(aula);
+  return criarAvaliacaoDoEvento(ev, plano.turmaId, 'inscricao', professor);
 }
