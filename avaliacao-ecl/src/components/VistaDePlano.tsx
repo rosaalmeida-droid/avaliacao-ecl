@@ -1820,8 +1820,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Esta aula inclui um evento ou concurso?</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button style={bt(!atual)} onClick={() => escolher(undefined)}>Não</button>
-                    <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (+0,5)</button>
-                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (até +1)</button>
+                    <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (até +0,5 por evento)</button>
+                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (até +1 por concurso)</button>
                   </div>
                   {atual && (
                     <div style={{ marginTop: 6, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5 }}>

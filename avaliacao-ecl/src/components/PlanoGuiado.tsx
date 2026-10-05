@@ -25,7 +25,7 @@ import {
 } from '../contextoAula';
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
 import { conhecimentosDaAula } from '../compatECL';
-import { sumarioDoPlano } from '../sumarioAutomatico';
+import { sumarioDoPlano, ehAtividadeComServico } from '../sumarioAutomatico';
 import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
 
 const C = {
@@ -170,7 +170,9 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   const tipoDoPlano = String(p.tipoPlanAula || 'pratico').replace('_obr', '') as TipoAula;
   const valor: TriagemAula = definida ? { ...definida, tipo: tipoDe(definida) } : {
     tipo: tipoDoPlano, onde: ctx.cozinha ? 'cozinha' : 'sala', cozinham: ctx.producao,
-    trabalho: ctx.equipa ? 'grupos' : 'individual', servico: false,
+    // A atividade escolhida (almoço, jantar, buffet…) já diz que há serviço
+    // a clientes (auditoria 5/out/2026: vinha «Não»).
+    trabalho: ctx.equipa ? 'grupos' : 'individual', servico: ehAtividadeComServico(p.tipoAtividade),
     ...(tipoDoPlano === 'atitudinal' ? { farda: p.tipoPlanAula === 'atitudinal_obr' } : {}),
   };
   const tipo = tipoDe(valor);

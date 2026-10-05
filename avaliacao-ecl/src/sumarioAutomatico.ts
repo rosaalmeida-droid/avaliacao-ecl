@@ -17,11 +17,25 @@ const semPonto = (t: string) => t.trim().replace(/[.;:]+$/, '');
 const minuscula = (t: string) => t ? t[0].toLowerCase() + t.slice(1) : t;
 const lista = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`;
 
+/** Atividades com serviço a clientes (almoço, jantar, buffet…). */
+export function ehAtividadeComServico(tipoAtividade?: string): boolean {
+  return /almo[çc]o|jantar|brunch|pequeno-almo|coffee|servi[çc]o real|catering|buffet/i.test(String(tipoAtividade || ''));
+}
+/** A atividade escolhida no plano, quando não é só o tipo de aula. */
+const atividadeDoPlano = (p: any): string => {
+  const a = String(p.tipoAtividade || '').trim();
+  return a && !/^(Aula (prática|mista|teórica)|Outro)$/i.test(a) && !/^Dinâmica de grupo/i.test(a) ? a : '';
+};
+
 export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): string {
   const p: any = plano;
   const t = triagemDoPlano(plano);
   const tipo = t ? tipoDe(t) : String(p.tipoPlanAula || '').replace('_obr', '');
   const linhas: string[] = [];
+  // A atividade (almoço pedagógico, buffet…) abre o sumário (auditoria 5/out/2026:
+  // nunca entrava).
+  const atividade = atividadeDoPlano(p);
+  if (atividade) linhas.push(`${atividade}.`);
 
   // Tema e conteúdos (do manual) e os indicadores trabalhados.
   const conh: { texto: string; capitulo?: string; tema?: string }[] = Array.isArray(p.conhecimentosProf) ? p.conhecimentosProf : [];
