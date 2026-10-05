@@ -298,8 +298,11 @@ function FormResultado({ l, nomeProfessor, onFeito, onCancelar }: {
  * (Rosa, set/2026). Diz quanto faltou, o estado da recuperação e deixa
  * decidir ali mesmo.
  */
-export function UCEmAtrasoNoPlano({ plano, nomeProfessor }: { plano: { turmaId: string; ucId?: string }; nomeProfessor?: string }) {
+export function UCEmAtrasoNoPlano({ plano, nomeProfessor, compacto = false }: { plano: { turmaId: string; ucId?: string }; nomeProfessor?: string;
+  /** Uma linha só, que se abre ao tocar (no plano aberto: auditoria 5/out/2026). */
+  compacto?: boolean }) {
   const [aberto, setAberto] = useState(false);
+  const [expandido, setExpandido] = useState(!compacto);
   const [versao, setVersao] = useState(0);
   void versao;
   if (!plano?.turmaId || !plano.ucId) return null;
@@ -311,6 +314,14 @@ export function UCEmAtrasoNoPlano({ plano, nomeProfessor }: { plano: { turmaId: 
     adiado: 'recupera depois da UC', recuperado: 'já recuperou',
   };
   const porDecidir = lista.filter(l => l.estado === 'sem_plano').length;
+  if (!expandido) return (
+    <button className="no-print" onClick={() => setExpandido(true)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10,
+      background: '#fdf0ef', border: '1px solid #c0392b', borderRadius: 12, padding: '10px 14px', margin: '0 0 14px',
+      color: '#8e2418', fontSize: 14.5, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+      <span style={{ flex: 1 }}>⚠️ {lista.length} aluno{lista.length > 1 ? 's' : ''} com esta UC em atraso por faltas{porDecidir ? ` · ${porDecidir} por decidir` : ''}</span>
+      <b>ver ▸</b>
+    </button>
+  );
   return (
     <div className="no-print" style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 14, padding: '14px 16px', margin: '0 0 14px' }}>
       <div style={{ fontSize: 16, fontWeight: 800, color: '#8e2418' }}>
