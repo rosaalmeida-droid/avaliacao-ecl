@@ -5386,10 +5386,14 @@ export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
         bonus: Math.round(((c.bonusParticipacao || 0) + (c.bonusAssiduidade || 0)) * 100) / 100,
         final: c.final === null ? '' : Math.round(c.final * 10) / 10,
         faltas: getPlanosFaltadosPorUC(a.id, uc, turmaId).length,
+        // As faltas em horas, sobre o total de horas da UC (a regra dos 10%),
+        // para o Sheets mostrar o mesmo que a aplicação (Rosa, 5/out/2026).
+        ...(() => { const h = faltasEmHorasUC(a.id, turmaId, uc);
+          return { horasFaltadas: Math.round(h.horasFaltadas * 10) / 10, horasUC: Math.round((h.horasPrevistas || h.horasDadas) * 10) / 10 }; })(),
         porAula: JSON.stringify(porAula), atualizadoEm: agora });
     }
     if (!linhas.length) return;
-    const assinatura = linhas.map(l => `${l.id}:${l.media}:${l.bonus}:${l.final}:${l.faltas}:${l.porAula}`).join('|');
+    const assinatura = linhas.map(l => `${l.id}:${l.media}:${l.bonus}:${l.final}:${l.faltas}:${l.horasFaltadas}:${l.horasUC}:${l.porAula}`).join('|');
     const chave = KEY_NOTAS_ENVIADAS + '|' + turmaId;
     let anterior = '';
     try { anterior = localStorage.getItem(chave) || ''; } catch { /* */ }
