@@ -711,9 +711,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
   const usarFallback = compSub.length === 0 && compApp.length === 0 && tipoPlanAula === 'pratico';
   // A mesma regra da autoavaliação do aluno (tecnicasDeRecurso).
-  const compTecnicasTodas = ehAtitudinal ? [] : (usarFallback && temFichas)
-    ? tecnicasDeRecurso(plano.ucId, fichasDoPlano).filter(m => !IDS_JA_USADOS.has(m.id))
-    : [];
+  // Já não se vão buscar técnicas «de recurso» à UC (Rosa, out/2026): numa
+  // sopa («creme de cenoura») apareciam cremes de pastelaria, e não se podiam
+  // tirar. As técnicas avaliadas são só as que o professor escolheu na ficha.
+  const compTecnicasTodas: ReturnType<typeof tecnicasDeRecurso> = [];
   const compTecnicas = compTecnicasTodas.filter(m => !compRemovidas.includes(m.id));
   compTecnicasTodas.forEach(m => IDS_JA_USADOS.add(m.id));
 
@@ -1300,6 +1301,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         )}
 
         {/* ── Fallback sistema antigo (sem SUB/APP) ── */}
+        {usarFallback && temFichas && (
+          <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, background:'#fff4e0', border:'1px solid #f0d49a' }}>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#8a5a12', marginBottom:2 }}>As fichas desta aula não têm técnicas escolhidas</div>
+            <div style={{ fontSize:13, color:'#8a5a12' }}>Abra a ficha técnica e escolha as técnicas que quer que os alunos avaliem. A aplicação não as escolhe por si.</div>
+          </div>
+        )}
         {usarFallback && !temFichas && (
           <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, background:'var(--cream-dark)', border:'1px dashed rgba(26,23,20,0.2)' }}>
             <div style={{ fontSize:13, fontWeight:600, color:'rgba(26,23,20,0.7)', marginBottom:2 }}>Ainda não há ficha técnica</div>

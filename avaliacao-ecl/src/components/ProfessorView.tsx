@@ -1024,8 +1024,10 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
     </div>
   );
 }
-function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void; nomePratoInicial?: string }) {
+function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial, linkInicial }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void; nomePratoInicial?: string; linkInicial?: string }) {
+  // Ao voltar atrás numa ficha, aparece o link com que ela foi feita (Rosa, out/2026).
   const [link, setLink] = useState(() => {
+    if (linkInicial) return linkInicial;
     try { return localStorage.getItem('ecl_link_draft') || ''; } catch { return ''; }
   });
   const [textoManual, setTextoManual] = useState('');
@@ -2089,7 +2091,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   // (causa real de fichas duplicadas: "Bacalhau", "Bacalhau 2", "Bacalhau 3"...)
   const [fichaEmEdicaoId, setFichaEmEdicaoId] = useState<string | null>(fichaParaEditar ?? null);
   const [textoReceita, setTextoReceita] = useState('');
-  const [linkReceita, setLinkReceita] = useState('');
+  const [linkReceita, setLinkReceita] = useState(() => {
+    const f: any = fichaParaEditar ? getFichasProducao().find(x => x.id === fichaParaEditar) : undefined;
+    return String(f?.linkOrigem || '');
+  });
   // Abrir uma ficha que o plano já tem: abre ESSA ficha, com as técnicas.
   // Antes abria o ecrã de criar uma ficha nova, vazio (Rosa, out/2026).
   const fichaAberta = fichaParaEditar ? getFichasProducao().find(f => f.id === fichaParaEditar) : undefined;
@@ -2200,6 +2205,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         regeneracao: fichaConfirmada.regeneracao || '',
         kitchenflow: fichaConfirmada.kitchenflow || '',
         tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
+        // O link da receita de onde veio a ficha: volta a aparecer ao refazer o pedido (Rosa, out/2026).
+        ...({ linkOrigem: linkReceita || (fichaOriginal as any)?.linkOrigem || '' } as any),
         ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
         // As perguntas de autoavaliação das técnicas (as já aprovadas mantêm-se ao editar).
         perguntasAuto: fichaConfirmada.perguntasAuto?.length ? fichaConfirmada.perguntasAuto : ((fichaOriginal as any)?.perguntasAuto || []),
@@ -2615,6 +2622,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             setVista('editar');
             setPasso('ficha');
             setFichaEmEdicaoId(f.id);
+            setLinkReceita(String((f as any).linkOrigem || ''));
             // Associar ao plano — mexendo SÓ no plano, nunca na ficha.
             //
             // Antes isto gravava também a ficha, e a gravação envia-a para
@@ -2681,7 +2689,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     } catch { fichaDraft = ficha; }
 
     return (
-      <PassoLink ucId={ucId} ucNome={ucNome} nomePratoInicial={nomePratoInicial} onContinuar={(texto, link) => {
+      <PassoLink ucId={ucId} ucNome={ucNome} nomePratoInicial={nomePratoInicial} linkInicial={linkReceita} onContinuar={(texto, link) => {
         setTextoReceita(texto);
         setLinkReceita(link);
         // Sempre tentar extrair — o extrairFicha agora lida com todos os formatos
