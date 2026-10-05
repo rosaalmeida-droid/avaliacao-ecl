@@ -418,6 +418,14 @@ const REQUISITOS: Record<string, [Requisito[], Requisito[]]> = {
   'ATI-004': [[], ['cozinha']],            // lixo, loiça, material fora do sítio
   'ATI-014': [['producao'], []],           // produtos, sobras, cascas
   'ATI-021': [['producao'], []],           // provar o trabalho de um colega
+  // Perguntas sobre os colegas: só numa aula em que se trabalha com eles
+  // (auditoria 5/out/2026: «quando não concordaste com alguém» numa aula em
+  // que cada um trabalhava sozinho).
+  'ATI-006': [['colegas'], []],            // discordar de alguém; pedir o que precisas (sempre)
+  'ATI-005': [[], ['colegas']],            // pressão; o tom com os colegas
+  'ATI-007': [['colegas'], ['colegas']],   // colega com dificuldades; como falaste com os colegas
+  'ATI-018': [['colegas'], []],            // colega triste; o ambiente à tua volta (sempre)
+  'ATI-022': [['colegas'], ['colegas']],   // ideia diferente; colegas diferentes de ti
 };
 
 /** Que perguntas desta atitude se fazem nesta aula (uma por posição). Num

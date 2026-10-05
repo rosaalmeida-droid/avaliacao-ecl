@@ -61,7 +61,7 @@ import {
 } from './InicioAluno';
 import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
-import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, type Triagem5C } from '../triagem5c';
+import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
@@ -3326,7 +3326,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({
     ...(!partes.atitudes ? { naoPerguntado: true } : {}),
     cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
-    ...(regras.clSempre ? { clId: CL_SEMPRE.id } : {}),
+    ...(regras.clSempre ? { clId: CL_SEMPRE.id } : regras.clAula ? { clId: CL_AULA.id } : {}),
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
   const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId);
   // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.

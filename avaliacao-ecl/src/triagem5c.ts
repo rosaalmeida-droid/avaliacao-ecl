@@ -428,13 +428,31 @@ export const CL_SEMPRE: PerguntaCO = {
   frasesSimples: ['Deixei para os outros arrumar.', 'Arrumei só o meu.', 'Arrumei com os colegas.', 'Combinei com os colegas e ficou tudo pronto.'],
 };
 
+/** Colaborativo numa aula fora da cozinha e sem grupos (teórica, sala,
+ *  visita): há sempre ocasião de participar e de ajudar, por isso o CL
+ *  avalia-se sempre, sem as frases da brigada (Rosa, auditoria 5/out/2026). */
+export const CL_AULA: PerguntaCO = {
+  id: 'cl03', lado: 'outros', chave: 'cl' as any, sigla: 'CL' as any, titulo: 'Participar e ajudar',
+  pergunta: 'Hoje participaste ou ajudaste um colega ou o professor?',
+  semOcasiao: '',
+  frases: [
+    'Não participei nem ajudei ninguém.',
+    'Participei só quando o professor me chamou.',
+    'Participei por mim e ajudei quando me pediram.',
+    'Participei por mim e ajudei um colega ou o professor sem ninguém me pedir.',
+  ],
+  perguntaSimples: 'Hoje participaste ou ajudaste alguém?',
+  semOcasiaoSimples: '',
+  frasesSimples: ['Não.', 'Só quando me chamaram.', 'Sim, e ajudei quando me pediram.', 'Sim, e ajudei sem me pedirem.'],
+};
+
 /**
  * O aluno disse «não aconteceu»: a pergunta seguinte é uma que acontece
  * sempre (não tem «não aconteceu»), do mesmo C — assim há sempre resposta
  * e o professor não tem de responder por ele (Rosa, set/2026).
  */
 export function perguntaSeguinte(chave: ChaveTriagem, jaVistas: string[], soTeoria = false): PerguntaTriagem & { id: string } {
-  if (chave === 'cl') return CL_SEMPRE;
+  if (chave === 'cl') return soTeoria ? CL_AULA : CL_SEMPRE;
   const banco = BANCOS[chave].banco.filter(q => !jaVistas.includes(q.id) && (!soTeoria || !SO_AULA_PRATICA.has(q.id)));
   const sempre = banco.filter(q => !q.semOcasiao);
   const q = sempre[jaVistas.length % Math.max(1, sempre.length)] || banco[0];
@@ -448,12 +466,14 @@ export function perguntasDaAula(coId?: string, crId?: string, clId?: string): Pe
   const qco = coId ? BANCO_CO.find(x => x.id === coId) : undefined;
   const qcr = crId ? BANCO_CR.find(x => x.id === crId) : undefined;
   return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && qco ? qco : p.chave === 'cr' && qcr ? qcr
-    : p.chave === 'cl' && clId === CL_SEMPRE.id ? CL_SEMPRE : p);
+    : p.chave === 'cl' && clId === CL_SEMPRE.id ? CL_SEMPRE
+    : p.chave === 'cl' && clId === CL_AULA.id ? CL_AULA : p);
 }
 
 /** Uma pergunta pelo id (a do Colaborativo, do Consciente ou do Criativo). */
 export function perguntaPorId(id: string): PerguntaTriagem | undefined {
   if (id === CL_SEMPRE.id) return CL_SEMPRE;
+  if (id === CL_AULA.id) return CL_AULA;
   if (id === 'cl01') return PERGUNTAS_TRIAGEM[0];
   return BANCO_CO.find(x => x.id === id) || BANCO_CR.find(x => x.id === id);
 }
