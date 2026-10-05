@@ -1,6 +1,7 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { janelaConfirmar } from './janelaConfirmar';
 import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
+import { BotaoWhatsApp, mensagemAberturaAula, mensagemInscricoes } from './AvisarWhatsApp';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
@@ -1664,6 +1665,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </div>
               </div>
               <EstadoAberturaAula planoAulaId={plano.id} />
+              {/* (Rosa, 5/out/2026) A mensagem para o grupo da turma: «já está aberta» ou «já podem fazer a autoavaliação». */}
+              <div style={{ marginTop: 10 }}><BotaoWhatsApp texto={mensagemAberturaAula(plano)} /></div>
               <button onClick={async () => { if (await anularAberturaComConfirmacao(plano, nomeProfessor || 'professor')) onPlanoActualizado?.({ ...plano }); }}
                 style={{ marginTop: 10, padding: '7px 12px', borderRadius: 9, border: '1.5px solid #c0392b', background: '#fff', color: '#c0392b',
                   fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -2885,6 +2888,10 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
           <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 6 }}>
             {inscritos.length} inscrito{inscritos.length === 1 ? '' : 's'} · {aceites.length} aceite{aceites.length === 1 ? '' : 's'}. Os alunos inscrevem-se em «Atividades e concursos».
           </div>
+          {/* (Rosa, 5/out/2026) Inscrições abertas: a mensagem para o grupo da turma. */}
+          {String(plano.data || '').slice(0, 10) >= new Date().toISOString().slice(0, 10) && (
+            <div style={{ margin: '4px 0 8px' }}><BotaoWhatsApp texto={mensagemInscricoes(plano)} rotulo="Avisar no WhatsApp que as inscrições estão abertas" /></div>
+          )}
           {lista.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda ninguém se inscreveu.</div>}
           {/* Atividade feita de urgência: o professor põe logo quem foi (Rosa, out/2026). */}
           {foraDaLista.length > 0 && (

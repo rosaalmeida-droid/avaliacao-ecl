@@ -16,6 +16,7 @@ import { confirmarTurmaAoPublicar } from '../professores';
 import { registarVersaoEnviada } from './PlanoGuiado';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
 import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
+import { BotaoWhatsApp, mensagemAberturaAula } from './AvisarWhatsApp';
 
 const C = {
   fundo: '#F5F2F3', branco: '#fff', bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE', bordeauxClaro: '#EBCDD3',
@@ -110,6 +111,7 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
             <div style={{ fontSize: 14, color: C.texto, marginTop: 3 }}>{entraram} de {nAlunos} alunos entraram</div>
             <EstadoAberturaAula planoAulaId={p.id} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              <BotaoWhatsApp texto={mensagemAberturaAula(p)} estilo={{ minHeight: 44, borderRadius: 12, fontSize: 14.5 }} />
               <button onClick={() => { if (confirm('Fechar a aula? Os alunos deixam de poder entrar.')) { fecharSessaoAula(p.id, nomeProfessor || 'professor'); redesenhar(n => n + 1); } }}
                 style={{ minHeight: 44, padding: '8px 14px', borderRadius: 12, border: '1.5px solid #E4DDE0', background: '#fff', color: C.texto,
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5 }}>Fechar a aula</button>
