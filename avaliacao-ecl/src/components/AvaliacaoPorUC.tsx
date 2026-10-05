@@ -403,7 +403,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
                             <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
-                              {c.n} avaliação{c.n !== 1 ? 'ões' : ''} · última: {formatarData(c.ultima?.data || '')}
+                              {c.n} {c.n !== 1 ? 'avaliações' : 'avaliação'} · última: {formatarData(c.ultima?.data || '')}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>

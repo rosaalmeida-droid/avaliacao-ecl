@@ -1082,7 +1082,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       <div style={{ background: 'rgba(90,122,78,0.06)', border: '1px solid var(--sage)', borderRadius: 14, padding: 16, marginBottom: 12 }}>
         <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom: 8 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.5)' }}>
-            Nota prevista desta aula
+            {validacaoExistente ? 'Nota desta aula' : 'Nota prevista desta aula'}
           </div>
           <div style={{ fontSize:26, fontWeight:800, color:'var(--sage)' }}>
             {String(previsaoNota.nota20).replace(".", ",")}<span style={{fontSize:14, fontWeight:600, opacity:0.6}}>/20</span>
@@ -1098,7 +1098,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </div>
         <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
           Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : (tipoPlanAula as any) === 'atitudinal' ? 'atitudinal — só atitudes' : 'prática'}.
-          Falta preencher {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length} de {autoavaliacoes.length} competências.
+          {(() => {
+            const faltam = autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length;
+            return faltam ? ` Falta dar nota a ${faltam} de ${autoavaliacoes.length} competências.` : ' Todas as competências têm nota.';
+          })()}
         </div>
         {/* Os 5 C não entram nesta nota: dizê-lo aqui, com o que ficou em cada
             um, para o professor não pensar que os «5» contam (Rosa, out/2026). */}

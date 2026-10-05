@@ -1002,7 +1002,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {todasRequisicoesDoPlano.length > 0 && (
           <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
-              <span style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano</span>
+              <span style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} {todasRequisicoesDoPlano.length === 1 ? 'requisição' : 'requisições'} para este plano</span>
               {todasRequisicoesDoPlano.length > 1 && (
                 <button onClick={() => { setModoSelecaoReq(!modoSelecaoReq); setReqSelecionadasIds(new Set()); }}
                   style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
@@ -1015,7 +1015,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
                 <button onClick={() => {
                   if (reqSelecionadasIds.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)?`)) {
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} ${reqSelecionadasIds.size === 1 ? 'requisição' : 'requisições'}?`)) {
                     reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
                     setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
