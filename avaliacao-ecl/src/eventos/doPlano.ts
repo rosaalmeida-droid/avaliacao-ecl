@@ -75,7 +75,7 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
     const doDia = (getPlanosAula() as any[]).find(p => p.turmaId === turmaId && !p.tipoEvento && p.estado !== 'arquivado'
       && String(p.data || '').slice(0, 10) === String(ev.data || '').slice(0, 10));
     if (doDia) {
-      const comEvento = { ...doDia, eventoNaAula: 'evento', eventoId: ev.id, atualizadoEm: agora };
+      const comEvento = { ...doDia, eventoNaAula: 'evento', eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined, atualizadoEm: agora };
       addOrUpdatePlanoAula(comEvento);
       return comEvento;
     }
@@ -85,7 +85,7 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
       titulo: ev.nome || 'Evento', observacoes: '', fichasIds: [], estado: 'rascunho',
       criadoEm: agora, atualizadoEm: agora, ucId: ucs[0].id, ucNome: ucs[0].nome || '',
       numeroPlan: proximoNumeroPlano(), tipoAtividade: 'Evento externo', eventoNaAula: 'evento',
-      contaAssiduidade: true, eventoId: ev.id,
+      contaAssiduidade: true, eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined,
     };
     addOrUpdatePlanoAula(aula);
     return aula;
@@ -97,7 +97,7 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
     criadoEm: agora, atualizadoEm: agora, ucId: ucs[0]?.id || '', ucNome: ucs[0]?.nome || '',
     numeroPlan: proximoNumeroPlano(), tipoAtividade: 'Evento externo', tipoEvento: 'evento', tipoPlanAula: 'atitudinal',
     compAdicionadas: atitudesSugeridasEvento('Evento externo'), modoParticipacao: modo,
-    contaAssiduidade: false, eventoId: ev.id,
+    contaAssiduidade: false, eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined,
   };
   addOrUpdatePlanoAula(p);
   return p;
@@ -131,4 +131,17 @@ export function passarParaInscricoes(ev: any, plano: any, professor = ''): any |
   delete aula.eventoNaAula; delete aula.eventoId;
   addOrUpdatePlanoAula(aula);
   return criarAvaliacaoDoEvento(ev, plano.turmaId, 'inscricao', professor);
+}
+
+/** O que o aluno tem de saber antes de se inscrever: vai ter de se deslocar (Rosa, out/2026). */
+export function avisoDeslocacao(ev: any): string {
+  const morada = String(ev?.morada || '').trim(), partes = String(ev?.partes || '').trim();
+  if (ev?.onde === 'misto') return `Atenção: parte desta atividade é fora da escola. Vais ter de te deslocar.${partes ? ` ${partes}` : ''}${morada ? ` Local fora da escola: ${morada}.` : ''}`;
+  if (ev?.onde === 'fora') return `Atenção: esta atividade é fora da escola. Vais ter de te deslocar.${morada ? ` Local: ${morada}.` : ''}`;
+  return '';
+}
+/** Mudou o local do evento: os registos das turmas (o que o aluno vê) acompanham. */
+export function atualizarAvisoNosPlanos(ev: any): void {
+  const aviso = avisoDeslocacao(ev);
+  for (const p of planosDoEvento(ev.id)) if ((p.avisoDeslocacao || '') !== aviso) addOrUpdatePlanoAula({ ...p, avisoDeslocacao: aviso || undefined });
 }

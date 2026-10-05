@@ -9656,7 +9656,7 @@ export function eventosComoAtividades(turmaId: string): Atividade[] {
       id: 'ev_' + p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: String(p.data || '').slice(0, 10),
       horaInicio: p.horaInicio, horaFim: p.horaFim, descricao: p.sumario || p.observacoes || '',
       participantesIds: participantesDoEvento(p), inscritosIds: inscritosNoEvento(p.id), criadaEm: p.criadoEm || '',
-      doPlano: true, modo: modoParticipacao(p), planoId: p.id,
+      doPlano: true, modo: modoParticipacao(p), planoId: p.id, aviso: p.avisoDeslocacao || '',
     } as any));
 }
 

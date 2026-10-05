@@ -11,7 +11,7 @@
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
 import { janelaConfirmar } from './janelaConfirmar';
-import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento, passarParaInscricoes } from '../eventos/doPlano';
+import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento, passarParaInscricoes, atualizarAvisoNosPlanos } from '../eventos/doPlano';
 import { modulosAtivos } from '../cronograma';
 import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -135,7 +135,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
   // Depois de ler os eventos da escola: os planos de evento sem evento
   // («Avaliar evento fora do horário») passam a aparecer aqui.
   useEffect(() => { sincronizarEventos().then(ok => { if (ok) { eventosDosPlanosEmFalta(); setVersao(v => v + 1); } }); }, []);
-  const guardar = (e: EventoECL) => { gravarEvento({ ...e, atualizadoEm: new Date().toISOString() }); setVersao(v => v + 1); };
+  const guardar = (e: EventoECL) => { gravarEvento({ ...e, atualizadoEm: new Date().toISOString() }); atualizarAvisoNosPlanos(e); setVersao(v => v + 1); };
 
   const fundo = (filhos: React.ReactNode) => (
     <div style={{ background: C.fundo, minHeight: '100%', padding: '14px 12px 40px', borderRadius: 16 }}>
@@ -333,11 +333,17 @@ const PERGUNTAS: PerguntaTriagem[] = [
         <label style={{ fontSize: 13.5, color: C.suave }}>Acaba<input type="time" value={e.horaFim} onChange={x => mudar({ horaFim: x.target.value })} style={campo} /></label>
       </div>
     </>) },
-  { id: 'onde', titulo: 'Onde é?', feita: e => !!e.onde && (e.onde !== 'fora' || !!e.morada.trim()),
+  { id: 'onde', titulo: 'Onde é?', feita: e => !!e.onde && (e.onde !== 'fora' || !!e.morada.trim()) && (e.onde !== 'misto' || !!(e.partes || '').trim()),
     corpo: (e, mudar, avancar) => lista(<>
       <Opcao icone="🏫" ativo={e.onde === 'ecl'} onClick={() => { mudar({ onde: 'ecl' }); avancar(); }}>Na ECL</Opcao>
       <Opcao icone="🚐" ativo={e.onde === 'fora'} onClick={() => mudar({ onde: 'fora' })} sub="é preciso transporte e montagem">Fora da ECL</Opcao>
       {e.onde === 'fora' && <input autoFocus value={e.morada} onChange={x => mudar({ morada: x.target.value })} placeholder="Nome do espaço e morada" style={campo} />}
+      <Opcao icone="🏫🚐" ativo={e.onde === 'misto'} onClick={() => mudar({ onde: 'misto' })} sub="os alunos vão ter de se deslocar">Parte na escola, parte fora</Opcao>
+      {e.onde === 'misto' && <>
+        <textarea autoFocus value={e.partes || ''} onChange={x => mudar({ partes: x.target.value })} rows={3}
+          placeholder="Onde e a que horas é cada parte. Ex.: 10h00 na cozinha da escola; saída às 13h15; 14h00 no Mercado da Ribeira" style={{ ...campo, resize: 'vertical' }} />
+        <input value={e.morada} onChange={x => mudar({ morada: x.target.value })} placeholder="Nome e morada do espaço fora da escola" style={campo} />
+      </>}
       <Opcao icone="❔" ativo={e.onde === 'por_definir'} onClick={() => { mudar({ onde: 'por_definir' }); avancar(); }}>Ainda por definir</Opcao>
     </>) },
   { id: 'pessoas', titulo: 'Quantas pessoas?', ajuda: 'Basta um número aproximado; pode confirmá-lo mais tarde.', feita: e => e.pessoas > 0,
