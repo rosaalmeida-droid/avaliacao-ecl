@@ -42,6 +42,8 @@ const emInterrupcao = (iso: string) => INTERRUPCOES_2026_27.some(([a, b]) => iso
  * Só para Serviços de Cozinha/Pastelaria — é só esse o horário que a
  * aplicação conhece. Para as outras disciplinas continua a contar semanas.
  */
+const isoDe = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export function totalAulasUC(plano: PlanoAula): number {
   const mod = modDaUC(plano);
   if (!mod || !mod.dataInicio || !mod.dataFim) return 0;
@@ -51,12 +53,21 @@ export function totalAulasUC(plano: PlanoAula): number {
 
   const ehCozinha = /cozinha/i.test(String(mod.disciplina || ''));
   if (ehCozinha && horarioDaTurma(plano.turmaId)) {
-    let n = 0;
+    // Os dias que já passaram contam só se houve plano: uma terça sem aula
+    // (visita de estudo com outros professores, por exemplo) não conta. O
+    // horário só serve para prever as aulas que ainda vêm (Rosa, 5/out/2026).
+    const hoje = isoDe(new Date());
+    const daUC = getPlanosAula().filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId
+      && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p));
+    const passados = daUC.filter(p => String(p.data || '').slice(0, 10) < hoje).length;
+    const diasComPlano = new Set(daUC.map(p => String(p.data || '').slice(0, 10)).filter(d => d >= hoje));
+    let futuros = daUC.filter(p => String(p.data || '').slice(0, 10) >= hoje).length;
     for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (!FERIADOS_2026_27.has(iso) && !emInterrupcao(iso) && temCozinha(plano.turmaId, iso)) n++;
+      const iso = isoDe(d);
+      if (iso < hoje || diasComPlano.has(iso)) continue;
+      if (!FERIADOS_2026_27.has(iso) && !emInterrupcao(iso) && temCozinha(plano.turmaId, iso)) futuros++;
     }
-    if (n > 0) return n;
+    if (passados + futuros > 0) return passados + futuros;
   }
   return Math.floor((fim.getTime() - ini.getTime()) / (7 * DIA)) + 1;
 }
