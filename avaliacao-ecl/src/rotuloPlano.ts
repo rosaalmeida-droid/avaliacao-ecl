@@ -3,7 +3,7 @@
 //  M = dias de cozinha da turma entre início e fim da UC (horários.ts);
 //      para as outras disciplinas, semanas.
 import { TIPOS_EVENTO, nomeDoTipoAtividade } from './eventosAvaliacao';
-import { getPlanosAula } from './backend';
+import { getPlanosAula, horasDoPlano } from './backend';
 import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
 import { horarioDaTurma, temCozinha } from './horarios';
 import type { PlanoAula } from './types';
@@ -102,9 +102,33 @@ export function posicaoNaUC(plano: PlanoAula): number {
   return antes + 1;
 }
 
+/** As horas da UC que este plano cobre (Rosa, 5/out/2026): cada hora é uma
+ *  aula, como nos sumários do eSchooling. Um plano de 3 h depois de 18 h já
+ *  dadas são as horas 19 a 21. O total é o do cronograma (o mesmo das faltas). */
+export function horasDoPlanoNaUC(plano: PlanoAula): { de: number; ate: number; total: number } | null {
+  const mod = modDaUC(plano);
+  const total = Number(mod?.horasPrevistas) || 0;
+  const h = horasDoPlano(plano);
+  if (!total || !h || ehEventoForaDoHorario(plano)) return null;
+  const n = posicaoNaUC(plano);
+  const antes = getPlanosAula()
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.id !== plano.id && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p))
+    .filter(p => posicaoNaUC(p) < n)
+    .reduce((s, p) => s + horasDoPlano(p), 0);
+  return { de: Math.floor(antes) + 1, ate: Math.round(antes + h), total };
+}
+
 export function rotuloPlano(plano: PlanoAula): string {
   if (!plano) return 'Plano de aula';
   if (ehEventoForaDoHorario(plano)) return rotuloEvento(plano);
+  // Com as horas da UC no cronograma, o plano diz que horas cobre:
+  // «Plano de Aula 7, que dá as horas 19 a 21 das 50 horas da UC» (Rosa, 5/out/2026).
+  const hs = horasDoPlanoNaUC(plano);
+  if (hs) {
+    const np = posicaoNaUC(plano);
+    const horas = hs.ate <= hs.de ? `a hora ${hs.de}` : `as horas ${hs.de} a ${hs.ate}`;
+    return `Plano de Aula ${np}, que dá ${horas} das ${hs.total} horas da UC`;
+  }
   const n = posicaoNaUC(plano);
   const m = totalAulasUC(plano);
 

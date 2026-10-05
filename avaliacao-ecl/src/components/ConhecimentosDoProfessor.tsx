@@ -3,7 +3,7 @@
 // Usa-se no plano e no ecrã de criar ou alterar o plano.
 // ============================================================
 import React from 'react';
-import { addOrUpdatePlanoAula, getPlanosAula } from '../backend';
+import { addOrUpdatePlanoAula, getPlanosAula, getFichasProducao } from '../backend';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
@@ -33,7 +33,7 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
   const gravar = (nova: { id: string; texto: string; capitulo?: string }[]) => {
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const antes = new Set(((atual.conhecimentosProf || []) as any[]).map(x => x.id));
-    const entram = new Set(nova.map(x => x.id).filter(id => !antes.has(id) || removidas.includes(id)));
+    const entram = new Set(nova.map(x => x.id).filter(id => !antes.has(id) || ((atual.compRemovidas || []) as string[]).includes(id)));
     const p = { ...atual, conhecimentosProf: nova,
       compRemovidas: ((atual.compRemovidas || []) as string[]).filter(id => !entram.has(id)),
       atualizadoEm: new Date().toISOString() };
@@ -41,8 +41,17 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
   };
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
   const escolhido = (id: string) => lista.some(x => x.id === id) && !removidas.includes(id);
-  const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
-    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista.filter(x => x.id !== id), { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
+  // Os toques trabalham sobre o plano tal como está gravado agora: antes, dois
+  // toques seguidos podiam desfazer-se um ao outro (Rosa, 5/out/2026).
+  const listaAgora = () => conhecimentosDaAula(getPlanosAula().find(x => x.id === plano.id) || plano) as typeof lista;
+  const escolhidoAgora = (id: string) => {
+    const at: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    return listaAgora().some(x => x.id === id) && !((at.compRemovidas || []) as string[]).includes(id);
+  };
+  const alternarCampo = (id: string, textoCampo: string, capitulo: string) => {
+    const l = listaAgora();
+    gravar(escolhidoAgora(id) ? l.filter(x => x.id !== id) : [...l.filter(x => x.id !== id), { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
+  };
   const azul = '#1d4ed8';
   const trabalho = escolheTema(triagemDoPlano(plano));
   return (
@@ -52,8 +61,35 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
         {trabalho
           ? 'Cada aluno escolhe o seu tema entre os conteúdos marcados. Sem nada marcado, entram todos os do manual.'
-          : 'Com 1 ou 2 conteúdos, o aluno responde a cada indicador. Com mais (ou o manual todo), o aluno diz qual trabalhou e responde aos desse.'}
+          : 'Marque os conteúdos e os indicadores. Depois escolha abaixo como os alunos respondem.'}
       </div>
+      {/* Aula dada pelo professor: as duas opções, à escolha do professor (Rosa, 5/out/2026). */}
+      {!trabalho && (() => {
+        const nCaps = new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size;
+        if (nCaps < 2) return null;
+        const escolhe = plano.alunoEscolheTema === true;
+        const mudar = (v: boolean) => {
+          const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+          const p = { ...atual, alunoEscolheTema: v, atualizadoEm: new Date().toISOString() };
+          addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+        };
+        const opcao = (on: boolean, titulo: string, sub: string, ao: () => void) => (
+          <button onClick={ao} style={{ flex: '1 1 220px', textAlign: 'left', padding: '10px 12px', borderRadius: 11, cursor: 'pointer', fontFamily: 'inherit',
+            border: on ? `2px solid ${azul}` : '1px solid rgba(26,23,20,0.22)', background: on ? azul : '#fff', color: on ? '#fff' : '#1a1714' }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800 }}>{on ? '✓ ' : ''}{titulo}</div>
+            <div style={{ fontSize: 12.5, opacity: 0.85 }}>{sub}</div>
+          </button>
+        );
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Marcou {nCaps} conteúdos. Como é que os alunos respondem?</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {opcao(!escolhe, 'Todos os alunos respondem a tudo', 'Cada aluno responde a todos os indicadores marcados, em todos os conteúdos.', () => mudar(false))}
+              {opcao(escolhe, 'Cada aluno escolhe um conteúdo', 'O aluno escolhe um dos conteúdos marcados e responde só aos indicadores desse.', () => mudar(true))}
+            </div>
+          </div>
+        );
+      })()}
       {trabalho && new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size === 1 && (
         <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 10, padding: '8px 12px', marginBottom: 8,
           fontSize: 13.5, fontWeight: 700, color: '#8e2418', lineHeight: 1.45 }}>
@@ -91,20 +127,23 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
         const marcar = (caps: any[], on: boolean) => {
           const ids = new Set(caps.flatMap(c => campos(c).map(x => x.id)));
           // Sem repetir os que já lá estavam (retirados nas Competências): voltam a entrar.
-          const novos = caps.flatMap(c => campos(c)).filter(x => !escolhido(x.id));
+          const l = listaAgora();
+          const novos = caps.flatMap(c => campos(c)).filter(x => !escolhidoAgora(x.id));
           const idsNovos = new Set(novos.map(x => x.id));
-          gravar(on ? [...lista.filter(x => !idsNovos.has(x.id)), ...novos] : lista.filter(x => !ids.has(x.id)));
+          gravar(on ? [...l.filter(x => !idsNovos.has(x.id)), ...novos] : l.filter(x => !ids.has(x.id)));
         };
         const capsComAlgo = manual.capitulos.filter(c => nMarcados(c) > 0).length;
         const todos = capsComAlgo === manual.capitulos.length;
         const partes = [...new Set(manual.capitulos.map(c => c.parte || ''))];
         const caixa = (estado: 0 | 1 | 2, ao: () => void, grande?: boolean) => (
-          <span onClick={e => { e.stopPropagation(); ao(); }} role="checkbox" aria-checked={estado === 2 ? true : estado === 1 ? 'mixed' : false}
-            style={{ width: grande ? 20 : 18, height: grande ? 20 : 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
+          // Um botão (e não um span): com o plano só para ler, fica desligado como
+          // os subtítulos. Antes marcava-se o título mas não os subtítulos (Rosa, 5/out/2026).
+          <button type="button" onClick={e => { e.stopPropagation(); ao(); }} role="checkbox" aria-checked={estado === 2 ? true : estado === 1 ? 'mixed' : false}
+            style={{ width: grande ? 20 : 18, height: grande ? 20 : 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
               border: `2px solid ${estado ? azul : 'rgba(26,23,20,0.3)'}`, background: estado === 2 ? azul : estado === 1 ? 'rgba(29,78,216,0.15)' : '#fff',
               color: '#fff', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
             {estado === 2 ? '✓' : estado === 1 ? <span style={{ color: azul }}>–</span> : ''}
-          </span>
+          </button>
         );
         return (
           <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, border: '1px solid rgba(37,99,235,0.2)', padding: '10px 12px' }}>
@@ -120,6 +159,9 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
               {capsComAlgo > 0 && <button onClick={() => marcar(manual.capitulos, false)}
                 style={{ fontSize: 13, fontWeight: 700, padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit' }}>Limpar</button>}
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', lineHeight: 1.45, margin: '2px 0 6px' }}>
+              Para escolher um título inteiro, carregue no quadrado ao lado dele. Para escolher só alguns subtítulos, carregue no nome do título e marque os subtítulos que quer. Os subtítulos que não marcar não são perguntados aos alunos.
             </div>
             {partes.map(parte => {
               const caps = manual.capitulos.filter(c => (c.parte || '') === parte);
@@ -143,7 +185,7 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
                       <div key={c.n}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px 5px 18px' }}>
                           {caixa(est, () => marcar([c], est !== 2))}
-                          <span onClick={() => marcar([c], est !== 2)} style={{ flex: 1, fontSize: 13.5, cursor: 'pointer', fontWeight: n ? 700 : 500 }}>
+                          <span onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} title="Ver os subtítulos" style={{ flex: 1, fontSize: 13.5, cursor: 'pointer', fontWeight: n ? 700 : 500 }}>
                             <span style={{ color: 'rgba(26,23,20,0.45)', marginRight: 6 }}>{String(c.n).padStart(2, '0')}</span>{c.titulo}
                           </span>
                           <button onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} title="Ver os indicadores"
@@ -188,6 +230,32 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
           </div>
         )}
       </details>
+    </div>
+  );
+}
+
+// ── Aula mista: duas partes à vista (Rosa, 5/out/2026) ──────────
+// «A aula teórica incide sobre» (o manual ou o que o professor escreve) e
+// «A aula prática incide sobre» (as fichas técnicas do plano).
+export function ehAulaMista(plano: any): boolean {
+  return String(plano?.tipoPlanAula || '').replace('_obr', '') === 'misto';
+}
+
+export function DuasPartesDaAulaMista({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
+  const titulo = (t: string) => (
+    <div style={{ fontSize: 15, fontWeight: 800, margin: '4px 0 8px' }}>{t}</div>
+  );
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {titulo('📚 A aula teórica incide sobre:')}
+      <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      {titulo('🔪 A aula prática incide sobre:')}
+      <div style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(181,101,29,0.3)', background: 'rgba(181,101,29,0.05)', fontSize: 14, lineHeight: 1.5 }}>
+        {fichas.length
+          ? fichas.map(f => <div key={f.id}>● {f.nomePrato || 'Ficha técnica'}</div>)
+          : <span style={{ color: 'rgba(26,23,20,0.6)' }}>Ainda sem fichas técnicas. Juntam-se no plano, no campo «Fichas, guião e requisição».</span>}
+      </div>
     </div>
   );
 }

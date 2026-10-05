@@ -1,4 +1,5 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { janelaConfirmar } from './janelaConfirmar';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
@@ -6,7 +7,7 @@ import { BotaoPublicar } from './BotaoPublicar';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula, alunosPorResponderVersaoNova } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -46,7 +47,7 @@ import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
 import { CriarPlano } from './PlanoAula';
-import { ConhecimentosDoProfessor } from './ConhecimentosDoProfessor';
+import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
 import { modulosDaTurma } from '../cronograma';
 import { AvisoAvaliacaoAnterior } from './AvisoAvaliacaoAnterior';
 import { PinTemporarioPanel } from './PinTemporarioPanel';
@@ -555,6 +556,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
    *  e grava-se com «Gravar e terminar» (Rosa, out/2026: mudava-se sem querer
    *  e não havia botão para gravar). */
   const [aAlterar, setAAlterar] = useState(false);
+  /** A janela «O que tem de fazer agora» já foi vista neste plano (nesta sessão). */
+  const [avisoVisto, setAvisoVisto] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('ecl_aviso_plano_' + plano.id) === '1'; } catch { return false; }
+  });
+  const fecharAviso = () => { setAvisoVisto(true); try { sessionStorage.setItem('ecl_aviso_plano_' + plano.id, '1'); } catch { /* */ } };
   // O menu da esquerda marca onde o professor está. As competências abrem-se
   // dentro do Início: antes o menu ficava em «Fichas» (Rosa, out/2026).
   React.useEffect(() => {
@@ -617,6 +623,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }, [plano.id, JSON.stringify((plano as any).compAdicionadas || [])]);
   // Accordion — id da competência expandida (null = todas fechadas)
   const [compAberta, setCompAberta] = useState<string | null>(null);
+  const [verFicaTira, setVerFicaTira] = useState(false);
   function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
   // Muitos capítulos do manual: a lista começa fechada.
   // As partes do manual que o professor fechou (começam todas abertas).
@@ -758,7 +765,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
   const nKnwManual = [...capsDoManual.values()].reduce((n, g) => n + g.ids.filter(id => !compRemovidas.includes(id)).length, 0);
   const capsAtivos = [...capsDoManual.values()].filter(g => g.ids.some(id => !compRemovidas.includes(id))).length;
-  const temaAEscolher = !ehAtitudinal && (capsAtivos > 2 || escolheTema(triagemDoPlano(plano)));
+  const temaAEscolher = !ehAtitudinal && (escolheTema(triagemDoPlano(plano)) || ((plano as any).alunoEscolheTema === true && capsAtivos > 1));
   const nConhecimentosAvaliados = temaAEscolher
     ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.max(0, ...[...capsDoManual.values()].map(g => g.ids.filter(id => !compRemovidas.includes(id)).length))
     : compConhecimentos.length;
@@ -778,56 +785,89 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // As competências retiradas, todas juntas, para se voltarem a incluir (Rosa, out/2026).
   // A farda e os registos (OBR) dependem do tipo de aula: mudam-se em «Como é a aula».
+  // «O que fica e o que se tira» (Rosa, 5/out/2026): um botão que abre uma
+  // janela à parte com as duas listas, para o professor confirmar o que vai
+  // ser perguntado aos alunos e corrigir ali mesmo, se quiser.
   const blocoRetiradas = (() => {
-          const todasRet = [...new Set(compRemovidas)].filter(id => !/^OBR_0[12]$/.test(id));
-          // Do manual, agrupadas por capítulo (podiam ser dezenas de linhas).
-          const porCap = new Map<string, { titulo: string; ids: string[] }>();
-          const retiradas: string[] = [];
-          for (const id of todasRet) {
-            const c = capituloDoCampo(id);
-            if (!c) { retiradas.push(id); continue; }
-            const ch = `${c.ficheiro}-${c.capitulo.n}`;
-            const g = porCap.get(ch) || { titulo: rotuloConteudo(c.capitulo), ids: [] };
-            g.ids.push(id); porCap.set(ch, g);
-          }
-          if (!todasRet.length) return null;
-          const nomeDe = (id: string) => {
-            const todas: any[] = [...compSubTodas, ...compAppTodas, ...compConhecimentosTodos, ...compTecnicasTodas, ...ATITUDES, ...compObrigatorias];
-            const x = todas.find(m => m.id === id || codigoDaLinha(m.id) === codigoDaLinha(id));
-            return x?.nome || nomeConhecimentoProf(id) || id;
-          };
-          return (
-            <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, border:'1px dashed rgba(26,23,20,0.25)', background:'#fff' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ flex:1, fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.55)' }}>
-                  Retiradas desta aula ({retiradas.length + porCap.size})
-                </div>
-                <button onClick={() => guardarCompetencias(compRemovidas.filter(x => /^OBR_0[12]$/.test(x)), compAdicionadas)}
-                  style={{ fontSize:13, padding:'5px 12px', borderRadius:8, border:'none', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:700, fontFamily:'inherit' }}>
-                  Repor todas
-                </button>
+    const todasRet = [...new Set(compRemovidas)].filter(id => !/^OBR_0[12]$/.test(id));
+    const porCap = new Map<string, { titulo: string; ids: string[] }>();
+    const retiradas: string[] = [];
+    for (const id of todasRet) {
+      const c = capituloDoCampo(id);
+      if (!c) { retiradas.push(id); continue; }
+      const ch = `${c.ficheiro}-${c.capitulo.n}`;
+      const g = porCap.get(ch) || { titulo: rotuloConteudo(c.capitulo), ids: [] };
+      g.ids.push(id); porCap.set(ch, g);
+    }
+    const nomeDe = (id: string) => {
+      const todas: any[] = [...compSubTodas, ...compAppTodas, ...compConhecimentosTodos, ...compTecnicasTodas, ...ATITUDES, ...compObrigatorias];
+      const x = todas.find(m => m.id === id || codigoDaLinha(m.id) === codigoDaLinha(id));
+      return x?.nome || nomeConhecimentoProf(id) || id;
+    };
+    // O que fica: por grupos, com o manual por conteúdo.
+    const ficaManual = [...capsDoManual.entries()]
+      .map(([ch, g]) => ({ ch, titulo: g.titulo, ids: g.ids.filter(id => !compRemovidas.includes(id)) }))
+      .filter(g => g.ids.length);
+    const ficaGrupos: { titulo: string; itens: { id: string; nome: string }[] }[] = [
+      { titulo: 'Farda e higiene', itens: compObrigatorias.filter(o => !compRemovidas.includes(o.id)).map(o => ({ id: o.id, nome: o.nome })) },
+      { titulo: 'Técnicas das fichas', itens: [...compSub, ...compApp, ...compTecnicas].map((m: any) => ({ id: m.id, nome: m.nome })) },
+      { titulo: 'Conhecimentos', itens: compConhecimentos.filter(k => !capituloDoCampo(k.id)).map(k => ({ id: k.id, nome: k.nome })) },
+      { titulo: 'Atitudes', itens: (ehAtitudinal ? compAdicionadas.filter(x => x.startsWith('ATI-')).map(id => ({ id, nome: nomeDe(id) }))
+        : compAtitudes.map((a: any) => ({ id: a.id, nome: a.nome }))) },
+    ].filter(g => g.itens.length);
+    const nFica = ficaGrupos.reduce((n, g) => n + g.itens.length, 0) + ficaManual.reduce((n, g) => n + g.ids.length, 0);
+    const nTira = retiradas.length + [...porCap.values()].reduce((n, g) => n + g.ids.length, 0);
+    const tirar = (ids: string[]) => guardarCompetencias([...new Set([...compRemovidas, ...ids])], compAdicionadas);
+    const repor = (ids: string[]) => guardarCompetencias(compRemovidas.filter(x => !ids.includes(x)), compAdicionadas);
+    const linha = (key: string, texto: React.ReactNode, botao: React.ReactNode) => (
+      <div key={key} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderTop:'1px solid rgba(26,23,20,0.07)' }}>
+        <span style={{ flex:1, fontSize:14, lineHeight:1.4 }}>{texto}</span>{botao}
+      </div>
+    );
+    const bTirar = (ids: string[]) => <button onClick={() => tirar(ids)} style={{ fontSize:13, padding:'4px 10px', borderRadius:7, border:'1px solid #c0392b', background:'#fff', color:'#c0392b', cursor:'pointer', fontWeight:700, fontFamily:'inherit', flexShrink:0 }}>− Tirar</button>;
+    const bRepor = (ids: string[]) => <button onClick={() => repor(ids)} style={{ fontSize:13, padding:'4px 10px', borderRadius:7, border:'none', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:700, fontFamily:'inherit', flexShrink:0 }}>+ Pôr de volta</button>;
+    const subtitulo = (t: string) => <div style={{ fontSize:12.5, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.55)', margin:'10px 0 2px' }}>{t}</div>;
+    return (<>
+      <button onClick={() => setVerFicaTira(true)}
+        style={{ display:'block', width:'100%', marginBottom:14, padding:'12px 14px', borderRadius:10, border:'2px solid var(--copper)', background:'var(--copper-pale)',
+          color:'var(--copper)', fontSize:15, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+        📋 Ver o que fica na aula e o que foi tirado
+        <div style={{ fontSize:13, fontWeight:600, marginTop:2 }}>Ficam {nFica} competências na aula e foram tiradas {nTira}.</div>
+      </button>
+      {verFicaTira && (
+        <div onClick={() => setVerFicaTira(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+            style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:620, maxHeight:'88vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding:'16px 18px 8px' }}>
+              <div style={{ fontSize:18, fontWeight:800 }}>O que fica na aula e o que foi tirado</div>
+              <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:4, lineHeight:1.45 }}>
+                Só o que fica na aula vai ser perguntado aos alunos. Pode tirar ou pôr de volta aqui mesmo.
+                {capsDoManual.size > 0 && <> Nas perguntas do manual, <b>{temaAEscolher ? 'cada aluno escolhe um conteúdo e responde só aos indicadores desse' : 'todos os alunos respondem a tudo o que ficou marcado'}</b>.</>}
               </div>
-              {[...porCap.entries()].map(([ch, g]) => (
-                <div key={ch} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop:'1px solid rgba(26,23,20,0.06)' }}>
-                  <span style={{ flex:1, fontSize:13.5, color:'rgba(26,23,20,0.6)', textDecoration:'line-through' }}>{g.titulo} <span style={{ textDecoration:'none' }}>({g.ids.length} indicador{g.ids.length === 1 ? '' : 'es'})</span></span>
-                  <button onClick={() => guardarCompetencias(compRemovidas.filter(x => !g.ids.includes(x)), compAdicionadas)}
-                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:'1px solid var(--sage)', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:600, fontFamily:'inherit' }}>
-                    + Incluir
-                  </button>
-                </div>
-              ))}
-              {retiradas.map(id => (
-                <div key={id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop:'1px solid rgba(26,23,20,0.06)' }}>
-                  <span style={{ flex:1, fontSize:13.5, color:'rgba(26,23,20,0.6)', textDecoration:'line-through' }}>{nomeDe(id)}</span>
-                  <button onClick={() => guardarCompetencias(compRemovidas.filter(x => x !== id), compAdicionadas)}
-                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:'1px solid var(--sage)', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:600, fontFamily:'inherit' }}>
-                    + Incluir
-                  </button>
-                </div>
-              ))}
             </div>
-          );
-        })();
+            <div style={{ overflowY:'auto', padding:'0 18px 8px' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'#2e6b2e', marginTop:8 }}>✓ Isto fica na aula e vai ser perguntado aos alunos ({nFica}):</div>
+              {!nFica && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Não fica nada na aula, por isso os alunos não teriam nada para responder.</div>}
+              {ficaGrupos.map(g => (<React.Fragment key={g.titulo}>
+                {subtitulo(g.titulo)}
+                {g.itens.map(i => linha(i.id, i.nome, bTirar([i.id])))}
+              </React.Fragment>))}
+              {ficaManual.length > 0 && subtitulo('Do manual')}
+              {ficaManual.map(g => linha(g.ch, <>{g.titulo} <span style={{ color:'rgba(26,23,20,0.55)' }}>({g.ids.length} indicador{g.ids.length === 1 ? '' : 'es'})</span></>, bTirar(g.ids)))}
+              <div style={{ fontSize:15, fontWeight:800, color:'#8e2418', marginTop:18 }}>✗ Isto foi tirado e não vai ser perguntado aos alunos ({nTira}):</div>
+              {!nTira && <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', padding:'6px 0' }}>Não tirou nada desta aula.</div>}
+              {[...porCap.entries()].map(([ch, g]) => linha('r' + ch, <span style={{ color:'rgba(26,23,20,0.65)' }}>{g.titulo} ({g.ids.length} indicador{g.ids.length === 1 ? '' : 'es'})</span>, bRepor(g.ids)))}
+              {retiradas.map(id => linha('r' + id, <span style={{ color:'rgba(26,23,20,0.65)' }}>{nomeDe(id)}</span>, bRepor([id])))}
+            </div>
+            <div style={{ padding:'12px 18px 16px', borderTop:'1px solid rgba(26,23,20,0.1)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ flex:1, fontSize:13.5, color:'#2e6b2e', fontWeight:700 }}>✓ Cada mudança fica gravada no momento em que carrega no botão.</span>
+              <button onClick={() => setVerFicaTira(false)} style={{ fontSize:15, padding:'10px 22px', borderRadius:10, border:'none', background:'var(--copper)', color:'#fff', cursor:'pointer', fontWeight:800, fontFamily:'inherit' }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>);
+  })();
 
   /** Repor as competências da aula (Rosa, out/2026): limpa o que se tirou e o
    *  que se juntou à mão; volta a lista toda que a aula dá. A farda e os
@@ -1018,9 +1058,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             {modoSelecaoReq && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
-                <button onClick={() => {
+                <button onClick={async () => {
                   if (reqSelecionadasIds.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} ${reqSelecionadasIds.size === 1 ? 'requisição' : 'requisições'}?`)) {
+                  if (await janelaConfirmar({ titulo: `Quer mesmo eliminar ${reqSelecionadasIds.size === 1 ? 'esta requisição' : `estas ${reqSelecionadasIds.size} requisições`}?`,
+                    texto: 'Fica apagada de vez e não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) {
                     reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
                     setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
@@ -1043,7 +1084,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {' · '}{(r?.linhas || []).length} ingredientes
                 </span>
                 {!modoSelecaoReq && (
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Eliminar DEFINITIVAMENTE esta requisição?')) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
+                  <button onClick={async (e) => { e.stopPropagation(); if (await janelaConfirmar({ titulo: 'Quer mesmo eliminar esta requisição?', texto: 'Fica apagada de vez e não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
                     style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}>🗑️</button>
                 )}
               </div>
@@ -1603,6 +1644,52 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     <div>
       {/* Finalizar as alterações (Rosa, out/2026): o professor vê o plano todo
           como fica e o que mudou agora, e só então confirma. */}
+      {/* (Rosa, 5/out/2026) O que o professor tem de fazer não pode estar a
+          meio do ecrã: ao abrir o plano, uma janela diz logo o que é e tem um
+          só botão para o fazer. */}
+      {modulo === 'inicio' && !avisoVisto && !finalizar && plano.estado === 'publicado' && (() => {
+        let porValidar = 0, porDecidir = 0, deNovo = 0;
+        try {
+          const est = estadoDaTurmaNaAula(plano.id, plano.turmaId).filter(e => !(e.numero === 99 || e.numero === 88 || alunoDeTeste(e.alunoId)));
+          const sessao = getSessaoAula(plano.id);
+          const passou = !!sessao?.fechadaEm || String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10);
+          porValidar = est.filter(e => e.autoavaliou && !e.validado).length;
+          porDecidir = passou ? est.filter(e => !e.decisaoFalta && (!e.entrou || e.foraDeTempo)).length : 0;
+          deNovo = (plano as any).pedirDeNovoEm || (plano as any).reabertaPara
+            ? est.filter(e => e.autoavaliou && !e.validado && getValidacoes().some(v => v.alunoId === e.alunoId && v.planoAulaId === plano.id)).length : 0;
+        } catch { /* sem dados: não mostra */ }
+        if (!porValidar && !porDecidir) return null;
+        const btn = (cheio: boolean): React.CSSProperties => ({ display: 'block', width: '100%', minHeight: 54, borderRadius: 12, marginTop: 10,
+          border: cheio ? 'none' : '1px solid rgba(26,23,20,0.2)', background: cheio ? 'var(--sage, #5a7a4e)' : '#fff',
+          color: cheio ? '#fff' : 'rgba(26,23,20,0.7)', fontSize: cheio ? 17 : 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' });
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 18, padding: '22px 22px 18px', maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--copper)' }}>O que tem de fazer nesta aula</div>
+              {porValidar > 0 && (
+                <div style={{ fontSize: 19, fontWeight: 800, marginTop: 8, lineHeight: 1.35 }}>
+                  {porValidar === 1 ? '1 autoavaliação' : `${porValidar} autoavaliações`} à espera de validação
+                  {deNovo > 0 && <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
+                    {deNovo === 1 ? '1 aluno respondeu outra vez' : `${deNovo} alunos responderam outra vez`} e precisa{deNovo === 1 ? '' : 'm'} de nova validação.</span>}
+                </div>
+              )}
+              {porDecidir > 0 && (
+                <div style={{ fontSize: porValidar ? 15.5 : 19, fontWeight: porValidar ? 600 : 800, marginTop: 8, color: porValidar ? 'rgba(26,23,20,0.75)' : undefined }}>
+                  {porDecidir === 1 ? '1 aluno' : `${porDecidir} alunos`} com a presença por decidir (não entrou ou chegou fora de tempo).
+                </div>
+              )}
+              <button style={btn(true)} onClick={() => { fecharAviso(); if (porValidar) setModulo('validacao'); else setTabInicio('turma'); }}>
+                {porValidar ? 'Validar agora →' : 'Decidir as presenças agora →'}
+              </button>
+              {porValidar > 0 && porDecidir > 0 && (
+                <button style={btn(false)} onClick={() => { fecharAviso(); setTabInicio('turma'); }}>Primeiro, decidir as presenças</button>
+              )}
+              <button style={btn(false)} onClick={fecharAviso}>Mais tarde</button>
+            </div>
+          </div>
+        );
+      })()}
       {finalizar && (() => {
         const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
         const fecha = () => setFinalizar(null);
@@ -2094,6 +2181,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         if (aconteceu && r.porValidar > 0) acoes.push({ t: `Validar ${r.porValidar === 1 ? 'a autoavaliação que falta' : `as ${r.porValidar} autoavaliações`}`, ao: () => setModulo('validacao') });
         if (aconteceu && porDecidir > 0) acoes.push({ t: `Confirmar as presenças (${porDecidir} por decidir)`, ao: () => setTabInicio('turma') });
         if (aconteceu && r.porAvaliar > 0) acoes.push({ t: `Ver quem ainda não se avaliou (${r.porAvaliar})`, ao: () => setModulo('validacao') });
+        const versaoNova = alunosPorResponderVersaoNova(getPlanosAula().find(x => x.id === plano.id) || plano).filter(id => !alunoDeTeste(id)).length;
+        if (versaoNova > 0) acoes.push({ t: `Ver quem ainda não respondeu à versão nova (${versaoNova})`, ao: () => setModulo('validacao') });
         const [prox, depois] = acoes;
         const n = (v: number, cor: string, rot: string, total?: number) => (
           <div style={{ flex: '1 1 110px', background: '#fff', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, textAlign: 'center', padding: '10px 4px' }}>
@@ -2175,7 +2264,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
-      {(!contextoDoPlano(plano).producao || escolheTema(triagemDoPlano(plano))) && !(plano as any).tipoEvento && (
+      {ehAulaMista(plano) && !(plano as any).tipoEvento ? <DuasPartesDaAulaMista plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        : (!contextoDoPlano(plano).producao || escolheTema(triagemDoPlano(plano))) && !(plano as any).tipoEvento && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
       )}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
@@ -2297,7 +2387,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       </Gaveta>
       {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
           cozinha» tirava a requisição aos eventos e aos planos antigos). */}
-      <Gaveta soLeitura={!aAlterar} id="fichas" n={4} titulo="Fichas, guião e requisição"
+      <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato

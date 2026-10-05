@@ -8,6 +8,7 @@
 //   - eliminar fichas de produção para sempre.
 // E os PINs dos professores, que é a coordenadora quem entrega.
 // ============================================================
+import { janelaConfirmar } from './janelaConfirmar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   getTurmas, getPlanosAulaPorTurma, getFichasProducao, eliminarFichaProducaoDefinitivamente, sincronizarDoSheets,
@@ -129,8 +130,8 @@ export function DadosSeguranca() {
           <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0',
             borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
             <span style={{ flex: 1, minWidth: 0 }}>{f.nomePrato || '(sem nome)'}</span>
-            <button style={botaoApagar} onClick={() => {
-              if (!confirm(`Eliminar definitivamente «${f.nomePrato}»?\n\nApaga a ficha neste aparelho e no arquivo da escola. Esta ação não pode ser desfeita.`)) return;
+            <button style={botaoApagar} onClick={async () => {
+              if (!await janelaConfirmar({ titulo: `Quer mesmo eliminar «${f.nomePrato}»?`, texto: 'Apaga a ficha neste aparelho e no arquivo da escola. Não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) return;
               eliminarFichaProducaoDefinitivamente(f.id); setVersao(v => v + 1);
             }}>Eliminar</button>
           </div>

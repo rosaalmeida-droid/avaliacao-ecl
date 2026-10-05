@@ -32,8 +32,9 @@ export const HORARIOS: HorarioTurma[] = [
     turmaId: '1º BCR',
     inicioAulas: '2026-09-21',
     blocos: [
-      // Terça-feira, o dia inteiro.
-      { dia: 2, inicio: '08:30', fim: '17:30' },
+      // Terça-feira, das 08:30 às 15:30 (Rosa, 5/out/2026: estava até às
+      // 17:30, mas à terça a turma só tem aulas até às 15:30).
+      { dia: 2, inicio: '08:30', fim: '15:30' },
     ],
   },
   {

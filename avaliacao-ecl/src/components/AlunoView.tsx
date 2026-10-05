@@ -1712,7 +1712,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // Aula já validada pelo professor: fica só para consulta, com a nota. Antes
   // continuava a aceitar passos («Vamos começar», «3 feitos») e parecia uma
   // aula a decorrer (auditoria 5/out/2026).
-  const validacaoDaAula: any = soConsultaPedida ? null : getValidacoes()
+  const validacaoDestaAula: any = soConsultaPedida ? null : getValidacoes()
     .filter((v: any) => v.alunoId === aluno.id && v.planoAulaId === planoAberto.id)
     .sort((a: any, b: any) => String(b.validadoEm || b.criadoEm || '').localeCompare(String(a.validadoEm || a.criadoEm || '')))[0];
   // MAS: se o professor pediu para responder outra vez (perguntas novas ou
@@ -1720,8 +1720,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // aluno não conseguia avançar (Rosa, 5/out/2026).
   const temDeResponderOutraVez = !jaSubmeteuAutoavaliacao(planoAberto, aluno.id)
     && !!pedidoParaOAluno(getPlanosAula().find(p => p.id === planoAberto.id) || planoAberto, aluno.id);
-  const aulaValidada = !!validacaoDaAula && !temDeResponderOutraVez;
-  const notaValidada = aulaValidada ? notaDaAulaValidada(validacaoDaAula) : null;
+  const aulaValidada = !!validacaoDestaAula && !temDeResponderOutraVez;
+  const notaValidada = aulaValidada ? notaDaAulaValidada(validacaoDestaAula) : null;
   const soConsulta = soConsultaPedida || aulaValidada;
   const versao = String((plano as any).atualizadoEm || '');
   const versaoAoAbrir = React.useRef(versao);
@@ -1829,7 +1829,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
     if (id==='requisicao' && requisicao) return 'concluido';
     if (id==='funcao_fim' && funcaoFimFeita) return 'concluido';
     // Também quando a resposta chegou depois de o ecrã abrir (ou já foi validada).
-    if (id==='avaliacao' && (avaliacaoConcluida || jaSubmeteuAutoavaliacao(plano, aluno.id) || !!validacaoDaAula(aluno.id, plano.id))) return 'concluido';
+    if (id==='avaliacao' && (avaliacaoConcluida || jaSubmeteuAutoavaliacao(plano, aluno.id) || aulaValidada)) return 'concluido';
     if (id===secAberta) return 'ativo';
     return 'pendente';
   };
@@ -3247,7 +3247,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // ── Conhecimentos: os do referencial (aulas teóricas ou mistas) e os
   // escritos pelo professor para esta aula (menos na atitudinal).
   const tipoPlanAula = regras.tipoPlanAula;
-  const conhecimentosSug = regras.conhecimentos.map(k => {
+  // Cada aluno vê os indicadores por uma ordem diferente (roda pelo n.º do
+  // aluno), para os colegas do lado não irem a par a responder (Rosa, 5/out/2026).
+  const rodaK = regras.conhecimentos.length ? (Number((aluno as any).numero) || 0) % regras.conhecimentos.length : 0;
+  const conhecimentosPorOrdem = [...regras.conhecimentos.slice(rodaK), ...regras.conhecimentos.slice(0, rodaK)];
+  const conhecimentosSug = conhecimentosPorOrdem.map(k => {
     if (!k.id.startsWith('KNW-')) return { ...k, motivo: '' };
     const avs = getHistoricoAlunoMicro(aluno.id, k.id).map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
     const motivo = estaEmRegressao(avs) ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';

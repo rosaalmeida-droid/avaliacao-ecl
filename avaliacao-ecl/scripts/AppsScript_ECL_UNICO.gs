@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.4';
+var VERSAO = 'ECL único v25.5';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1992,6 +1992,24 @@ var NIVEL_PARA_LER = { nf: 'Não fiz', tp: 'Tentei, ainda não sei bem', ca: 'Fi
   atingi: 'Atingi', superei: 'Superei', nop: 'Não teve oportunidade', outra: 'Fez outra tarefa', evento: 'Técnica no evento' };
 
 /** O mais recente de cada chave (os registos rápidos podem vir repetidos). */
+/** (v25.5) A presença que conta de cada aluno em cada aula. Quando há mais do
+ *  que um registo (telemóvel do aluno e professor), manda a decisão do
+ *  professor mais recente; só sem decisão conta o registo mais recente.
+ *  Antes, uma parte da folha via «F» e outra «Presente» (Afonso, 5/out/2026). */
+function presencaQueConta_(lista) {
+  var m = {};
+  (lista || []).forEach(function (x) {
+    var k = x.alunoId + '|' + x.planoAulaId; if (!x.alunoId || !x.planoAulaId) return;
+    var y = m[k]; if (!y) { m[k] = x; return; }
+    var dx = !!x.decisaoProfessor, dy = !!y.decisaoProfessor;
+    if (dx !== dy) { if (dx) m[k] = x; return; }
+    var qx = String((dx ? x.decididoEm : '') || x.horaEntrada || x.data || '');
+    var qy = String((dy ? y.decididoEm : '') || y.horaEntrada || y.data || '');
+    if (qx >= qy) m[k] = x;
+  });
+  return m;
+}
+
 function ultimoPor(lista, chaveDe, quandoDe) {
   var m = {};
   (lista || []).forEach(function (x) { var k = chaveDe(x); if (!k) return; if (!m[k] || String(quandoDe(x) || '') >= String(quandoDe(m[k]) || '')) m[k] = x; });
@@ -2070,7 +2088,7 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
   if (!ultimas.length) { vazia(); return; }
   var sel = ultimoPor(d.selecoes, function (s) { return s.alunoId + '|' + s.planoAulaId; }, function (s) { return s.criadaEm; });
   var val = ultimoPor(d.validacoes, function (v) { return v.alunoId + '|' + v.planoAulaId; }, function (v) { return v.validadoEm; });
-  var pres = ultimoPor(d.presencas, function (x) { return x.alunoId + '|' + x.planoAulaId; }, function (x) { return x.horaEntrada || x.data; });
+  var pres = presencaQueConta_(d.presencas);
   cabecalho(['Dia', 'Aula', 'Nº', 'Nome', 'Presença', 'O que respondeu', 'Respostas às perguntas', 'Nota do professor', 'Nota da aula (0-20)', 'Casos à parte']);
   var ini = linhas.length + 1;
   ultimas.forEach(function (p) {
@@ -2139,7 +2157,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // Por aluno e aula: presença, autoavaliação, nota validada.
   var chave = function (a, p) { return a + '|' + p; };
   var pres = {}, auto = {}, nota = {};
-  d.presencas.forEach(function (x) { if (idsAulas[x.planoAulaId]) pres[chave(x.alunoId, x.planoAulaId)] = x; });
+  var presTodas = presencaQueConta_(d.presencas);
+  Object.keys(presTodas).forEach(function (k) { if (idsAulas[presTodas[k].planoAulaId]) pres[k] = presTodas[k]; });
   d.selecoes.forEach(function (x) { if (idsAulas[x.planoAulaId]) auto[chave(x.alunoId, x.planoAulaId)] = true; });
   d.validacoes.slice().sort(function (a, b) { return String(a.validadoEm || '').localeCompare(String(b.validadoEm || '')); })
     .forEach(function (x) {
