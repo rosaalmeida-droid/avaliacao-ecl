@@ -617,6 +617,7 @@ function ler(nome, filtros) {
       // «2026-09-25» numa data com fuso — e isso estragava a hora e o dia.
       if (v !== '' && v !== null && v !== undefined && (obj[colunas[c]] === undefined || obj[colunas[c]] === '')) obj[colunas[c]] = valorTexto(v);
     }
+    corrigirDatasInglesas_(obj);
     // Verdadeiro/falso vindos de texto
     ['presente', 'atrasado', 'fardamentoOk', 'ativo', 'viaFCT'].forEach(function (b) {
       if (typeof obj[b] === 'string') obj[b] = (obj[b] === 'true' || obj[b] === 'Sim' || obj[b] === 'TRUE');
@@ -1897,6 +1898,23 @@ function porTurma(lista) {
   var m = {};
   lista.forEach(function (x) { var t = String(x.turmaId || ''); if (!t) return; (m[t] = m[t] || []).push(x); });
   return m;
+}
+
+/** (v26.1) Datas e horas escritas à inglesa por um telemóvel ou computador
+ *  («Sat Sep 05 2026 00:00:00 GMT+0100 (…)» ou, numa hora, «Sat Dec 30 1899
+ *  08:30:00 …») voltam a ser «2026-09-05» e «08:30». Vale para todas as folhas. */
+var MESES_EN_ = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+var DATA_EN_ = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}) (\d{4}) (\d{2}):(\d{2}):\d{2} GMT/;
+function semDataInglesa_(v) {
+  if (typeof v !== 'string') return v;
+  var m = DATA_EN_.exec(v);
+  if (!m) return v;
+  if (m[4] === '1899') return m[5] + ':' + m[6];
+  return m[4] + '-' + MESES_EN_[m[2]] + '-' + m[3];
+}
+function corrigirDatasInglesas_(obj) {
+  for (var k in obj) if (typeof obj[k] === 'string' && obj[k].length > 20 && obj[k].charAt(3) === ' ') obj[k] = semDataInglesa_(obj[k]);
+  return obj;
 }
 
 /** (v26.1) O dia em AAAA-MM-DD, venha como vier (texto, data ou «Mon Sep 21 2026 …»). */
@@ -4232,7 +4250,7 @@ function lerComEliminados(nome) {
       var v = dados[i][c];
       if (v !== '' && v !== null && v !== undefined && obj[colunas[c]] === undefined) obj[colunas[c]] = valorTexto(v);
     }
-    vivos.push(obj);
+    vivos.push(corrigirDatasInglesas_(obj));
   }
   return { vivos: vivos, linhasEliminadas: elim };
 }

@@ -214,10 +214,22 @@ let semEspacoNoAparelho = false;
 /** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
 export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
 
+// Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
+// GMT+0100 (…)», ou «Sat Dec 30 1899 08:30:00 …» numa hora) voltam a
+// «2026-09-05» e «08:30». Vale para todos os dados guardados (Rosa, 5/out/2026).
+const MESES_EN: Record<string, string> = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+const DATA_EN = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}) (\d{4}) (\d{2}):(\d{2}):\d{2} GMT/;
+export function semDataInglesa(v: unknown): unknown {
+  if (typeof v !== 'string' || v.length < 25 || v.charAt(3) !== ' ') return v;
+  const m = DATA_EN.exec(v);
+  if (!m) return v;
+  return m[4] === '1899' ? `${m[5]}:${m[6]}` : `${m[4]}-${MESES_EN[m[2]]}-${m[3]}`;
+}
+
 function load<T>(key: string): T[] {
   try {
     const r = key in naMemoria ? naMemoria[key] : localStorage.getItem(key);
-    return r ? JSON.parse(r) : [];
+    return r ? JSON.parse(r, (_k, v) => semDataInglesa(v)) : [];
   } catch { return []; }
 }
 
