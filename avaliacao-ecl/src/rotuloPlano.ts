@@ -19,8 +19,24 @@ function modDaUC(plano: PlanoAula): any {
 
 // Feriados nacionais em dias de semana, dentro dos períodos letivos de
 // 2026/27.
+// Os feriados nacionais e o de Lisboa (Santo António, 13 de junho), de
+// setembro de 2026 a julho de 2027 (Rosa, 5/out/2026). Os que calham ao fim de
+// semana ou nas férias ficam na lista, mas não mudam nada. As interrupções da
+// própria escola (calendário da ECL) estão em INTERRUPCOES_2026_27.
 const FERIADOS_2026_27 = new Set([
-  '2026-10-05', '2026-12-01', '2026-12-08', '2027-05-27',
+  '2026-10-05',   // Implantação da República
+  '2026-11-01',   // Todos os Santos (domingo)
+  '2026-12-01',   // Restauração da Independência
+  '2026-12-08',   // Imaculada Conceição
+  '2026-12-25',   // Natal
+  '2027-01-01',   // Ano Novo
+  '2027-03-26',   // Sexta-feira Santa
+  '2027-03-28',   // Páscoa
+  '2027-04-25',   // Dia da Liberdade (domingo)
+  '2027-05-01',   // Dia do Trabalhador (sábado)
+  '2027-05-27',   // Corpo de Deus
+  '2027-06-10',   // Dia de Portugal
+  '2027-06-13',   // Santo António, feriado de Lisboa (domingo)
 ]);
 
 // Interrupções letivas, tiradas dos intervalos do cronograma (o 1º
