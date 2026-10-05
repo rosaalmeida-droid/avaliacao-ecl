@@ -558,8 +558,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Um plano de aula em rascunho (a ser criado) abre logo para mudar: só os
   // publicados abrem para ler (Rosa, 5/out/2026: «não me deixa selecionar as
   // atitudes» num plano novo).
-  const [aAlterar, setAAlterar] = useState(() => plano.estado !== 'publicado' && (plano.estado as string) !== 'realizada');
-  React.useEffect(() => { setAAlterar(plano.estado !== 'publicado' && (plano.estado as string) !== 'realizada'); }, [plano.id]);
+  // (Rosa, 5/out/2026) Um plano de aula já gravado abre sempre para ler: muda-se
+  // com «Editar o plano» e grava-se com «Gravar e terminar». Só o plano que se
+  // está a criar agora (acabado de criar, nesta sessão) abre logo para mudar.
+  const acabadoDeCriar = (id: string) => { try { return sessionStorage.getItem('ecl_plano_novo_' + id) === '1'; } catch { return false; } };
+  const [aAlterar, setAAlterar] = useState(() => acabadoDeCriar(plano.id));
+  React.useEffect(() => { setAAlterar(acabadoDeCriar(plano.id)); }, [plano.id]);
   /** A janela «O que tem de fazer agora» já foi vista neste plano (nesta sessão). */
   const [avisoVisto, setAvisoVisto] = useState<boolean>(() => {
     try { return sessionStorage.getItem('ecl_aviso_plano_' + plano.id) === '1'; } catch { return false; }
@@ -743,6 +747,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       && !IDS_JA_USADOS.has(a.id))
     .slice(0, 4);
   const compAtitudes = compAtitudesTodas.filter(a => !compRemovidas.includes(a.id));
+  // As do trimestre são obrigatórias: o professor pode tirá-las, mas confirma primeiro.
+  const confirmarTirarObrigatoria = (nome: string) => janelaConfirmar({
+    titulo: 'Esta atitude é obrigatória neste trimestre.',
+    texto: `«${nome}» é uma das atitudes obrigatórias deste trimestre. Quer tirá-la desta aula na mesma?`,
+    sim: 'Sim, tirar na mesma', nao: 'Não, manter',
+  });
   // As obrigatórias tiradas desta aula («Fora desta aula») não contam.
   const nObrigatorias = compObrigatorias.filter(o => !compRemovidas.includes(o.id)).length;
 
@@ -1108,6 +1118,28 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
+        {/* Plano gravado: as competências só mudam depois de «Editar o plano» (Rosa, 5/out/2026). */}
+        {!aAlterar && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff7e6', border: '1.5px solid #b5651d',
+            borderRadius: 10, padding: '9px 12px', margin: '0 0 12px' }}>
+            <span style={{ flex: '1 1 220px', fontSize: 14, fontWeight: 600, color: '#7a4310' }}>
+              As competências estão só para ler. Para tirar ou juntar alguma, carregue em «Editar o plano».</span>
+            <button type="button" onClick={() => setAAlterar(true)} style={{ padding: '8px 14px', borderRadius: 9, border: 'none', background: '#b5651d',
+              color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar o plano</button>
+          </div>
+        )}
+        {aAlterar && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff7e6', border: '2px solid var(--copper)',
+            borderRadius: 12, padding: '10px 14px', margin: '0 0 12px' }}>
+            <span style={{ flex: '1 1 180px', fontSize: 14.5, fontWeight: 700, color: '#7a4310' }}>Está a editar o plano.</span>
+            <button type="button" onClick={() => { setAAlterar(false); try { sessionStorage.removeItem('ecl_plano_novo_' + plano.id); } catch { /* */ }
+                const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
+                if (atual.estado === 'publicado' && alteracoesPorEnviar(atual).length > 0) abrirFinalizar(); }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',
+              fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✓ Gravar e terminar</button>
+          </div>
+        )}
+        <fieldset disabled={!aAlterar} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         {botaoRepor}
         <TecnicasDasFichas plano={plano} fichas={fichasDoPlano} onAbrir={abrirFicha} />
         {atividade && <ResumoDaAtividadeExtra plano={plano} />}
@@ -1363,6 +1395,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <div style={{ fontWeight:700, fontSize:16 }}>Total: {totalComp} competências</div>
         </div>
         </>)}
+        </fieldset>
       </div>
     );
   }
@@ -2150,7 +2183,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(142,68,173,0.15)'}`, opacity: removida ? 0.5 : 1 }}>
                   <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
                   <div style={{ flex: 1, fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{a.nome}</div>
-                  <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== a.id) : [...compRemovidas, a.id]; guardarCompetencias(novas, compAdicionadas); }}
+                  <button onClick={async () => {
+                      if (!removida && !(await confirmarTirarObrigatoria(a.nome))) return;
+                      const novas = removida ? compRemovidas.filter(x => x !== a.id) : [...compRemovidas, a.id]; guardarCompetencias(novas, compAdicionadas); }}
                     style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
@@ -2262,6 +2297,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <span style={{ flex:'1 1 180px', fontSize:14.5, fontWeight:700, color:'#7a4310' }}>Está a editar o plano.</span>
           <button onClick={() => {
               setAAlterar(false);
+              try { sessionStorage.removeItem('ecl_plano_novo_' + plano.id); } catch { /* */ }
               const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
               if (atual.estado === 'publicado' && alteracoesPorEnviar(atual).length > 0) abrirFinalizar();
             }} style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'var(--sage, #5a7a4e)', color:'#fff',
@@ -2299,8 +2335,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         const Chip = ({ at }: { at: any }) => {
           const m = marcadas.has(at.id);
           return (
-            <button onClick={() => setAtitudesEscolhidas(
-                m ? atitudesEscolhidas.filter(x => x !== at.id) : [...atitudesEscolhidas, at.id])}
+            <button onClick={async () => {
+                if (m && doTrimestre.has(at.id) && !(await confirmarTirarObrigatoria(at.nome))) return;
+                setAtitudesEscolhidas(
+                  m ? atitudesEscolhidas.filter(x => x !== at.id) : [...atitudesEscolhidas, at.id]); }}
               style={{ padding:'8px 12px', borderRadius:20, fontSize:13.5, cursor:'pointer',
                 fontFamily:'inherit', fontWeight: m ? 700 : 500,
                 border:`1.5px solid ${m ? '#7d4f8c' : 'rgba(26,23,20,0.15)'}`,

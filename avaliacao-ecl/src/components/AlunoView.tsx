@@ -3449,10 +3449,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         // Não teve oportunidade: vai ao professor para confirmar; sem nota.
         ? {competenciaId:mId,nivel:'nop',nota:0,semOportunidade:true}
         : {competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
-      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude,respostas:textoDasRespostas(atitudeEscolhida, respDe(atitudeEscolhida), ehDeEvento),respIdx:respDe(atitudeEscolhida),exemplo:(exemplos[atitudeEscolhida]||'').trim()||undefined}]:[]),
+      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude,respostas:textoDasRespostas(atitudeEscolhida, respDe(atitudeEscolhida), ehDeEvento, ctxAula),respIdx:respDe(atitudeEscolhida),exemplo:(exemplos[atitudeEscolhida]||'').trim()||undefined}]:[]),
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => atiOk(id) && notaAti(id) != null)
-        .map(id => ({competenciaId:id,nivel:'sozinho',nota:notaAti(id)!,respostas:textoDasRespostas(id, respDe(id), ehDeEvento),respIdx:respDe(id),exemplo:(exemplos[id]||'').trim()||undefined})),
+        .map(id => ({competenciaId:id,nivel:'sozinho',nota:notaAti(id)!,respostas:textoDasRespostas(id, respDe(id), ehDeEvento, ctxAula),respIdx:respDe(id),exemplo:(exemplos[id]||'').trim()||undefined})),
       ...(todasSemOport && outraTarefa.trim() ? [{ competenciaId: 'SUB-OUTRA', nivel: 'outra', nota: 0, texto: outraTarefa.trim() }] : []),
       ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
         texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
@@ -3851,7 +3851,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   /** As duas perguntas de uma atitude, uma situação de hoje cada. Depois de
    *  responder, o aluno vê o que se espera dele (ou o que fazer para a próxima). */
   const perguntasAtitude = (id: string) => {
-    const ps = perguntasDe(id, ehDeEvento);
+    const ps = perguntasDe(id, ehDeEvento, ctxAula);
     if (!ps) return null;
     const r = respAti[id] || [];
     const responder = (q: number, v: number) => setRespAti(x => {
@@ -3983,7 +3983,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         nota: nivelHaccp ? (semKF ? 1 : notaDoNivel(nivelHaccp)) : null, passo: i });
     } else if (p.tipo === 'atiAula') {
       linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
-        resposta: !atiOk(p.atiId!) ? 'Por responder' : textoDasRespostas(p.atiId!, respDe(p.atiId!), ehDeEvento)
+        resposta: !atiOk(p.atiId!) ? 'Por responder' : textoDasRespostas(p.atiId!, respDe(p.atiId!), ehDeEvento, ctxAula)
           .filter(x => !x.resposta.startsWith('Não se perguntou')).map(x => x.resposta).join(' · '),
         nota: atiOk(p.atiId!) ? notaAti(p.atiId!) : null, passo: i });
     } else if (p.tipo === 'tecEvento') {
@@ -3994,7 +3994,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       const id = p.tipo === 'atitude' ? atitudeEscolhida : atitudeApanhar;
       linhasRever.push({ nome: id ? (ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude') : tituloPasso(p),
         resposta: !id ? 'Nenhuma escolhida' : !atiOk(id) ? 'Por responder'
-          : textoDasRespostas(id, respDe(id), ehDeEvento)
+          : textoDasRespostas(id, respDe(id), ehDeEvento, ctxAula)
             .filter(x => !x.resposta.startsWith('Não se perguntou')).map(x => x.resposta).join(' · '),
         nota: id && atiOk(id) ? notaAti(id) : null, passo: i });
     } else if (p.tipo === 'triagem') {

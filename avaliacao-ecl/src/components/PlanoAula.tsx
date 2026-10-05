@@ -1284,6 +1284,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Aconteça o que acontecer ao envio, o plano abre: antes, um erro
     // depois de gravar deixava o botão em «A criar o plano…» para sempre.
     try { addOrUpdatePlanoAula(p); } catch (e) { console.error('Criar plano:', e); }
+    // Plano de aula acabado de criar: abre para mudar (os outros abrem para ler).
+    try { sessionStorage.setItem('ecl_plano_novo_' + p.id, '1'); } catch { /* */ }
     // Criado ao passar para «Como é a aula»: continua aqui, nas janelas seguintes.
     if (continuar) {
       aCriar.current = false; setEstadoCriar(false);
