@@ -2016,7 +2016,7 @@ function atualizarFolhasDasTurmas() {
     props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
   }
   var inicio = new Date().getTime();
-  atualizarTurmas_([turma], comGerais);
+  if (!atualizarTurmas_([turma], comGerais)) return;
   feitas[turma] = inicio;
   props.setProperty('FOLHAS_FEITAS', JSON.stringify(feitas));
 }
@@ -2028,7 +2028,25 @@ function atualizar3ACP() { atualizarTurmas_(['3º ACP'], true); }
 /** Todas as turmas de uma vez (pode passar dos 6 minutos: só se for preciso). */
 function atualizarTodasAsTurmas() { atualizarTurmas_(TURMAS_DO_ANO.slice(), true); }
 
+/** (v26.1) Só uma atualização das folhas de cada vez. Duas ao mesmo tempo
+ *  (a automática e uma à mão) apagavam e escreviam as mesmas folhas, e uma
+ *  delas falhava: «Sheet … not found» (Rosa, 5/out/2026). A segunda espera
+ *  pela vez seguinte. Devolve false quando não correu. */
 function atualizarTurmas_(quais, comGerais) {
+  var props = PropertiesService.getScriptProperties();
+  var desde = Number(props.getProperty('FOLHAS_A_DECORRER') || 0);
+  if (desde && new Date().getTime() - desde < 7 * 60 * 1000) {
+    Logger.log('Já está a decorrer outra atualização das folhas (começou às '
+      + Utilities.formatDate(new Date(desde), 'Europe/Lisbon', 'HH:mm') + '). Esta fica para a vez seguinte.');
+    return false;
+  }
+  props.setProperty('FOLHAS_A_DECORRER', String(new Date().getTime()));
+  try { atualizarTurmasJa_(quais, comGerais); }
+  finally { props.deleteProperty('FOLHAS_A_DECORRER'); }
+  return true;
+}
+
+function atualizarTurmasJa_(quais, comGerais) {
   var ss = ficheiro();
   var hoje = hojeLisboa(0);
   // Cada folha lê-se uma vez para todas as turmas.
@@ -2058,7 +2076,7 @@ function atualizarTurmas_(quais, comGerais) {
   var turmas = Object.keys(alunos).filter(function (t) { return TURMAS_DO_ANO.indexOf(t) >= 0 && quais.indexOf(t) >= 0; }).sort();
   // As folhas de turmas que já não existem (o 1.º ACP) saem. Os dados ficam.
   ss.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }   // já saiu
     Object.keys(alunos).forEach(function (t) {
       if (TURMAS_DO_ANO.indexOf(t) >= 0) return;
       var b = nomeDoSeparador(t);
@@ -2647,7 +2665,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // As partes que já não existem (por exemplo, sem recuperações) saem.
   var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; }));
   ss.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ss.deleteSheet(fo); } catch (e) {}
   });
   return nomesAgora;
@@ -2880,7 +2898,7 @@ function escreverFichasDosAlunos_(turma, alunos, linhasFicha, _resumo, daApp, re
   });
   // Saem as fichas desta turma que já não interessam (alunos que saíram, versões antigas).
   ssF.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ssF.deleteSheet(fo); } catch (e) {}
   });
   try { indiceDasFichas_(ssF); } catch (e) { Logger.log('Índice das fichas: ' + e); }
@@ -2893,7 +2911,7 @@ function indiceDasFichas_(ssF) {
   var bases = TURMAS_DO_ANO.map(nomeDoSeparador);
   var ind = ssF.getSheetByName('ÍNDICE') || ssF.insertSheet('ÍNDICE', 0);
   ssF.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n === 'ÍNDICE') return;
     var daTurma = bases.some(function (b) { return n.indexOf(b + ' · ') === 0; });
     if (!daTurma) try { ssF.deleteSheet(fo); } catch (e) {}
@@ -3466,7 +3484,7 @@ function linhaDeRecuperacao(r, alunos, planoPorId, comTurma) {
  *  «TURMA …» da v20 saem: foram substituídos por estes. */
 function arrumarSeparadores(ss, nomesTurmas) {
   ss.getSheets().forEach(function (f) {
-    var n = f.getName();
+    var n; try { n = f.getName(); } catch (e) { return; }
     if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); } }
   });
   // (v25) Por ordem: as turmas; as folhas gerais (fichas, requisições,
