@@ -5371,6 +5371,13 @@ const KEY_TABELA_PRECOS_ENVIADA = 'ecl_tabela_precos_enviada';
 // fazia a média simples e dava outro número).
 const KEY_NOTAS_ENVIADAS = 'ecl_notas_app_enviadas';
 export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
+  // A nota da UC que vai para o Sheets é a mesma que o professor e o aluno
+  // veem (a conta da pauta, com as aulas sem autoavaliação a 0) — Rosa, 5/out/2026.
+  import('./pautaUC').then(m => enviarNotasDaTurmaCom(turmaId, forcar, m.notaDaUCComoNaPauta))
+    .catch(() => enviarNotasDaTurmaCom(turmaId, forcar, null));
+}
+function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
+  notaComoNaPauta: ((a: string, t: string, u: string) => number | null) | null): void {
   try {
     if (!SHEETS_ECL_URL || !turmaId) return;
     const planos = getPlanosAula().filter(p => p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado');
@@ -5390,7 +5397,8 @@ export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
       linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
         media: c.base === null ? '' : Math.round(c.base * 10) / 10,
         bonus: Math.round(((c.bonusParticipacao || 0) + (c.bonusAssiduidade || 0)) * 100) / 100,
-        final: c.final === null ? '' : Math.round(c.final * 10) / 10,
+        final: (() => { const n = notaComoNaPauta ? notaComoNaPauta(a.id, turmaId, uc) : c.final;
+          return n === null || n === undefined ? '' : Math.round(n * 10) / 10; })(),
         faltas: getPlanosFaltadosPorUC(a.id, uc, turmaId).length,
         // As faltas em horas, sobre o total de horas da UC (a regra dos 10%),
         // para o Sheets mostrar o mesmo que a aplicação (Rosa, 5/out/2026).
