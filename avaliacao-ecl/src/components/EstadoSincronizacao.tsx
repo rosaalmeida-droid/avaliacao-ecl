@@ -39,7 +39,7 @@ function Ampulheta({ cor }: { cor: string }) {
 }
 
 /** Faixa compacta — para o cabeçalho, sempre à vista. */
-export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
+export function EstadoSincronizacao({ turmaId, outrosPorEnviar = 0 }: { turmaId: string; outrosPorEnviar?: number }) {
   const [porConfirmar, setPorConfirmar] = useState(0);
   const [falhados, setFalhados] = useState<ItemFila[]>([]);
   const [aVerificar, setAVerificar] = useState(false);
@@ -138,6 +138,10 @@ export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
     );
   }
 
+  // Com registos por enviar mostrados logo abaixo, não se diz «Tudo
+  // guardado» ao mesmo tempo (auditoria 5/out/2026: as duas mensagens
+  // apareciam juntas e uma desmentia a outra).
+  if (porConfirmar === 0 && falhados.length === 0 && outrosPorEnviar > 0) return null;
   if (porConfirmar === 0 && falhados.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>

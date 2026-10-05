@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.3';
+var VERSAO = 'ECL único v25.4';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -325,8 +325,80 @@ function linhaDe(nome, obj) {
   var def = FOLHAS[nome];
   var linha = def.colunas.map(function (c) { return valorTexto(obj[c]); });
   linha.push('');                       // eliminado
-  linha.push(JSON.stringify(obj));      // registo completo
+  linha.push(encolherRegisto_(nome, obj));   // registo completo
   return linha;
+}
+
+// (v25.4) Uma célula do Sheets leva no máximo 50 000 caracteres. Uma ficha
+// com o guião e a ficha formatada passava disso: a gravação falhava toda,
+// sem aviso, e o guião ficava só no navegador onde tinha sido feito
+// (auditoria de 5/out/2026). Agora os textos compridos vão às partes para
+// a folha TEXTOS_LONGOS e no registo fica só a referência; quem lê recebe
+// o texto inteiro.
+var LIMITE_REGISTO = 45000;
+var FOLHA_LONGOS = 'TEXTOS_LONGOS';
+var PREFIXO_LONGO = '@@longo:';
+var longosEmCache_ = null;
+
+function encolherRegisto_(nome, obj) {
+  var json = JSON.stringify(obj);
+  if (json.length <= LIMITE_REGISTO) return json;
+  var copia = {};
+  for (var k in obj) copia[k] = obj[k];
+  var ss = ficheiro();
+  var f = ss.getSheetByName(FOLHA_LONGOS);
+  if (!f) {
+    f = ss.insertSheet(FOLHA_LONGOS);
+    f.getRange(1, 1, 1, 3).setValues([['referência', 'parte', 'texto']]);
+    try { f.hideSheet(); } catch (e) { /* fica à vista */ }
+  }
+  var campos = Object.keys(copia).filter(function (c) {
+    return typeof copia[c] === 'string' && copia[c].length > 1000 && copia[c].indexOf(PREFIXO_LONGO) !== 0;
+  }).sort(function (a, b) { return copia[b].length - copia[a].length; });
+  for (var i = 0; i < campos.length && JSON.stringify(copia).length > LIMITE_REGISTO; i++) {
+    var campo = campos[i], texto = copia[campo];
+    var base = nome + '|' + (obj.id || '') + '|' + campo + '|';
+    // As partes antigas deste mesmo texto saem (senão a folha crescia sempre).
+    if (f.getLastRow() >= 2) {
+      var refs = f.getRange(2, 1, f.getLastRow() - 1, 1).getValues();
+      for (var r = refs.length - 1; r >= 0; r--) if (String(refs[r][0]).indexOf(base) === 0) f.deleteRow(r + 2);
+    }
+    var ref = base + new Date().getTime();
+    var linhas = [];
+    for (var p = 0; p * LIMITE_REGISTO < texto.length; p++) {
+      linhas.push([ref, p, '~' + texto.slice(p * LIMITE_REGISTO, (p + 1) * LIMITE_REGISTO)]);
+    }
+    f.getRange(f.getLastRow() + 1, 1, linhas.length, 3).setValues(linhas);
+    copia[campo] = PREFIXO_LONGO + ref;
+  }
+  longosEmCache_ = null;
+  return JSON.stringify(copia);
+}
+
+function textosLongos_() {
+  if (longosEmCache_) return longosEmCache_;
+  var m = {};
+  var f = ficheiro().getSheetByName(FOLHA_LONGOS);
+  if (f && f.getLastRow() >= 2) {
+    f.getRange(2, 1, f.getLastRow() - 1, 3).getValues().forEach(function (l) {
+      (m[l[0]] = m[l[0]] || [])[Number(l[1])] = String(l[2]).slice(1);
+    });
+  }
+  longosEmCache_ = m;
+  return m;
+}
+
+/** O registo completo de uma linha, com os textos compridos já juntos. */
+function abrirRegisto_(texto) {
+  var obj = {};
+  try { obj = JSON.parse(texto || '{}'); } catch (e) { return {}; }
+  for (var k in obj) {
+    if (typeof obj[k] === 'string' && obj[k].indexOf(PREFIXO_LONGO) === 0) {
+      var partes = textosLongos_()[obj[k].slice(PREFIXO_LONGO.length)];
+      obj[k] = partes ? partes.join('') : '';
+    }
+  }
+  return obj;
 }
 
 function mesmaChave(nome, linha, obj, colunas) {
@@ -536,8 +608,7 @@ function ler(nome, filtros) {
     if (dados[i].every(function (v) { return v === '' || v === null; })) continue;   // linha vazia (v15.1)
     if (dados[i][iEl]) continue;                     // eliminado
     if (PRECISAM_DE_ID[nome] && iId >= 0 && !dados[i][iId]) continue;   // aula fantasma, sem código (v15)
-    var obj = {};
-    try { obj = JSON.parse(dados[i][iReg] || '{}'); } catch (e) { obj = {}; }
+    var obj = abrirRegisto_(dados[i][iReg]);
     for (var c = 0; c < colunas.length; c++) {
       if (c === iReg || c === iEl) continue;
       var v = dados[i][c];
@@ -3591,8 +3662,7 @@ function lerComEliminados(nome) {
   for (var i = 1; i < dados.length; i++) {
     if (dados[i].every(function (v) { return v === '' || v === null; })) continue;
     if (iEl >= 0 && dados[i][iEl]) { elim.push(dados[i]); continue; }
-    var obj = {};
-    try { obj = JSON.parse(dados[i][iReg] || '{}'); } catch (e) { obj = {}; }
+    var obj = abrirRegisto_(dados[i][iReg]);
     for (var c = 0; c < colunas.length; c++) {
       if (c === iReg || c === iEl) continue;
       var v = dados[i][c];

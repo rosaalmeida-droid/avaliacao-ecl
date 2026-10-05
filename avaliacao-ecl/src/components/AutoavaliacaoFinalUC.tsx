@@ -11,7 +11,7 @@ import React, { useMemo, useState } from 'react';
 import type { Aluno } from '../types';
 import {
   notasFinaisPublicadasDoAluno, getPropostaFinalUC,
-  getPlanosAulaPorTurma, getPlanosFaltadosPorUC, situacaoRecuperacaoUC, guardarPropostaFinalUC, horasDadasDaUC,
+  getPlanosAulaPorTurma, getPlanosFaltadosPorUC, situacaoRecuperacaoUC, guardarPropostaFinalUC, horasDadasDaUC, ucTerminou,
 } from '../backend';
 import { linhasDaPautaUC, produtosDaUC, notaDoPlano, MAPA_5C, type Letra5C } from '../pautaUC';
 import { EcraCheio, ProgressoSlides, NavSlides } from './EcraCheio';
@@ -66,7 +66,10 @@ export function CartaoAutoavaliacaoFinal({ ucs, onAbrir }: {
 /** As notas finais das UC que o professor publicou. Só se veem depois da
  *  autoavaliação final dessa UC — primeiro o aluno reflete, depois vê a nota. */
 export function CartaoNotasFinais({ aluno, ucNome }: { aluno: Aluno; ucNome: (ucId: string) => string }) {
-  const notas = notasFinaisPublicadasDoAluno(aluno.id).sort((a, b) => b.publicadaEm.localeCompare(a.publicadaEm));
+  // Só as das UC que já acabaram: uma nota publicada a meio da UC não é a
+  // nota final (auditoria 5/out/2026).
+  const notas = notasFinaisPublicadasDoAluno(aluno.id).filter(n => ucTerminou(aluno.turmaId, n.ucId))
+    .sort((a, b) => b.publicadaEm.localeCompare(a.publicadaEm));
   if (!notas.length) return null;
   return (
     <div style={{ marginBottom: 18, padding: '14px 16px', borderRadius: 16, background: '#fff', border: `1px solid ${BORDA}` }}>

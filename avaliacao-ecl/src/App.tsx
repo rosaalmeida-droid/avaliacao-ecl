@@ -126,7 +126,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada } from './backend';
 import { ouvirTurmaNaBase } from './baseDeDados';
 import { EventosOrcamentos, PrecosConsulta } from './components/EventosOrcamentos';
 import { BibliotecaVideos } from './components/BibliotecaVideos';
@@ -551,17 +551,17 @@ function AppInterno() {
                   onde o professor passa sempre — antes só se descobria
                   quando o trabalho já estava perdido. */}
               <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
-                <EstadoSincronizacao turmaId={turmaId} />
+                <EstadoSincronizacao turmaId={turmaId} outrosPorEnviar={espera.teimosos.length} />
               </div>
 
               {espera.teimosos.length > 0 && (
                 <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#fdf0e6',
                   border: '1.5px solid var(--copper)', borderRadius: 12, padding: '13px 16px' }}>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--copper)' }}>
-                    {espera.teimosos.length} registo{espera.teimosos.length > 1 ? 's' : ''} ainda não ficou guardado fora deste computador
+                    {espera.teimosos.length === 1 ? '1 registo ficou guardado só neste computador' : `${espera.teimosos.length} registos ficaram guardados só neste computador`}: ainda não chegaram ao arquivo da escola
                   </div>
                   <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.5 }}>
-                    {espera.teimosos.slice(0, 3).map((x: any) => x.rotulo).join(' · ')}
+                    {espera.teimosos.slice(0, 3).map((x: any) => rotuloDaEspera(x)).join(' · ')}
                     {espera.teimosos.length > 3 ? ` · e mais ${espera.teimosos.length - 3}` : ''}
                   </div>
                   <button onClick={() => confirmarEReenviar().then(() => setEspera(estadoDaEspera()))}

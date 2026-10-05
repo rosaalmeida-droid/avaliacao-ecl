@@ -15,6 +15,7 @@ import {
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
   getPlanosAula, getPresencas, blocosDeHoraDoPlano,
 } from '../backend';
+import { pedeFardaEHigiene } from '../contextoAula';
 
 const C = {
   bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE',
@@ -82,7 +83,8 @@ export function TurmaNaAula({
       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
         {resumo(r.entraram, r.total, 'entraram', C.verde)}
         {resumo(r.foraDeTempo, 0, 'por decidir', C.cobre)}
-        {resumo(r.semFarda, 0, 'sem farda', C.cobre)}
+        {/* Na aula teórica não se pede farda nem higiene (auditoria 5/out/2026). */}
+        {pedeFardaEHigiene(plano) && resumo(r.semFarda, 0, 'sem farda', C.cobre)}
         {resumo(r.porAvaliar, 0, 'por avaliar', C.bordeaux)}
         {resumo(r.porValidar, 0, 'por validar', C.bordeaux)}
       </div>
@@ -150,13 +152,13 @@ export function TurmaNaAula({
                 )}
 
                 {/* A farda só se sabe de quem entrou pela aplicação. */}
-                {e.entrou && !!e.horaEntrada && !e.fardamentoOk && (
+                {pedeFardaEHigiene(plano) && e.entrou && !!e.horaEntrada && !e.fardamentoOk && (
                   <Pastilha texto={e.itensEmFalta ? `falta: ${e.itensEmFalta}` : 'farda incompleta'}
                     cor={C.cobre} fundo={C.cobreSuave} />
                 )}
 
                 {/* Mãos lavadas: o aluno confirma à entrada, depois dos passos. */}
-                {e.entrou && !!e.horaEntrada && !String((plano as any)?.tipoPlanAula || '').startsWith('atitudinal') && (e.maosLavadas
+                {e.entrou && !!e.horaEntrada && pedeFardaEHigiene(plano) && !String((plano as any)?.tipoPlanAula || '').startsWith('atitudinal') && (e.maosLavadas
                   ? <Pastilha texto={`mãos lavadas ${e.maosLavadas.replace(/^às /, '')}`} cor={C.verde} fundo={C.verdeSuave} />
                   : <Pastilha texto="mãos por lavar" cor={C.cobre} fundo={C.cobreSuave} />)}
 

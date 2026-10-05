@@ -178,6 +178,26 @@ export function contextoDaAula(plano: any, temGrupos = false): ContextoAula {
   return { cozinha: pratica, producao: pratica, equipa: temGrupos, colegas: true, servico: false, definido: false };
 }
 
+/**
+ * Esta aula pede farda e higiene (farda, mãos lavadas, bancada)? Na teórica
+ * nunca: só o registo das temperaturas, noutra aplicação (Rosa, auditoria
+ * de 5/out/2026). Na prática e na mista sempre; na atitudinal se o
+ * professor quis. O professor pode ainda tirar a farda do plano.
+ */
+export function pedeFardaEHigiene(plano: any): boolean {
+  if (!plano) return true;
+  if ((plano.compRemovidas || []).includes('OBR_01')) return false;
+  const t = triagemDoPlano(plano);
+  if (t) return obrigatoriasDaTriagem(t).farda;
+  const tipo = String(plano.tipoPlanAula || 'pratico');
+  return tipo === 'pratico' || tipo === 'misto' || tipo === 'atitudinal_obr';
+}
+
+/** Os alunos cozinham nesta aula (bancada do grupo, circuito do sujo e do limpo)? */
+export function cozinhamNaAula(plano: any): boolean {
+  return contextoDaAula(plano).producao;
+}
+
 /** A pergunta faz sentido nesta aula? */
 export function cumpre(requisitos: Requisito[] | undefined, ctx: ContextoAula): boolean {
   return (requisitos || []).every(r => ctx[r]);

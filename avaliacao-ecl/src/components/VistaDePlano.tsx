@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -1002,7 +1002,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {todasRequisicoesDoPlano.length > 0 && (
           <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
-              <span style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano</span>
+              <span style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} {todasRequisicoesDoPlano.length === 1 ? 'requisição' : 'requisições'} para este plano</span>
               {todasRequisicoesDoPlano.length > 1 && (
                 <button onClick={() => { setModoSelecaoReq(!modoSelecaoReq); setReqSelecionadasIds(new Set()); }}
                   style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
@@ -1015,7 +1015,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
                 <button onClick={() => {
                   if (reqSelecionadasIds.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)?`)) {
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} ${reqSelecionadasIds.size === 1 ? 'requisição' : 'requisições'}?`)) {
                     reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
                     setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
@@ -2456,7 +2456,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ...getSelecoes().filter(x => x.planoAulaId === plano.id).map(x => x.alunoId),
           ...getValidacoes().filter(v => v.planoAulaId === plano.id
             && String((v as any).validadoEm || '') >= String((plano as any).pedirDeNovoEm || '')).map(v => v.alunoId),
-        ]).size;
+        ].filter(id => !alunoDeTeste(id))).size;
         if (!n && total && plano.estado === 'publicado') return (
           <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
