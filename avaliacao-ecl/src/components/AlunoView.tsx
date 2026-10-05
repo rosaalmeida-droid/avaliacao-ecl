@@ -1294,6 +1294,26 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           </div>
         )}
         {aba === 'inicio' && !destino && aluno.turmaId === '3º ACP' && <AgradecimentoTurmaPiloto alunoId={aluno.id} />}
+        {/* Inscrições abertas em atividades, eventos e concursos (os extras, fora
+            do horário): o aluno vê logo na página inicial (Rosa, 5/out/2026). */}
+        {aba === 'inicio' && !destino && (() => {
+          const hojeA = new Date().toISOString().slice(0, 10);
+          const abertas = atividades.filter((a: any) => !a.fechada && a.data >= hojeA && (!a.doPlano || a.modo === 'inscricao')
+            && !(a.inscritosIds || []).includes(aluno.id) && !(a.participantesIds || []).includes(aluno.id));
+          if (!abertas.length) return null;
+          const dataPT = (iso: string) => new Date(String(iso).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+          return (
+            <button onClick={() => setDestino('atividades')} style={{ display: 'block', width: '100%', textAlign: 'left', margin: '0 0 12px',
+              padding: '14px 16px', borderRadius: 14, border: '2px solid #6B3FA0', background: '#EDE3F6', color: '#3f2466',
+              cursor: 'pointer', fontFamily: 'inherit' }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>🏅 {abertas.length === 1 ? 'Estão abertas as inscrições para uma atividade.' : `Estão abertas as inscrições para ${abertas.length} atividades.`}</div>
+              {abertas.slice(0, 3).map((a: any) => (
+                <div key={a.id} style={{ fontSize: 14, marginTop: 4 }}>• {a.titulo || a.nome || 'Atividade'}, {dataPT(a.data)}.</div>
+              ))}
+              <div style={{ fontSize: 14, marginTop: 6, fontWeight: 700 }}>Carrega aqui para veres e te inscreveres.</div>
+            </button>
+          );
+        })()}
         {aba === 'inicio' && !destino && (
           <>
             <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
