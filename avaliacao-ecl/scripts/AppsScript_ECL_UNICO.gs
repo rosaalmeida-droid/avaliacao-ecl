@@ -46,6 +46,22 @@
 
 var VERSAO = 'ECL único v26.1';
 
+// ══════════════════════════════════════════════════════════════
+// (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
+// por ordem alfabética (Rosa, 5/out/2026: «é muito difícil encontrar»).
+// Cada um chama a função de sempre, que continua mais abaixo.
+// ══════════════════════════════════════════════════════════════
+function EXECUTAR_atualizar1ACR() { atualizar1ACR(); }
+function EXECUTAR_atualizar1BCR() { atualizar1BCR(); }
+function EXECUTAR_atualizar2ACP() { atualizar2ACP(); }
+function EXECUTAR_atualizar3ACP() { atualizar3ACP(); }
+function EXECUTAR_atualizarTodasAsTurmas() { atualizarTodasAsTurmas(); }
+function EXECUTAR_copiaDeSeguranca() { copiaDeSeguranca(); }
+function EXECUTAR_instalarTarefas() { instalarTarefas(); }
+function EXECUTAR_verCopias() { verCopias(); }
+function EXECUTAR_verFicheiroDasFichas() { verFicheiroDasFichas(); }
+function EXECUTAR_verPins() { verPins(); }
+
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
 var ANTIGO_HISTORICO = '11GQLFxO6HUauJw7lFku18cG1Fk2gKaWhU2KYcCZHSuc';
