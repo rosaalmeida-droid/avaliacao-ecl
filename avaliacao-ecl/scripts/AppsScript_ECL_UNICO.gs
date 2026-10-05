@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.8';
+var VERSAO = 'ECL único v25.9';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -2244,19 +2244,24 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var fecharFolhas = function () { if (atualF) atualF.largura = largura; };
 
   // 1. Os alunos
-  novaFolha('Alunos', 'Um aluno por linha: presenças, faltas, atrasos, autoavaliações e a média das aulas validadas.');
+  novaFolha('Alunos', 'Um aluno por linha: presenças, faltas, atrasos, autoavaliações e a média das aulas. As aulas em que esteve e não se autoavaliou contam 0, como na aplicação.');
   titulo('OS ALUNOS (' + alunos.length + ')');
-  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20)', 'Telemóvel ligado']);
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado']);
   alunos.forEach(function (a) {
-    var p = 0, f = 0, at = 0, aa = 0, va = 0, soma = 0;
+    // (v25.9) A média das aulas conta 0 nas aulas em que o aluno esteve e não
+    // se autoavaliou, como na aplicação. Antes era a média só das validadas,
+    // e um aluno que não respondia ficava com nota alta (Rosa, 5/out/2026).
+    var p = 0, f = 0, at = 0, aa = 0, va = 0, soma = 0, semResposta = 0;
     contam.forEach(function (pl) {
       var k = chave(a.id, pl.id), x = pres[k];
       if (faltou(x, pl.id)) f++; else if (esteve(x, pl.id)) p++;
       if (atrasou(x, pl.id)) at++;
       if (auto[k]) aa++;
       if (nota[k] !== undefined) { va++; soma += nota[k]; }
+      else if (!auto[k] && esteve(x, pl.id) && !faltou(x, pl.id)) semResposta++;
     });
-    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), va ? virgula(Math.round(soma / va * 10) / 10) : '', ligado[a.id] ? 'Sim' : 'Não']);
+    var nMedia = va + semResposta;
+    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não']);
   });
   vazia();
 
@@ -2331,7 +2336,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       var k = chave(a.id, p.id), x = pres[k];
       var presenca = faltou(x, p.id) ? 'Faltou' : atrasou(x, p.id) ? 'Atrasado' : esteve(x, p.id) ? 'Presente' : '';
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.ucId || '', p.titulo || '', presenca,
-        auto[k] ? 'Sim' : 'Não', nota[k] !== undefined ? virgula(nota[k]) : '']);
+        auto[k] ? 'Sim' : 'Não', nota[k] !== undefined ? virgula(nota[k]) : (!auto[k] && presenca && presenca !== 'Faltou' ? '0 (sem resposta)' : '')]);
     });
     vazia();
   });
@@ -2345,7 +2350,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     var daUC = contam.filter(function (p) { return String(p.ucId || 'Sem UC') === uc; });
     var nome = daUC.map(function (p) { return p.ucNome; }).filter(Boolean)[0] || '';
     titulo('NOTAS — ' + uc + (nome ? ' · ' + nome : '') + ' (' + daUC.length + ' aula' + (daUC.length === 1 ? '' : 's') + ')', '#3E7A31');
-    junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · vazio = sem registo. A média, o bónus e a nota da UC são os da aplicação (cada aula pelo seu peso, as faltas a 0).']);
+    junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · 0 (sem resposta) = esteve e não se autoavaliou, conta 0 · vazio = sem registo. A média, o bónus e a nota da UC são os da aplicação (cada aula pelo seu peso, as faltas a 0).']);
     formatos.push({ tipo: 'legenda', linha: linhas.length });
     cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
       .concat(['Média', 'Faltas (contam 0)', 'Bónus', 'Nota da UC (como na aplicação)', 'Nota final publicada']));
@@ -2356,6 +2361,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         if (nota[k] !== undefined) { soma += nota[k]; n++; return virgula(nota[k]); }
         if (auto[k]) return 'AA';
         if (faltou(pres[k], p.id)) return 'F';
+        // (v25.9) Esteve e não se autoavaliou: conta 0, como na aplicação.
+        if (esteve(pres[k], p.id)) { n++; return '0 (sem resposta)'; }
         return '';
       });
       var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();

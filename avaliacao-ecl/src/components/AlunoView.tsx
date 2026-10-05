@@ -1179,7 +1179,8 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     bonusTotal: calcUC.bonusParticipacao,
     teto: calcUC.limitadaPorTeto,
     motivoTeto: calcUC.motivoTeto || '',
-    final: calcUC.final,
+    // A mesma nota da UC que o aluno vê no resto da aplicação (a da pauta).
+    final: notaDaUCComoNaPauta(aluno.id, aluno.turmaId, ucAtual) ?? calcUC.final,
     publicada: !!publicadaDaUC,
   } : null;
 
