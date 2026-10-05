@@ -95,6 +95,10 @@ export function MenuDoPlano({
   // requisição aos eventos e aos planos antigos).
   const ctxPlano = contextoDoPlano(plano);
   const producao = !ctxPlano.definido || ctxPlano.producao;
+  // (Rosa, 5/out/2026) Numa aula sem cozinha (dinâmica de grupo, teórica na
+  // sala) as fichas, o guião e a requisição não fazem sentido e saem do menu.
+  // Ficam num evento, ou se o plano já tiver fichas ou requisição (planos antigos).
+  const comCozinha = producao || !!(plano as any).tipoEvento || fichas.length > 0 || !!temRequisicao;
   // O bloco de publicar continua à vista enquanto envia e depois confirma.
   const [, setV] = useState(0);
   useEffect(() => subscreverPublicacao(() => setV(v => v + 1)), []);
@@ -253,6 +257,7 @@ export function MenuDoPlano({
           activo={moduloActivo === 'inicio'}
           aoClicar={() => aoIrPara('inicio')} />
 
+        {comCozinha && (<>
         <Linha
           marca={fichas.length > 0 ? 'feito' : 'falta'}
           texto="Fichas técnicas"
@@ -273,8 +278,8 @@ export function MenuDoPlano({
           contador={numeroRequisicao || (temRequisicao ? '✓' : '—')}
           activo={moduloActivo === 'requisicao'}
           aoClicar={() => aoIrPara('requisicao')} />
+        </>)}
 
-        
         <Linha
           marca={totalCompetencias > 0 ? 'feito' : 'falta'}
           texto="Competências"

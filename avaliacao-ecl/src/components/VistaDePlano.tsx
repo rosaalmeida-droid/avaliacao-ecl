@@ -656,6 +656,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [reqSelecionadasIds, setReqSelecionadasIds] = useState<Set<string>>(new Set());
   const temFichas = fichasDoPlano.length > 0;
   const temRequisicao = !!requisicao;
+  // A gaveta das fichas só numa aula com cozinha, num evento, ou se já houver fichas ou requisição.
+  const comGavetaFichas = contextoDoPlano(plano).producao || !contextoDoPlano(plano).definido || !!(plano as any).tipoEvento || temFichas || temRequisicao;
   const publicado = plano.estado === 'publicado';
   // ── Competências ────────────────────────────────────────────
   // Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas nem
@@ -2458,6 +2460,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       </Gaveta>
       {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
           cozinha» tirava a requisição aos eventos e aos planos antigos). */}
+      {/* (Rosa, 5/out/2026) Numa aula sem cozinha não aparece, como no menu;
+          fica num evento ou se o plano já tiver fichas ou requisição. */}
+      {comGavetaFichas && (
       <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
@@ -2628,7 +2633,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ))}
         </div>
       </Gaveta>
-      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="responde" n={5} titulo="O que o aluno responde"
+      )}
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="responde" n={comGavetaFichas ? 5 : 4} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolha primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
