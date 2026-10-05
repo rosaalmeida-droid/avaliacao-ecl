@@ -2,6 +2,7 @@ import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
+import { BotaoPublicar } from './BotaoPublicar';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
@@ -1820,8 +1821,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Esta aula inclui um evento ou concurso?</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button style={bt(!atual)} onClick={() => escolher(undefined)}>Não</button>
-                    <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (+0,5)</button>
-                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (até +1)</button>
+                    <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (até +0,5 por evento)</button>
+                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (até +1 por concurso)</button>
                   </div>
                   {atual && (
                     <div style={{ marginTop: 6, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5 }}>
@@ -2067,8 +2068,66 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      {/* (Rosa, auditoria 5/out/2026, ponto 37) Ao abrir o plano: o estado da
+          aula num relance e UMA só ação seguinte. O resto fica nas gavetas. */}
+      {(() => {
+        const estados = estadoDaTurmaNaAula(plano.id, plano.turmaId);
+        const r = resumoDaTurmaNaAula(estados);
+        const reais = estados.filter(e => !(e.numero === 99 || e.numero === 88 || alunoDeTeste(e.alunoId)));
+        const avaliaram = reais.filter(e => e.autoavaliou).length;
+        const porDecidir = reais.filter(e => !e.decisaoFalta && (!e.entrou || e.foraDeTempo)).length;
+        const sessao = getSessaoAula(plano.id);
+        const hoje = new Date().toISOString().slice(0, 10);
+        const dia = String(plano.data || '').slice(0, 10);
+        const aconteceu = !!sessao?.abertaEm || dia < hoje;
+        const acoes: { t: string; ao?: () => void }[] = [];
+        if (plano.estado !== 'publicado') acoes.push({ t: 'Publicar a aula' });
+        else if (!aconteceu) acoes.push({ t: dia === hoje ? 'Abrir a aula' : 'A aula ainda não aconteceu: ver a turma', ao: () => setTabInicio('turma') });
+        // Aula aberta hoje: primeiro, ver quem está a entrar; as presenças
+        // confirmam-se no fim.
+        const aDecorrer = !!sessao?.abertaEm && !sessao?.fechadaEm && dia === hoje;
+        if (aDecorrer) acoes.push({ t: `Ver quem está a entrar (${r.entraram} de ${r.total})`, ao: () => setTabInicio('turma') });
+        if (aconteceu && r.porValidar > 0) acoes.push({ t: `Validar ${r.porValidar === 1 ? 'a autoavaliação que falta' : `as ${r.porValidar} autoavaliações`}`, ao: () => setModulo('validacao') });
+        if (aconteceu && porDecidir > 0) acoes.push({ t: `Confirmar as presenças (${porDecidir} por decidir)`, ao: () => setTabInicio('turma') });
+        if (aconteceu && r.porAvaliar > 0) acoes.push({ t: `Ver quem ainda não se avaliou (${r.porAvaliar})`, ao: () => setModulo('validacao') });
+        const [prox, depois] = acoes;
+        const n = (v: number, cor: string, rot: string, total?: number) => (
+          <div style={{ flex: '1 1 110px', background: '#fff', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, textAlign: 'center', padding: '10px 4px' }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: v ? cor : 'rgba(26,23,20,0.35)', lineHeight: 1.1 }}>
+              {v}{total != null && <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', fontWeight: 600 }}>/{total}</span>}</div>
+            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 3 }}>{rot}</div>
+          </div>
+        );
+        return (
+          <div style={{ margin: '0 0 14px' }}>
+            {aconteceu && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                {n(r.entraram, 'var(--sage)', 'entraram', r.total)}
+                {n(avaliaram, 'var(--sage)', 'avaliaram-se')}
+                {n(r.porAvaliar, 'var(--copper)', 'faltam avaliar-se')}
+                {n(r.porValidar, '#7B2233', 'por validar')}
+              </div>
+            )}
+            {prox ? (prox.ao ? (
+              <button onClick={prox.ao} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '16px 18px', border: 'none',
+                borderRadius: 14, background: 'var(--sage, #5a7a4e)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span style={{ display: 'block', fontSize: 18.5, fontWeight: 800 }}>{prox.t} →</span>
+                {depois && <span style={{ display: 'block', fontSize: 14, opacity: 0.85, marginTop: 3 }}>A seguir: {depois.t.charAt(0).toLowerCase() + depois.t.slice(1)}</span>}
+              </button>
+            ) : (
+              <div style={{ background: '#fff', border: '2px solid var(--copper)', borderRadius: 14, padding: '12px 16px' }}>
+                <div style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--copper)', marginBottom: 8 }}>A aula está em rascunho: os alunos ainda não a veem.</div>
+                <BotaoPublicar planoId={plano.id} depoisDePublicar={() => { const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p); }} />
+              </div>
+            )) : (
+              <div style={{ background: '#eef4eb', border: '1.5px solid var(--sage)', borderRadius: 14, padding: '14px 16px',
+                fontSize: 16, fontWeight: 800, color: 'var(--sage)' }}>✓ Está tudo feito nesta aula: presenças decididas e autoavaliações validadas.</div>
+            )}
+          </div>
+        );
+      })()}
       {/* Numa atividade extra não se mostra o que é da aula da turma (Rosa, out/2026). */}
-      {!eventoForaDoHorario(plano) && <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />}
+      {!eventoForaDoHorario(plano) && <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} compacto />}
       {!eventoForaDoHorario(plano) && <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />}
       {/* O plano em duas colunas (Rosa, out/2026): à esquerda o que o
           professor prepara, campo a campo, cada um abre e fecha; à direita

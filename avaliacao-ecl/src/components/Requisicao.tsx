@@ -443,9 +443,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   });
   // E-mails das compras: escritos uma vez, ficam guardados para todos.
   const [emailsCompras, setEmailsCompras] = useState(() => getEmailsCompras());
+  const atividadeDaRequisicao = (pl: any): string => {
+    const a = String(pl?.tipoAtividade || '').trim();
+    const titulo = String(pl?.titulo || '');
+    if (!a || /^(Aula (prática|mista|teórica)|Outro)$/i.test(a) || titulo.toLowerCase().includes(a.toLowerCase())) return titulo;
+    return titulo ? `${a} · ${titulo}` : a;
+  };
   const [atividade, setAtividade] = useState(() => {
     // Auto-preencher com o título do plano (já inclui tipo de actividade + data)
-    return evento ? evento.nome : planoInicial?.titulo || '';
+    // A atividade do plano (almoço pedagógico…) segue para a requisição
+    // (auditoria 5/out/2026: levava só o título do plano).
+    return evento ? evento.nome : atividadeDaRequisicao(planoInicial);
   });
   const [familia, setFamilia] = useState(() => {
     // Pré-preencher com a classificação da primeira ficha seleccionada
@@ -579,7 +587,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setPaxPorFicha(r);
     // A atividade e a família eram só as do primeiro plano: ao escolher
     // outro, o documento saía com o título do plano errado.
-    setAtividade(p.titulo || '');
+    setAtividade(atividadeDaRequisicao(p));
     const f1 = todasFichas.find(x => (p.fichasIds || []).includes(x.id));
     if (f1?.classificacao) setFamilia(f1.classificacao);
     setOrigemFichas((p.fichasIds || []).length ? 'plano' : 'biblioteca');

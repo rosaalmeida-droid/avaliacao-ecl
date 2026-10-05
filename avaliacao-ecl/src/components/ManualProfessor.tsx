@@ -210,9 +210,9 @@ const SECCOES: Seccao[] = [
           técnicas resultam das fichas técnicas de produção: se a aula não tiver fichas, não há
           técnicas para avaliar.
           <br /><br />
-          O que não for avaliado numa UC é avaliado <b>ao longo do ano</b>, noutras aulas. A nota
-          da UC forma-se com as avaliações existentes; o percurso do aluno é que tem de ficar
-          completo.
+          Uma competência que não houve ocasião de avaliar numa UC é avaliada <b>ao longo do ano</b>,
+          noutras aulas. A nota da UC é sempre a da pauta: as aulas dadas, cada uma pela sua nota,
+          e as aulas em falta ou sem autoavaliação contam 0.
         </Destaque>
       </>
     ),
@@ -373,9 +373,9 @@ const SECCOES: Seccao[] = [
         </P>
 
         <Destaque>
-          Isto <b>não</b> significa que a nota da aula suba. A avaliação dessa aula mantém-se. O
-          que não desce é o nível registado no percurso do aluno, que é o que conta no fecho da
-          UC.
+          Isto <b>não</b> significa que a nota da aula suba. A avaliação dessa aula mantém-se, e é
+          ela que entra na nota da UC (na pauta). O que não desce é o nível registado no percurso
+          do aluno: mostra o que ele já sabe fazer, mas não muda a nota.
         </Destaque>
 
         <H>Consequência prática</H>
