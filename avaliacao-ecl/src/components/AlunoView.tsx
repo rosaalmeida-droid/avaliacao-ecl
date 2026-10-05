@@ -83,7 +83,7 @@ import { ouvirTurmaNaBase, TIPOS_DO_ALUNO } from '../baseDeDados';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
-import { criterioTrabalho } from '../criteriosTrabalho';
+import { criterioTrabalho, ehCriterioTrabalho } from '../criteriosTrabalho';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -591,7 +591,7 @@ const FRASES_FORMATO: Record<string, string[]> = {
 function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; manual?: boolean }): string[] {
   const crit = c.id ? criterioTrabalho(c.id) : undefined;
   if (crit) return crit.frases;
-  if (c.id?.startsWith('KNW-P-F-') && FRASES_FORMATO[c.id.slice(8)]) return FRASES_FORMATO[c.id.slice(8)];
+  if (ehCriterioTrabalho(c.id) && FRASES_FORMATO[String(c.id).slice(8)]) return FRASES_FORMATO[String(c.id).slice(8)];
   // Campos do manual («Explicar…», «Executar…», «Identificar…»): o aluno diz
   // se já o sabe fazer, e com que ajuda (Rosa, out/2026). Sem os exercícios
   // dos manuais, que não são bons.
@@ -4062,7 +4062,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ marginTop:10 }}>
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
-            {rotuloSecao(c.id.startsWith('KNW-P-F-') ? 'Como correu?'
+            {rotuloSecao(ehCriterioTrabalho(c.id) ? 'Como correu?'
               : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
               : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
             {NIVEIS_FRASES.map((nivel, i) => (
@@ -4077,7 +4077,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
               {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
-                 ['nf', c.id.startsWith('KNW-P-F-') ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
+                 ['nf', ehCriterioTrabalho(c.id) ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
                   ...(v === nv ? {} : { border:'none', background:'transparent', textDecoration:'underline',

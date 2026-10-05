@@ -28,7 +28,10 @@ const NIVEIS_PROF = [
   { v: 4, curto: 'Sozinho',   label: 'Faço sozinho/a',                           txt: '#3d5a6e' },
   { v: 3.5, curto: 'Entre', label: 'Entre «Com ajuda» e «Faço sozinho/a»',       txt: '#52697b' },
   { v: 3, curto: 'Com ajuda', label: 'Consegui com ajuda',                       txt: '#647a8a' },
+  // Também em baixo (Rosa, auditoria de 5/out/2026): 7,5 e 2,5.
+  { v: 2.5, curto: 'Entre', label: 'Entre «A treinar» e «Com ajuda»',            txt: '#7d8f9d' },
   { v: 2, curto: 'A treinar', label: 'Tentei mas ainda preciso de mais prática', txt: '#96a4b0' },
+  { v: 1.5, curto: 'Entre', label: 'Entre «Não fez» e «A treinar»',              txt: '#8e4a55' },
   { v: 1, curto: 'Não fez',   label: 'Ainda não fiz',                            txt: '#7B2233' },
 ];
 
@@ -938,12 +941,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
               Vem preenchido com a proposta do aluno. Toque para alterar.
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${NIVEIS_PROF.length},1fr)`, gap: 4, marginBottom: 8 }}>
               {NIVEIS_PROF.map(n => {
                 const escolhido = notaProf === n.v;
                 const foiDoAluno = notaAluno14 === n.v;
                 return (
-                  <button key={n.v}
+                  <button key={n.v} title={n.label}
                     onClick={() => setNotasProf(p => ({ ...p, [auto.competenciaId]: n.v }))}
                     style={{
                       padding: '12px 2px 9px', borderRadius: 10, minWidth: 0,

@@ -10,8 +10,14 @@
 
 export interface CriterioTrabalho { id: string; nome: string; frases: [string, string, string, string] }
 
+// «Aproveitar o tempo da aula» é uma atitude, não um conhecimento (Rosa,
+// auditoria de 5/out/2026): conta nas atitudes (ATI-P-F-…).
+const SAO_ATITUDE = new Set(['preparar-tempo']);
 const c = (formato: string, chave: string, nome: string, frases: [string, string, string, string]): CriterioTrabalho =>
-  ({ id: `KNW-P-F-${formato}-${chave}`, nome, frases });
+  ({ id: `${SAO_ATITUDE.has(`${formato}-${chave}`) ? 'ATI' : 'KNW'}-P-F-${formato}-${chave}`, nome, frases });
+
+/** É um critério de um formato de trabalho (conhecimento ou atitude)? */
+export const ehCriterioTrabalho = (id?: string): boolean => /^(KNW|ATI)-P-F-/.test(String(id || ''));
 
 export const CRITERIOS_FORMATO: Record<string, CriterioTrabalho[]> = {
   oral: [
