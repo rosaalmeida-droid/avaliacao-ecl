@@ -3769,12 +3769,17 @@ function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
 }
 
 /** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
-/** Há hora de almoço (13h–14h) a descontar? Só nos planos que começam de
+/** (antes) Há hora de almoço (13h–14h) a descontar? Só nos planos que começam de
  *  manhã e acabam de tarde. Antes descontava-se em qualquer plano que
  *  passasse pelas 13h–14h: um plano de 2 h (12:30–14:30) ficava com 1 h,
  *  em dois blocos de meia hora, e faltar a um deles contava 0,5 h. */
+// (Rosa, 5/out/2026) O almoço é sempre de 1 hora e começa entre as 12:00 e
+// as 13:30, conforme a turma. O plano tem almoço lá dentro quando o almoço não
+// pode ficar nem antes nem depois dele: começa antes das 13:00 e acaba depois
+// das 13:30. Das 11:30 às 13:30 não há almoço (é depois); das 08:30 às 15:30 há.
+// Um plano curto (menos de 3 h) nunca desconta.
 function temAlmoco(ini: number, fim: number): boolean {
-  return ini < 12 * 60 && fim > 14 * 60;
+  return ini < 13 * 60 && fim > 13 * 60 + 30 && fim - ini >= 180;
 }
 
 export function horasDoPlano(p: PlanoAula): number {
@@ -5780,7 +5785,11 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   // Os tempos da escola são de hora e meia ou de uma hora (Rosa, set/2026):
   // cada parte da aula (manhã e tarde, se houver almoço) divide-se em tempos
   // de hora e meia quando dá certo (4h30 = 3 tempos); senão, de uma hora.
-  const partes: [number, number][] = temAlmoco(ini, fim) ? [[ini, 13 * 60], [14 * 60, fim]] : [[ini, fim]];
+  // A hora de almoço nos tempos: das 13:00 às 14:00, ou mais cedo se o plano
+  // acabar antes das 14:00 (entre as 12:00 e as 13:30 começa sempre).
+  const iniAlmoco = Math.max(12 * 60, Math.min(13 * 60, fim - 60));
+  const partes: [number, number][] = (temAlmoco(ini, fim) ? [[ini, iniAlmoco], [iniAlmoco + 60, fim]] as [number, number][] : [[ini, fim]] as [number, number][])
+    .filter(([a, b]) => b > a);
   const blocos: { inicio: string; fim: string }[] = [];
   for (const [a, b] of partes) {
     // O maior número de tempos de hora e meia, e o resto em tempos de uma hora
