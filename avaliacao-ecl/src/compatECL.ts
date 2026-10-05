@@ -1073,7 +1073,7 @@ export function nomeConhecimentoProf(id: string): string | undefined {
   }
   if (id.startsWith('KNW-P-HOJE-')) return 'O trabalho da aula';
   // O formato de um trabalho (escrito, oral, digital, prático).
-  if (id.startsWith('KNW-P-F-')) return criterioTrabalho(id)?.nome || NOMES_FORMATO[id.slice(8)] || 'O trabalho';
+  if (id.startsWith('KNW-P-F-') || id.startsWith('ATI-P-F-')) return criterioTrabalho(id)?.nome || NOMES_FORMATO[id.slice(8)] || 'O trabalho';
   // Indicador do manual (escolhido no plano ou pelo aluno, no tema dele).
   const mm = /^KNW-P-M-(.+)-(\d+)-(\d+)$/.exec(id);
   if (mm) {
