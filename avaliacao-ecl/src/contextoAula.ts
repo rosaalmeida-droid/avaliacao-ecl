@@ -47,12 +47,15 @@ export interface TriagemAula {
 // (cada grupo investiga um tema) ou trabalho individual (cada aluno escolhe
 // um tema do manual para defender). No trabalho, o aluno diz na
 // autoavaliação o tema que escolheu, e avalia-se também no formato.
-export type ModoTrabalho = 'professor' | 'grupo' | 'individual';
+// 'individual_todos' (Rosa, 5/out/2026): trabalho individual em que todos
+// trabalham todos os conteúdos da aula (não escolhem tema).
+export type ModoTrabalho = 'professor' | 'individual_todos' | 'grupo' | 'individual';
 export type FormatoTrabalho = 'escrito' | 'oral' | 'digital' | 'pratico';
 export const TEXTO_MODO: Record<ModoTrabalho, string> = {
-  professor: 'Aula dada por mim (todos o mesmo conteúdo)',
-  grupo: 'Trabalho de grupo (cada grupo um tema)',
-  individual: 'Trabalho individual (cada aluno escolhe o tema)',
+  professor: 'Exposição do professor (todos os conteúdos da aula)',
+  individual_todos: 'Trabalho individual (todos os conteúdos da aula)',
+  grupo: 'Trabalho de grupo (cada grupo o seu conteúdo)',
+  individual: 'Trabalho individual (cada aluno o seu conteúdo)',
 };
 export const TEXTO_FORMATO: Record<FormatoTrabalho, string> = {
   escrito: 'Escrito', oral: 'Apresentação oral', digital: 'Digital (apresentação, vídeo…)', pratico: 'Prático (demonstração)',
