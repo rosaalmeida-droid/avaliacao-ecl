@@ -16,7 +16,7 @@ import { TIPOS_EVENTO } from './eventosAvaliacao';
 const isoDe = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export interface HorasDaUC {
-  turmaId: string; ucId: string; nome: string; fim: string;
+  turmaId: string; ucId: string; nome: string; inicio: string; fim: string;
   total: number; dadas: number; planeadas: number; noHorario: number; diasNoHorario: number; previstas: number;
 }
 
@@ -49,18 +49,21 @@ export function horasDaUC(turmaId: string, ucId: string, hojeISO = isoDe(new Dat
       diasNoHorario++;
     }
   }
-  return { turmaId, ucId, nome: mod.nome || '', fim: mod.dataFim, total, dadas, planeadas, noHorario, diasNoHorario,
+  return { turmaId, ucId, nome: mod.nome || '', inicio: String(mod.dataInicio || ''), fim: mod.dataFim, total, dadas, planeadas, noHorario, diasNoHorario,
     previstas: dadas + planeadas + noHorario };
 }
 
-/** As UC em curso (ou a começar nas próximas 2 semanas) da turma, com as horas. */
+/** A UC que está a decorrer na turma (só essa: mostrar a seguinte ao mesmo
+ *  tempo dava a ideia de duas UC de cozinha em simultâneo — Rosa, 5/out/2026).
+ *  Sem nenhuma a decorrer (entre duas UC), a próxima. */
 export function horasDasUCsEmCurso(turmaId: string, professor?: string, hojeISO = isoDe(new Date())): HorasDaUC[] {
-  const daqui2 = isoDe(new Date(new Date(hojeISO + 'T00:00:00').getTime() + 14 * 86400000));
-  return modulosDaTurma(turmaId)
-    .filter((m: any) => m.dataFim >= hojeISO && (m.dataInicio || '') <= daqui2)
-    // Só as UC do professor, e só as de cozinha (as únicas com horário na aplicação).
+  const minhas = modulosDaTurma(turmaId)
+    .filter((m: any) => m.dataFim >= hojeISO)
     .filter((m: any) => !professor || String(m.docente || '').toLowerCase().includes(String(professor).toLowerCase().split(' ')[0]))
     .filter((m: any) => /cozinha/i.test(String(m.disciplina || '')) && !!horarioDaTurma(turmaId))
+    .sort((a: any, b: any) => String(a.dataInicio || '').localeCompare(String(b.dataInicio || '')));
+  const aDecorrer = minhas.filter((m: any) => (m.dataInicio || '') <= hojeISO);
+  return (aDecorrer.length ? aDecorrer : minhas.slice(0, 1))
     .map((m: any) => horasDaUC(turmaId, m.id, hojeISO))
     .filter((x): x is HorasDaUC => !!x);
 }
