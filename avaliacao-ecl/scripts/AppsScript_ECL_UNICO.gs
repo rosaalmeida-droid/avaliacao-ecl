@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.0';
+var VERSAO = 'ECL único v26.1';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1899,6 +1899,17 @@ function porTurma(lista) {
   return m;
 }
 
+/** (v26.1) O dia em AAAA-MM-DD, venha como vier (texto, data ou «Mon Sep 21 2026 …»). */
+function diaISO_(v) {
+  if (v === null || v === undefined || v === '') return '';
+  var t = String(v);
+  // Como na aplicação: se começa por AAAA-MM-DD, é esse o dia.
+  if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10);
+  var d = v instanceof Date ? v : new Date(t);
+  if (isNaN(d.getTime())) return t;
+  return Utilities.formatDate(d, 'Europe/Lisbon', 'yyyy-MM-dd');
+}
+
 function diaCurto(s) {
   var t = String(s || '').slice(0, 10);
   var p = t.split('-');
@@ -1962,7 +1973,9 @@ function atualizarTurmas_(quais, comGerais) {
   var hoje = hojeLisboa(0);
   // Cada folha lê-se uma vez para todas as turmas.
   var alunos = porTurma(ler('ALUNOS', {}));
-  var planos = porTurma(ler('PLANOS', {}));
+  // (v26.1) Há planos com o dia escrito à inglesa («Mon Sep 21 2026 00:00:00
+  // GMT+0100 …») e o script tomava-os por aulas dos próximos dias.
+  var planos = porTurma(ler('PLANOS', {}).map(function (p) { p.data = diaISO_(p.data); return p; }));
   var sessoes = porTurma(ler('SESSOES', {}));
   var presencas = porTurma(ler('PRESENCAS', {}));
   var selecoes = porTurma(ler('SELECOES', {}).filter(function (s) { return !ehRegistoEspecial(s); }));
