@@ -149,10 +149,14 @@ export function avisoFimUC(plano: PlanoAula): string {
   if (isNaN(fim)) return '';
 
   // 1) Este plano é a última aula da UC? (é o último N de M, ou a sua data cai na última semana)
+  // Pelas horas da UC (o plano que chega à última hora), ou pela data.
+  // Antes contava planos: com 13 planos numa UC «de 4», todos eram «a última».
+  const hs = horasDoPlanoNaUC(plano);
   const n = posicaoNaUC(plano), m = totalAulasUC(plano);
   const dataPlano = plano.data ? new Date(plano.data).getTime() : NaN;
   const naUltimaSemana = !isNaN(dataPlano) && fim - dataPlano <= 7 * DIA && fim - dataPlano >= -DIA;
-  if ((m && n >= m) || naUltimaSemana) {
+  const ultimaPelasHoras = hs ? hs.de <= hs.total && hs.ate >= hs.total : (!!m && n === m);
+  if (ultimaPelasHoras || naUltimaSemana) {
     return '⚠️ Última aula desta UC — é o momento de fechar a avaliação e recuperar competências em falta.';
   }
 
