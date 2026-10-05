@@ -1877,7 +1877,12 @@ function PassoFichaTecnica({
                   obs: String(p?.obs ?? ''),
                   haccp: String(p?.haccp ?? ''),
                 })),
-                tecnicasDetectadas: Array.isArray(ficha.tecnicasDetectadas) ? ficha.tecnicasDetectadas.map(String) : [],
+                // Sem técnicas escolhidas, ficam as detetadas na receita: antes a
+                // ficha ficava com «0 técnicas» e os alunos não se avaliavam
+                // em nada da produção (Rosa, 5/out/2026). Podem tirar-se depois.
+                tecnicasDetectadas: Array.isArray(ficha.tecnicasDetectadas) && ficha.tecnicasDetectadas.length
+                  ? ficha.tecnicasDetectadas.map(String)
+                  : subtecnicasDetetadas.map((x: { id: string; nome: string }) => `${x.id} — ${x.nome}`),
                 perguntasAuto: Array.isArray(ficha.perguntasAuto) ? ficha.perguntasAuto : [],
               };
               onContinuar(fichaSegura);

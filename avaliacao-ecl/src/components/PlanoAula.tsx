@@ -66,6 +66,7 @@ import { Card } from './ui';
 import ProfessorView from './ProfessorView';
 import { FecharUC } from './FecharUC';
 import { modulosDaTurma as modulosParaPauta } from '../cronograma';
+import { diaSemAulas, agendaDoDia } from '../calendarioEscolar';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Aula mista','Aula teórica','Dinâmica de grupo — atitudes','Almoço pedagógico','Jantar pedagógico','Brunch',
@@ -223,19 +224,23 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
     const diaDeCozinha = turmaId ? temCozinha(turmaId, chave) : false;
     // Evento ou concurso neste dia: cor própria (roxo), para não se confundir com as aulas.
     const temEvento = planosNesteDia.some((p: any) => p.tipoEvento);
+    // Feriado ou interrupção da escola: outra cor (Rosa, 5/out/2026).
+    const semAulas = diaSemAulas(chave);
     return (
       <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
-        title={diaDeCozinha ? 'Dia de cozinha' : undefined}
+        title={semAulas ? semAulas.nome : diaDeCozinha ? 'Dia de cozinha' : undefined}
         style={{
           aspectRatio: '1', maxHeight: 34, borderRadius: 6,
           border: ehHoje ? '1.5px solid var(--copper)'
             : diaDeCozinha ? '1.5px solid var(--sage)'
             : '1px solid var(--border)',
           background: selecionado ? 'var(--copper)'
+            : semAulas ? '#E9E2E2'
             : temEvento ? '#EDE3F6'
             : (planosNesteDia.length > 0 ? 'var(--copper-pale)'
             : diaDeCozinha ? 'rgba(90,122,78,0.08)' : '#fff'),
-          color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
+          color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : semAulas ? '#9a8a8a' : 'var(--charcoal)'),
+          textDecoration: semAulas && !selecionado ? 'line-through' : undefined,
           cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: 1, position: 'relative', fontSize: 12.5,
         }}>
@@ -403,6 +408,15 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                   const iso2 = diaSelecionado
                     ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
                     : '';
+                  const sa = iso2 ? diaSemAulas(iso2) : null;
+                  const ag = iso2 ? agendaDoDia(iso2) : [];
+                  if (sa || ag.length) return (
+                    <div style={{ fontSize: 13.5, lineHeight: 1.5, margin: '8px 0 4px' }}>
+                      {sa && <div style={{ color: '#8e2418', background: '#fdf0ef', border: '1.5px solid #c0392b', borderRadius: 9, padding: '9px 12px', fontWeight: 700 }}>
+                        ⛔ {sa.nome}. Não há aulas neste dia: não se pode criar um plano de aula. Pode criar uma atividade (evento, concurso, visita).</div>}
+                      {ag.map((x, i) => <div key={i} style={{ color: '#3f2466', background: '#EDE3F6', borderRadius: 9, padding: '7px 12px', marginTop: 6 }}>📅 Calendário da escola: {x.nome}.</div>)}
+                    </div>
+                  );
                   const av = (iso2 && turmaId) ? avisoDoDia(turmaId, iso2) : '';
                   if (!av) return null;
                   return (
@@ -437,7 +451,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                         style={{ padding: '12px 20px', borderRadius: 10, border: 'none',
                           background: 'var(--copper)', color: '#fff', fontSize: 14.5,
                           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        + Criar plano para este dia
+                        {diaSemAulas(iso) ? '+ Criar uma atividade para este dia' : '+ Criar plano de aula para este dia'}
                       </button>}
                     </>
                   );
@@ -1310,6 +1324,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
           </div>
         </div>
+        {dados.data && diaSemAulas(dados.data) && (
+          <div style={{ fontSize: 14, color: '#8e2418', background: '#fdf0ef', border: '1.5px solid #c0392b', borderRadius: 10, padding: '10px 12px', margin: '-6px 0 14px', lineHeight: 1.5 }}>
+            <b>⛔ {diaSemAulas(dados.data)!.nome}.</b> Não há aulas neste dia, por isso não se pode criar um plano de aula.
+            Pode criar uma atividade (evento, concurso, visita): no passo 3, escolha «Atividade extra» ou outro tipo de atividade.
+          </div>
+        )}
         {horarioEmTexto(turmaId) && !tipoEventoDe(dados.tipoAtividade) && (() => {
           const h = horasSugeridas(turmaId, dados.data);
           const diferente = h && (h.inicio !== dados.horaInicio || h.fim !== dados.horaFim);
@@ -1564,10 +1584,18 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
           {passo > 1 && <button className="btn btn-secondary" onClick={() => setPasso(passo - 1)} style={{ flex: 1 }}>← Anterior</button>}
-          <button className="btn btn-primary" disabled={!(!!dados.ucId)} onClick={() => guardar(false, true)}
-            style={{ flex: 2, fontSize: 15, padding: '13px', opacity: (!!dados.ucId) ? 1 : 0.5 }}>Seguinte →</button>
+          {(() => {
+            // Dia sem aulas (feriado ou interrupção): só atividades (Rosa, 5/out/2026).
+            const bloqueado = !!(dados.data && diaSemAulas(dados.data) && !tipoEventoDe(dados.tipoAtividade));
+            return (<>
+              <button className="btn btn-primary" disabled={!dados.ucId || bloqueado} onClick={() => guardar(false, true)}
+                style={{ flex: 2, fontSize: 15, padding: '13px', opacity: (!!dados.ucId && !bloqueado) ? 1 : 0.5 }}>Seguinte →</button>
+              {bloqueado && <div style={{ flexBasis: '100%', fontSize: 13.5, color: '#8e2418', fontWeight: 700, marginTop: 4 }}>
+                {diaSemAulas(dados.data)!.nome}: neste dia não há aulas, por isso não se pode criar um plano de aula. Escolha um tipo de atividade, ou mude a data no passo 1.</div>}
+            </>);
+          })()}
         </div>
         </>)}
         {passo === 4 && alvo && (<>

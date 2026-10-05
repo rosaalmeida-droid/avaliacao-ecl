@@ -7,6 +7,7 @@ import { getPlanosAula, horasDoPlano } from './backend';
 import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
 import { horarioDaTurma, temCozinha } from './horarios';
 import type { PlanoAula } from './types';
+import { diaSemAulas } from './calendarioEscolar';
 
 const DIA = 86400000;
 
@@ -19,19 +20,10 @@ function modDaUC(plano: PlanoAula): any {
 
 // Feriados nacionais em dias de semana, dentro dos períodos letivos de
 // 2026/27.
-const FERIADOS_2026_27 = new Set([
-  '2026-10-05', '2026-12-01', '2026-12-08', '2027-05-27',
-]);
-
-// Interrupções letivas, tiradas dos intervalos do cronograma (o 1º
-// período acaba a 15/12 e o 2º começa a 04/01; o 2º acaba a 19/03 e o
-// 3º começa a 30/03). Módulos que atravessam o Natal não contam as
-// semanas de férias.
-const INTERRUPCOES_2026_27: [string, string][] = [
-  ['2026-12-16', '2027-01-03'],
-  ['2027-03-20', '2027-03-29'],
-];
-const emInterrupcao = (iso: string) => INTERRUPCOES_2026_27.some(([a, b]) => iso >= a && iso <= b);
+// Os dias sem aulas (feriados nacionais e de Lisboa, interrupções da ECL)
+// estão no calendário escolar (Rosa, 5/out/2026).
+const FERIADOS_2026_27 = { has: (iso: string) => diaSemAulas(iso)?.tipo === 'feriado' };
+const emInterrupcao = (iso: string) => diaSemAulas(iso)?.tipo === 'interrupcao';
 
 /**
  * Quantas aulas tem a UC — os dias de cozinha reais da turma entre o

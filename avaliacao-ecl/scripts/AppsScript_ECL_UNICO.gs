@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.7';
+var VERSAO = 'ECL único v25.8';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -2304,6 +2304,37 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     formatos.push({ tipo: 'grelhaFaltas', linha: iniF, ate: linhas.length, n: contam.length + 4 });
     vazia();
   }
+
+  // (v25.8) A FICHA DE CADA ALUNO: tudo do aluno num sítio só — as faltas em
+  // horas em cada UC, as notas, as recuperações e aula a aula (Rosa, 5/out/2026:
+  // para as reuniões com os pais e com o diretor de turma).
+  novaFolha('Por aluno', 'A ficha de cada aluno: faltas em horas, notas de cada UC, recuperações e o que se passou em cada aula. Carregue no nome do aluno no índice da turma.');
+  alunos.forEach(function (a) {
+    titulo(String(a.numero || '') + ' — ' + (a.nome || ''), '#5B4A7A', 1);
+    var resumo = [];
+    Object.keys(daApp).forEach(function (kk) {
+      var ap = daApp[kk];
+      if (ap.alunoId !== a.id) return;
+      var hf = Number(ap.horasFaltadas) || 0, tot = Number(ap.horasUC) || 0;
+      var t = 'Na ' + ap.ucId + ', ' + (ap.media !== '' && ap.media !== undefined ? 'a média das aulas é ' + virgula(ap.media) : 'ainda não tem notas')
+        + (ap.final !== '' && ap.final !== undefined ? ' e a nota da UC é ' + virgula(ap.final) : '');
+      if (tot) t += '. Faltou ' + virgula(hf) + ' h das ' + virgula(tot) + ' horas da UC (' + virgula(Math.round(hf / tot * 1000) / 10) + '%)' + (hf / tot >= 0.1 ? ', acima dos 10%' : '');
+      resumo.push(t + '.');
+    });
+    (d.recuperacoes || []).filter(function (r) { return r.alunoId === a.id; }).forEach(function (r) {
+      resumo.push('Recuperação da ' + (r.ucId || 'UC') + ': ' + (NOME_ESTADO_RECUP[r.estado] || r.estado || '') + '.');
+    });
+    if (!resumo.length) resumo.push('Ainda sem notas nem faltas registadas.');
+    resumo.forEach(function (t) { junta([t]); });
+    cabecalho(['Dia', 'UC', 'Aula', 'Presença', 'Autoavaliou-se', 'Nota da aula (0-20)']);
+    contam.slice().reverse().forEach(function (p) {
+      var k = chave(a.id, p.id), x = pres[k];
+      var presenca = faltou(x, p.id) ? 'Faltou' : atrasou(x, p.id) ? 'Atrasado' : esteve(x, p.id) ? 'Presente' : '';
+      junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.ucId || '', p.titulo || '', presenca,
+        auto[k] ? 'Sim' : 'Não', nota[k] !== undefined ? virgula(nota[k]) : '']);
+    });
+    vazia();
+  });
 
   // 2. As notas de cada UC: um aluno por linha, uma aula por coluna (a UC mais recente primeiro).
   var ucs = [];
