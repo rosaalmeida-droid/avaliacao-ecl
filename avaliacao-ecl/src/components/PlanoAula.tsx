@@ -15,7 +15,7 @@ import {
   addOrUpdatePlanoAula,
   arquivarPlanoAula,
   desarquivarPlanoAula,
-  eliminarPlanoAulaDefinitivamente, anularPlanoAula, resumoDoPlano, planoDoProfessor,
+  eliminarPlanoAulaDefinitivamente, anularPlanoAula, resumoDoPlano, planoDoProfessor, podeApagarDeVez,
   proximoNumeroPlano,
   gerarCodigoPlano,
   getPlanosArquivados,
@@ -67,6 +67,7 @@ import ProfessorView from './ProfessorView';
 import { FecharUC } from './FecharUC';
 import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 import { diaSemAulas, agendaDoDia } from '../calendarioEscolar';
+import { janelaConfirmar } from './janelaConfirmar';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Aula mista','Aula teórica','Dinâmica de grupo — atitudes','Almoço pedagógico','Jantar pedagógico','Brunch',
@@ -732,6 +733,21 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='arquivo') {
     const arquivados = getPlanosArquivados(turmaId);
+    // Apagar de vez (Rosa, 5/out/2026): sai da aplicação e do Sheets, com o
+    // que os alunos tinham respondido. Pergunta-se sempre numa janela à parte.
+    const apagarDeVez = async (lista: TPlanoAula[]) => {
+      const respostas = new Set(_getSelecoes().filter(x => lista.some(p => p.id === x.planoAulaId)).map(x => x.alunoId + '|' + x.planoAulaId)).size;
+      const um = lista.length === 1;
+      if (!await janelaConfirmar({
+        titulo: um ? 'Quer mesmo apagar este plano de aula de vez?' : `Quer mesmo apagar de vez estes ${lista.length} planos de aula?`,
+        texto: (um ? 'O plano sai da aplicação e do Sheets e não volta. ' : 'Os planos saem da aplicação e do Sheets e não voltam. ')
+          + 'As fichas técnicas ficam na biblioteca.'
+          + (respostas ? `\n\nAtenção: há ${respostas} resposta${respostas === 1 ? '' : 's'} de alunos que também se apaga${respostas === 1 ? '' : 'm'}.` : ''),
+        nao: 'Não, deixar no Arquivo', sim: um ? 'Sim, apagar de vez' : `Sim, apagar os ${lista.length} de vez`, perigo: true,
+      })) return;
+      lista.forEach(p => anularPlanoAula(p.id));
+      setRefreshKey(k => k + 1);
+    };
     return (
       <div>
         {arquivadoAEliminar && (
@@ -750,7 +766,19 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         </div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
           Os planos arquivados não aparecem no calendário nem na lista, mas pode sempre repô-los.
+          {podeApagarDeVez() && ' Os planos de teste podem apagar-se de vez: saem da aplicação e do Sheets, e não voltam.'}
         </div>
+        {/* Os planos de teste (antes do início das aulas, de junho a agosto):
+            apagam-se de vez todos de uma só vez (Rosa, 5/out/2026). */}
+        {podeApagarDeVez() && (() => {
+          const testes = arquivados.filter(p => String(p.data || '').slice(0, 10) < '2026-09-01');
+          return testes.length ? (
+            <button onClick={() => apagarDeVez(testes)} style={{ width: '100%', marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+              border: '2px solid #c0392b', background: '#fdf0ef', color: '#8e2418', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+              🗑️ Apagar de vez os {testes.length} planos de teste (de antes de setembro de 2026)
+            </button>
+          ) : null;
+        })()}
         {arquivados.length === 0 && <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>O arquivo está vazio.</div>}
         {arquivados.map(p => {
           const horaI = limparHora(p.horaInicio);
@@ -764,6 +792,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{nomeDaUC(p) ? ' — ' + nomeDaUC(p) : ''}</div>}
                 </div>
                 <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
+                {podeApagarDeVez() && <button onClick={() => apagarDeVez([p])} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid #c0392b', background: '#fff', color: '#c0392b', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Apagar de vez</button>}
 
               </div>
             </div>

@@ -1803,6 +1803,10 @@ export function eliminarNotaProduto(id: string): void {
   gravarNaBase('nota_produto', apagada as any);
   avisarNotas();
 }
+/** Quem pode apagar de vez um plano de aula do Arquivo: a coordenação. */
+export function podeApagarDeVez(): boolean {
+  return perfilDoAparelho === 'coordenadora' || /rosa\s+almeida/i.test(nomeDoAparelho);
+}
 /** Quem pode apagar uma nota: quem a escreveu e a coordenação. */
 export function podeApagarNota(n: NotaProduto): boolean {
   const eu = nomeDoAparelho.trim().toLowerCase();
