@@ -26,8 +26,11 @@
 // 5. Lembrete mensal dos preços da Makro: execute uma vez instalarLembreteMakro.
 //
 // 6. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
-//    pessoas das compras, segue logo uma mensagem formal com a ligação
-//    para a requisição. Sem e-mails, nada é enviado.
+//    pessoas das compras, segue logo uma mensagem formal com a requisição
+//    em PDF, em anexo (só aquela requisição; nunca a ligação para o
+//    ficheiro, que dava acesso a todas, com edição). Sem e-mails, nada é
+//    enviado. Ao implementar esta versão, o Google pede outra vez
+//    autorização (para criar o PDF): aceite.
 //    Na primeira implementação, o Google pede autorização para enviar
 //    e-mails em seu nome: é normal, aceite.
 //
@@ -183,7 +186,7 @@ function doPost(e) {
     var url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/edit#gid=' + nova.getSheetId();
 
     // ── 8. E-mail às compras (só se a aplicação enviar e-mails) ──
-    var emailEnviado = enviarEmailCompras(dados, url, log);
+    var emailEnviado = enviarEmailCompras(dados, ss, nova, log);
 
     return resposta(true, 'Requisição criada: ' + nomeAba, log, {
       spreadsheetId: ss.getId(),
@@ -459,7 +462,21 @@ function escreverNotaDoses(folha, texto, est, log) {
 // E-MAIL ÀS COMPRAS
 // ══════════════════════════════════════════════════════════════
 
-function enviarEmailCompras(d, url, log) {
+/** A requisição (só aquela folha) em PDF. As compras recebem o PDF e nunca
+ *  uma ligação para o ficheiro: a ligação dava acesso, com edição, a todas
+ *  as requisições (auditoria de 5/out/2026). */
+function pdfDaRequisicao(ss, folha, nome) {
+  // DriveApp.getFiles() — esta linha (comentada) faz o Google pedir a
+  // autorização de leitura do Drive, precisa para exportar em PDF.
+  var u = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=pdf'
+    + '&gid=' + folha.getSheetId()
+    + '&size=A4&portrait=true&fitw=true&gridlines=false&printtitle=false&sheetnames=false&pagenum=UNDEFINED&fzr=false';
+  var r = UrlFetchApp.fetch(u, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw new Error('PDF da requisição: erro ' + r.getResponseCode());
+  return r.getBlob().setName(String(nome || 'Requisição').replace(/[\\\/:*?"<>|]/g, ' ') + '.pdf');
+}
+
+function enviarEmailCompras(d, ss, folha, log) {
   var emails = (Array.isArray(d.emailsCompras) ? d.emailsCompras : String(d.emailsCompras || '').split(/[,;\s]+/))
     .map(function (x) { return String(x || '').trim(); })
     .filter(function (x) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); });
@@ -478,13 +495,17 @@ function enviarEmailCompras(d, url, log) {
       dataIng ? 'Os ingredientes deverão estar disponíveis na cozinha até ' + dataIng + '.' : '',
       d.dataDaAula ? 'A aula realiza-se a ' + formatarData(d.dataDaAula) + '.' : '',
       '',
-      'A requisição pode ser consultada aqui: ' + url,
+      'Segue em anexo a requisição, em PDF.',
       '',
       'Com os melhores cumprimentos,',
       d.formador || '',
       'Escola de Comércio de Lisboa'
     ].filter(function (l, i, a) { return l !== '' || (i > 0 && a[i - 1] !== ''); });
-    MailApp.sendEmail({ to: emails.join(','), subject: assunto, body: linhas.join('\n'), name: 'Requisições ECL' });
+    // Sem o PDF, não se envia nada (nunca a ligação para o ficheiro).
+    var pdf;
+    try { pdf = pdfDaRequisicao(ss, folha, assunto); }
+    catch (e) { log.push('e-mail NÃO enviado: ' + e); return ''; }
+    MailApp.sendEmail({ to: emails.join(','), subject: assunto, body: linhas.join('\n'), name: 'Requisições ECL', attachments: [pdf] });
     log.push('E-mail enviado a ' + emails.join(', '));
     return new Date().toISOString();
   } catch (e) {
