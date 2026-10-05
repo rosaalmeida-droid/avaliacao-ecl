@@ -6,7 +6,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { perguntasDe, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, calculoDaAulaValidada, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, calculoDaAulaValidada, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas, esteveNaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -254,6 +254,9 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
           <div style={{ fontWeight: 600, fontSize: 14 }}>
             {nomeDoAluno(s.alunoId)} — {plano?.titulo || `Aula de ${dia} (o plano não está guardado neste computador)`}
           </div>
+          {!esteveNaAula(s.alunoId, s.planoAulaId || '') && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#c0392b' }}>⚠ Não esteve presente (sem registo de entrada)</div>
+          )}
           <div className="muted" style={{ fontSize: 13 }}>
             {plano?.ucId ? `${plano.ucId} · ` : ''}
             {temaDoAluno(s) ? `Tema: ${temaDoAluno(s)} · ` : ''}
@@ -640,6 +643,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </div>
       )}
 
+      {!esteveNaAula(selecao.alunoId, selecao.planoAulaId || '') && (
+        <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 12, padding: '12px 14px',
+          marginBottom: 14, fontSize: 14.5, color: '#8e2418', lineHeight: 1.5 }}>
+          <b>⚠ {nomeDoAluno(selecao.alunoId)} não tem registo de ter estado nesta aula.</b> Não entrou na aplicação
+          {' '}e não está na lista dos participantes. Confirma se esteve antes de validar.
+        </div>
+      )}
       {validacaoExistente && !guardado && (
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
           borderRadius: 12, padding: '12px 14px', marginBottom: 14,

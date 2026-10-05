@@ -764,6 +764,18 @@ function juntarSelecoes(dados: any[]): void {
 }
 
 /** O que chega da base de dados (de uma vez ou à escuta), por tipo de envio. */
+/** O guião e a ficha formatada nunca se perdem numa junção: fica o texto
+ *  mais recente que existir; um texto vazio nunca apaga um com conteúdo. */
+function comTextosLongos(f: any, loc: any, nova: any): any {
+  const novaMaisRecente = String(nova?.atualizadoEm || '') > String(loc?.atualizadoEm || '');
+  for (const campo of ['textoGuia', 'htmlCompleto', 'planoAulaId']) {
+    const l = loc?.[campo], n = nova?.[campo];
+    if (n && (!l || novaMaisRecente)) f[campo] = n;
+    else if (l) f[campo] = l;
+  }
+  return f;
+}
+
 export function juntarDaBase(tipo: string, dados: any[]): void {
   if (!dados.length) return;
   // Planos e fichas eliminados noutro aparelho: saem deste também.
@@ -1109,7 +1121,7 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
         getValidacoes().filter(v => v.turmaId === turmaId).forEach(v => {
           const x = noSheets.get(String(v.id));
           const falta = !x || String(x.notaMedia20 ?? '') === '' || quandoFoi(x.validadoEm) < quandoFoi((v as any).validadoEm) - 1000;
-          if (falta) { enviarValidacaoAoSheets(v); porConfirmar('validacao', v.id, 'validação', v.turmaId); }
+          if (falta) { enviarValidacaoAoSheets(v); porConfirmar('validacao', v.id, rotuloAlunoAula('validação', (v as any).alunoId, (v as any).planoAulaId), v.turmaId); }
         });
       }
 
@@ -3335,7 +3347,7 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
   enviar(SHEETS_HISTORICO_URL, 'selecao', corpoSelecao(s));
   // Se não chegar, volta a ser enviada: sem ela o professor não vê esta
   // autoavaliação na lista para validar.
-  porConfirmar('selecao', s.id, 'autoavaliação', s.turmaId);
+  porConfirmar('selecao', s.id, rotuloAlunoAula('autoavaliação', s.alunoId, s.planoAulaId), s.turmaId);
 }
 
 function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
@@ -3379,7 +3391,7 @@ export function addOrUpdateValidacao(v: Validacao): void {
   // (out/2026) A validação insiste até chegar ao Sheets, como a autoavaliação.
   // Antes ia uma vez: se o Sheets estava ocupado, a nota ficava na aplicação
   // e o Sheets continuava a mostrar «AA» (Rosa: o Leonel, dias 29/09 e 02/10).
-  porConfirmar('validacao', v.id, 'validação', v.turmaId);
+  porConfirmar('validacao', v.id, rotuloAlunoAula('validação', (v as any).alunoId, (v as any).planoAulaId), v.turmaId);
 }
 
 function enviarValidacaoAoSheets(v: Validacao, nota20Final?: number): void {
@@ -6443,7 +6455,10 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
 }
 
 /** Resumo para o cabeçalho: quantos em cada estado. */
-export function resumoDaTurmaNaAula(estados: EstadoAlunoNaAula[]) {
+export function resumoDaTurmaNaAula(estadosTodos: EstadoAlunoNaAula[]) {
+  // Os alunos de ensaio (TESTE, n.º 99 e 88) ficam na lista mas não nos
+  // totais (auditoria 5/out/2026: «Entraram: 15» contava-os).
+  const estados = estadosTodos.filter(e => !(e.numero === 99 || e.numero === 88 || alunoDeTeste(e.alunoId)));
   return {
     total: estados.length,
     entraram: estados.filter(e => e.entrou).length,
@@ -8276,6 +8291,14 @@ function guardarEspera(l: PorConfirmar[]): void {
   try { localStorage.setItem(KEY_ESPERA, JSON.stringify(l.slice(-300))); } catch { /* */ }
 }
 
+/** «validação de Diogo Neves, aula de 02/10» — para o professor saber o que ficou por enviar. */
+function rotuloAlunoAula(oQue: string, alunoId?: string, planoAulaId?: string): string {
+  const a = alunoId ? getAlunos().find(x => x.id === alunoId) : undefined;
+  const p = planoAulaId ? getPlanosAula().find(x => x.id === planoAulaId) : undefined;
+  const dia = p?.data ? String(p.data).slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '';
+  return `${oQue}${a ? ` de ${a.nome || 'n.º ' + a.numero}` : ''}${dia ? `, aula de ${dia}` : ''}`;
+}
+
 export function porConfirmar(tipo: PorConfirmar['tipo'], id: string, rotulo: string, turmaId: string): void {
   const l = espera();
   const ja = l.find(x => x.tipo === tipo && x.id === id);
@@ -8283,6 +8306,19 @@ export function porConfirmar(tipo: PorConfirmar['tipo'], id: string, rotulo: str
   if (ja) { if (tipo === 'plano') { ja.tentativas = 0; ja.desde = new Date().toISOString(); guardarEspera(l); } return; }
   l.push({ tipo, id, rotulo, turmaId, desde: new Date().toISOString(), tentativas: 0 });
   guardarEspera(l);
+}
+
+/** O que ficou por enviar, dito com o aluno e a aula (também nos registos antigos). */
+export function rotuloDaEspera(x: PorConfirmar): string {
+  if (x.tipo === 'validacao') {
+    const v: any = getValidacoes().find(y => y.id === x.id);
+    if (v) return rotuloAlunoAula('validação', v.alunoId, v.planoAulaId);
+  }
+  if (x.tipo === 'selecao') {
+    const s = load<SelecaoAluno>(KEYS.selecoes).find(y => y.id === x.id);
+    if (s) return rotuloAlunoAula('autoavaliação', s.alunoId, s.planoAulaId);
+  }
+  return x.rotulo;
 }
 
 /** Quantos ainda não se sabe se chegaram, e há quanto tempo. */
@@ -9029,12 +9065,20 @@ export function publicarNotaFinalUC(n: Omit<NotaFinalPublicada, 'publicadaEm'>):
 
 /** UCs em que o aluno já tem de fazer a autoavaliação final: o módulo acabou
  *  (ou o professor fechou a UC ou publicou a nota) e ainda não há proposta dele. */
-export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: string; dataFim: string }[] {
+/** A UC já acabou: passou a data de fim do cronograma ou o professor fechou-a.
+ *  Uma nota publicada antes disso não faz a UC acabar (auditoria 5/out/2026:
+ *  a UFCD 16 ia no plano 8 de 17 e o aluno lia «A UC terminou»). */
+export function ucTerminou(turmaId: string, ucId: string): boolean {
   const hoje = new Date().toISOString().slice(0, 10);
+  const m: any = modulosDaTurma(turmaId).find((x: any) => x.id === ucId);
+  return (!!m?.dataFim && m.dataFim <= hoje) || ucJaFechada(turmaId, ucId);
+}
+
+export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: string; dataFim: string }[] {
   const comAulas = new Set(getPlanosAulaPorTurma(aluno.turmaId).map(p => p.ucId).filter(Boolean) as string[]);
   return modulosDaTurma(aluno.turmaId)
     .filter((m: any) => comAulas.has(m.id)
-      && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id) || !!getNotaFinalPublicadaUC(aluno.id, m.id))
+      && ucTerminou(aluno.turmaId, m.id)
       && !getPropostaFinalUC(aluno.id, m.id))
     .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
 }
@@ -9564,6 +9608,16 @@ export function alunosDoPlano(plano: any): Aluno[] {
   const ids = new Set<string>((plano.participantesIds || []) as string[]);
   return turma.filter(a => ids.has(a.id));
 }
+/** O aluno esteve nesta aula: entrou (presença) ou, num evento, está entre
+ *  os participantes. Uma autoavaliação de quem não esteve chega ao professor
+ *  com aviso (auditoria 5/out/2026). */
+export function esteveNaAula(alunoId: string, planoAulaId: string): boolean {
+  if (getPresencas().some(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId && x.presente !== false)) return true;
+  const p: any = getPlanosAula().find(x => x.id === planoAulaId);
+  if (p?.tipoEvento) return participantesDoEvento(p).includes(alunoId);
+  return false;
+}
+
 export function participantesDoEvento(p: PlanoAula): string[] {
   return modoParticipacao(p) === 'turma'
     ? getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false && !ehFantasma(a.id)).map(a => a.id)
@@ -9652,8 +9706,17 @@ function juntarAula(json: any, turmaId: string): void {
       const maisRecente = String(nova.atualizadoEm || '') > String(loc.atualizadoEm || '');
       const diferente = JSON.stringify([nova.ingredientes, nova.preparacao, nova.tecnicasSugeridas, nova.aparelhosDetectados, nova.nomePrato])
         !== JSON.stringify([loc.ingredientes, loc.preparacao, loc.tecnicasSugeridas, loc.aparelhosDetectados, loc.nomePrato]);
-      if (!loc.ingredientes?.length && nova.ingredientes.length) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
-      else if (!vazia && diferente && (maisRecente || !loc.atualizadoEm)) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
+      if (!loc.ingredientes?.length && nova.ingredientes.length) { fichas[i] = comTextosLongos({ ...loc, ...nova }, loc, nova); mudouF = true; }
+      else if (!vazia && diferente && (maisRecente || !loc.atualizadoEm)) { fichas[i] = comTextosLongos({ ...loc, ...nova }, loc, nova); mudouF = true; }
+      else {
+        // O guião (e a ficha formatada) feito noutro aparelho tem de chegar
+        // a este, mesmo que o resto da ficha seja igual (auditoria 5/out/2026:
+        // os guiões só apareciam no navegador onde tinham sido feitos).
+        const junta = comTextosLongos({ ...loc }, loc, nova);
+        if (junta.textoGuia !== loc.textoGuia || junta.htmlCompleto !== loc.htmlCompleto || junta.planoAulaId !== loc.planoAulaId) {
+          fichas[i] = junta; mudouF = true;
+        }
+      }
     }
   }
   if (mudouF) save(KEYS.fichas, fichas);

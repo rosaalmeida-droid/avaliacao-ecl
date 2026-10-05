@@ -545,6 +545,8 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
 interface EnvioRegistado {
   em: string; triagem?: TriagemAula | null; ecras: string[]; fichas: string[];
   quando?: string; ucId?: string; titulo?: string; tipo?: string; manual?: string[]; sumario?: string;
+  /** Só o sumário escrito pelo professor (o automático muda sozinho). */
+  sumarioEscrito?: string;
   competencias?: string[]; faltas?: boolean;
   grupos?: string;
 }
@@ -564,6 +566,7 @@ function fotografia(plano: PlanoAula): EnvioRegistado {
     tipo: String(p.tipoPlanAula || ''),
     manual: conhecimentosDaAula(plano).map(k => k.id).sort(),
     sumario,
+    sumarioEscrito: String(p.sumario || '').trim(),
     competencias: [...(p.compRemovidas || []).map((x: string) => '-' + x), ...(p.compAdicionadas || []).map((x: string) => '+' + x)].sort(),
     faltas: p.contaAssiduidade !== false,
     grupos: textoGrupos(plano),
@@ -598,7 +601,10 @@ function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' 
     const menos = (antes.manual || []).filter(x => !(agora.manual || []).includes(x)).length;
     out.push({ sinal: '~', texto: `Conteúdos do manual${mais ? ` (+${mais})` : ''}${menos ? ` (−${menos})` : ''}` });
   }
-  if (antes.sumario !== undefined && antes.sumario !== agora.sumario) out.push({ sinal: '~', texto: 'Sumário' });
+  // Só conta o sumário que o professor escreveu. O automático muda sozinho
+  // (com as fichas, o manual, o calendário) e deixava planos já finalizados
+  // com «Há alterações por finalizar» sem ninguém ter mexido (auditoria 5/out/2026).
+  if (antes.sumarioEscrito !== undefined && antes.sumarioEscrito !== agora.sumarioEscrito) out.push({ sinal: '~', texto: 'Sumário' });
   if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) out.push({ sinal: '~', texto: 'Competências (tiradas ou repostas)' });
   if (antes.faltas !== undefined && antes.faltas !== agora.faltas) out.push({ sinal: '~', texto: `Faltas e atrasos: ${agora.faltas ? 'contam' : 'não contam'}` });
   // Os grupos mudam-se num sítio à parte: o professor tem de o ver aqui (Rosa, out/2026).

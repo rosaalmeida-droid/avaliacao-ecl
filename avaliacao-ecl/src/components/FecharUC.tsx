@@ -20,7 +20,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   pautaDaUC, enviarPautaPorEmail, marcarUCFechada, situacaoRecuperacaoUC,
   publicarNotaFinalUC, getNotaFinalPublicadaUC,
-  emailDoProfessor, guardarEmailDoProfessor, getTurmas,
+  emailDoProfessor, guardarEmailDoProfessor, getTurmas, ucTerminou,
 } from '../backend';
 import { modulosDaTurma } from '../cronograma';
 import {
@@ -518,6 +518,11 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
               <span style={{ fontSize: 13.5, fontWeight: 700, color: publicadas === escolhidas.length ? 'var(--sage, #5a7a4e)' : '#8a4a15' }}>
                 {publicadas} de {escolhidas.length} publicada{publicadas === 1 ? '' : 's'} com a nota atual
               </span>
+              {!ucTerminou(turmaId, ucId) && (
+                <span style={{ fontSize: 13.5, color: '#8a4a15', lineHeight: 1.5 }}>
+                  A UC ainda não terminou: os alunos só veem a nota final quando ela acabar ou quando a fechares.
+                </span>
+              )}
             </div>
           </>
         )}

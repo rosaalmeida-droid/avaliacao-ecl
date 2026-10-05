@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC, mediaDasAulasValidadas, calculoDaAulaValidada } from '../backend';
-import { notaDaPautaUC } from '../pautaUC';
+import { notaDaPautaUC, notaDaUCComoNaPauta } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -140,8 +140,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       const pauta = !filtroUC || planosComNota.length === 0 ? null
         // Professor: a nota da pauta (níveis 2 a 6 e 5 C) só depois de fechar a UC;
         // até lá, a média das aulas em /20, como o aluno vê.
+        // (Auditoria 5/out/2026) Sempre a conta da pauta, já durante a UC:
+        // as aulas em falta ou sem autoavaliação contam 0.
         : !alunoId ? (ucJaFechada(turmaId, filtroUC) ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
-          : { nota: notaFinalUC(aluno.id, turmaId, filtroUC).final } as any)
+          : { nota: notaDaUCComoNaPauta(aluno.id, turmaId, filtroUC) } as any)
         : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada

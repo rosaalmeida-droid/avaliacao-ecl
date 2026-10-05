@@ -35,7 +35,7 @@ import {
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
-  validacaoDaAula,
+  validacaoDaAula, notaFinalUC, alunoDeTeste,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { pesoNoModulo } from './contextoAula';
@@ -183,7 +183,9 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
     r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
 
   return getAlunos()
-    .filter(a => a.turmaId === turmaId && a.ativo !== false && (!soAluno || a.id === soAluno))
+    // Os alunos de ensaio (TESTE) não entram na pauta oficial; só se vê a
+    // linha de um deles quando é ele a pedir a sua nota (auditoria 5/out/2026).
+    .filter(a => a.turmaId === turmaId && a.ativo !== false && (soAluno ? a.id === soAluno : !alunoDeTeste(a)))
     .sort((a, b) => a.numero - b.numero)
     .map(a => {
       const faltou = new Set(getPlanosFaltadosPorUC(a.id, ucId, turmaId).map(p => p.id));
@@ -434,6 +436,22 @@ export function notaDaPautaUC(alunoId: string, turmaId: string, ucId: string):
   } catch { /* */ }
   return { nota: escrita ?? sugestaoClassificacao(l, produtos, c.cp), cp: c.cp, total: c.total,
     resultado: c.resultado, atribuida: escrita !== null, publicada: false };
+}
+
+/**
+ * A nota da UC que se mostra em TODOS os ecrãs (professor e aluno), já
+ * durante a UC: a conta da pauta, com as aulas em falta ou sem
+ * autoavaliação a 0. «Notas da UC» mostrava a média só do que o aluno tinha
+ * respondido (Afonso 14,6 contra 5 na pauta) e o aluno era iludido
+ * (auditoria 5/out/2026). Sem pauta possível, a nota pelos registos.
+ */
+export function notaDaUCComoNaPauta(alunoId: string, turmaId: string, ucId: string): number | null {
+  try {
+    const p = notaDaPautaUC(alunoId, turmaId, ucId);
+    if (p && p.nota !== null && p.nota !== undefined) return p.nota;
+  } catch { /* sem pauta: a conta pelos registos */ }
+  const n = notaFinalUC(alunoId, turmaId, ucId);
+  return n?.final ?? null;
 }
 
 // ── Cabeçalho ────────────────────────────────────────────────

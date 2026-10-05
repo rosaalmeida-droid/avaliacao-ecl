@@ -8,6 +8,7 @@
 // · PassoMinhaFuncao: no início (antes de produzir) e no fim (antes da
 //   autoavaliação), a lista do que tem de fazer, para não se esquecer de
 //   nada, com o sítio do KitchenFlow onde regista.
+import { cozinhamNaAula } from '../contextoAula';
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import { getSessaoAula, guardarColaboracao, colaboracoesDaAula } from '../backend';
@@ -75,9 +76,12 @@ export function QuadroOrganizacional({ plano, alunoId, modo, onPlanoMudou }: {
           Os alunos que faltarem são substituídos com a aula aberta, quando já se sabe quem está presente.
         </div>
       )}
-      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>
-        <b>Todos:</b> {TAREFA_DE_TODOS.charAt(0).toLowerCase() + TAREFA_DE_TODOS.slice(1)}
-      </div>
+      {/* A bancada só numa aula em que se cozinha (auditoria 5/out/2026: aparecia na teórica). */}
+      {cozinhamNaAula(plano) && (
+        <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>
+          <b>Todos:</b> {TAREFA_DE_TODOS.charAt(0).toLowerCase() + TAREFA_DE_TODOS.slice(1)}
+        </div>
+      )}
       {quadroDaAula(o).map(({ funcao, lugares }) => (
         <div key={funcao.id} style={{ background: '#fff', border: `1px solid ${funcao.id === 'lider' ? V : '#E4E1E8'}`,
           borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
@@ -203,7 +207,7 @@ export function CartaoMinhaFuncao({ plano, alunoId, onVerQuadro }: {
           Hoje substituis {[...new Set(substitui.map(l => nomeDoAluno(l.substituiu!)))].join(' e ')}.
         </div>
       )}
-      {!funcoes.some(f => f.id === 'lider') && (
+      {!funcoes.some(f => f.id === 'lider') && cozinhamNaAula(plano) && (
         <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', marginTop: 8, lineHeight: 1.45 }}>
           E, como todos: {TAREFA_DE_TODOS.charAt(0).toLowerCase() + TAREFA_DE_TODOS.slice(1)}
         </div>
@@ -239,7 +243,7 @@ export function PassoMinhaFuncao({ plano, alunoId, momento, onConcluido, onAbrir
   const o = organizacaoDe(plano);
   const funcoes = funcoesDoAluno(o, alunoId);
   const lider = funcoes.some(f => f.id === 'lider');
-  const itens = itensDaFuncao(funcoes, momento, !lider);
+  const itens = itensDaFuncao(funcoes, momento, !lider && cozinhamNaAula(plano));
   const chave = `ecl_funcao_${plano.id}_${alunoId}_${momento}`;
   const [feitos, setFeitos] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem(chave) || '{}'); } catch { return {}; }
@@ -267,13 +271,15 @@ export function PassoMinhaFuncao({ plano, alunoId, momento, onConcluido, onAbrir
             placeholder="Por exemplo: ajudei a arrumar o economato."
             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10,
               border: '1.5px solid #DDD', fontSize: 15, fontFamily: 'inherit', resize: 'vertical', background: '#fff' }} />
-          <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5, marginTop: 10 }}>
-            {TAREFA_DE_TODOS} {REGISTAR_QUANDO_DETETAS}
-          </div>
+          {cozinhamNaAula(plano) && (
+            <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5, marginTop: 10 }}>
+              {TAREFA_DE_TODOS} {REGISTAR_QUANDO_DETETAS}
+            </div>
+          )}
         </>
-      ) : (
+      ) : cozinhamNaAula(plano) ? (
         <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5 }}>{TAREFA_DE_TODOS}</div>
-      )}
+      ) : null}
       <button onClick={onVerQuadro} style={{ ...botaoSecundario, marginTop: 12 }}>
         Ver o plano organizacional (quem faz o quê)
       </button>

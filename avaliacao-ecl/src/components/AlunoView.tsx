@@ -72,6 +72,8 @@ import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } fro
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
+import { notaDaUCComoNaPauta } from '../pautaUC';
+import { pedeFardaEHigiene, cozinhamNaAula } from '../contextoAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
@@ -974,8 +976,10 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // da pauta (2 a 6) e os 5 C só entram no fecho, na pauta (Rosa, set/2026);
   // depois de publicada, conta a nota final publicada.
   const publicadaDaUC = ucAtual ? getNotaFinalPublicadaUC(aluno.id, ucAtual) : null;
+  // (Auditoria 5/out/2026) A nota de hoje é a conta da pauta: as aulas em
+  // falta ou sem autoavaliação contam 0. Assim o aluno não é iludido.
   const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
-    : ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
+    : ucAtual ? { final: notaDaUCComoNaPauta(aluno.id, aluno.turmaId, ucAtual) } : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
   const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
@@ -1694,7 +1698,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 // ═════════════════════════════════════════════════════════════
 // VISTA DE UM PLANO — acordeão com os 4 passos
 // ═════════════════════════════════════════════════════════════
-function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = false }: {
+function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: soConsultaPedida = false }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
   /** Atividade em que o aluno não esteve: só vê o que se fez, a ficha técnica
    *  e o guião; não se inscreve nem se avalia (Rosa, out/2026). */
@@ -1705,6 +1709,15 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
   // em vez de um conteúdo, por exemplo), o aluno continuava com as
   // perguntas antigas até fechar e voltar a abrir (Rosa, out/2026).
   const plano = getPlanosAula().find(p => p.id === planoAberto.id) || planoAberto;
+  // Aula já validada pelo professor: fica só para consulta, com a nota. Antes
+  // continuava a aceitar passos («Vamos começar», «3 feitos») e parecia uma
+  // aula a decorrer (auditoria 5/out/2026).
+  const validacaoDaAula: any = soConsultaPedida ? null : getValidacoes()
+    .filter((v: any) => v.alunoId === aluno.id && v.planoAulaId === planoAberto.id)
+    .sort((a: any, b: any) => String(b.validadoEm || b.criadoEm || '').localeCompare(String(a.validadoEm || a.criadoEm || '')))[0];
+  const aulaValidada = !!validacaoDaAula;
+  const notaValidada = aulaValidada ? notaDaAulaValidada(validacaoDaAula) : null;
+  const soConsulta = soConsultaPedida || aulaValidada;
   const versao = String((plano as any).atualizadoEm || '');
   const versaoAoAbrir = React.useRef(versao);
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
@@ -1856,7 +1869,13 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
       <div style={{ background:'#F3F2F5' }}>
         <div style={{ padding:14, maxWidth:640, margin:'0 auto' }}>
 
-          {soConsulta && (
+          {aulaValidada && (
+            <div style={{ background:'#eef4eb', border:'1.5px solid #5a7a4e', borderRadius:14, padding:'12px 14px', marginBottom:14, fontSize:14.5, lineHeight:1.5 }}>
+              <b>✓ Aula validada pelo professor{notaValidada != null ? `: ${String(Math.round(notaValidada * 10) / 10).replace('.', ',')}/20` : ''}.</b>
+              {' '}Fica só para consulta: podes rever o que se fez, a ficha técnica e o guião.
+            </div>
+          )}
+          {soConsultaPedida && (
             <div style={{ background:'#f3eefa', border:'1.5px solid #6B3FA0', borderRadius:14, padding:'12px 14px', marginBottom:14, fontSize:14.5, lineHeight:1.5 }}>
               <b>Só para ver.</b> Não estiveste nesta atividade: podes ver o que se fez, a ficha técnica e o guião, para aprender.
               Não te inscreves nem te autoavalias nela.
@@ -2391,7 +2410,10 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       // O mesmo quando o professor tirou a farda desta aula.
       // Sem farda nesta aula, as mãos lavam-se na mesma antes de começar.
       if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')) onConcluido();
-      else if (((plano as any).compRemovidas || []).includes('OBR_01')) setLavarMaos(true);
+      // Aula teórica (ou sem farda) e sem cozinha: nem farda nem mãos — só a
+      // entrada (auditoria 5/out/2026).
+      else if (!pedeFardaEHigiene(plano) && !cozinhamNaAula(plano)) onConcluido();
+      else if (!pedeFardaEHigiene(plano)) setLavarMaos(true);
     }
   }
 
@@ -2457,7 +2479,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           Já entraste nesta aula{hora ? ` — ${hora}` : ''}
         </div>
         <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
-          A tua entrada e a farda já ficaram registadas. Não precisas de repetir.
+          {pedeFardaEHigiene(plano) ? 'A tua entrada e a farda já ficaram registadas.' : 'A tua entrada já ficou registada.'} Não precisas de repetir.
         </div>
         <button onClick={onConcluido} style={{
           marginTop:12, width:'100%', padding:13, borderRadius:11, border:'none',
@@ -3372,7 +3394,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     const regFarda = getHistoricoAvaliacoes()
       .filter((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01')
       .sort((a: any, b: any) => String(b.data).localeCompare(String(a.data)))[0];
-    const contaObrigatorias = (!ehAtitudinal || comObrigatorias) && !compRemovidas.includes('OBR_01');
+    const contaObrigatorias = (!ehAtitudinal || comObrigatorias) && !compRemovidas.includes('OBR_01') && pedeFardaEHigiene(plano);
     const todasAutoavaliacoes = [
       ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true,
         reflexaoFarda: (() => { try { return JSON.parse(localStorage.getItem(`ecl_farda_reflexao_${plano.id}_${aluno.id}`) || 'null') || undefined; } catch { return undefined; } })() }] : []),
@@ -3595,9 +3617,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {(() => {
           // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
           // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
-          const n = plano.ucId ? notaFinalUC(aluno.id, aluno.turmaId, plano.ucId) : null;
-          if (!n || n.final == null) return null;
-          const nota20 = n.final;
+          const n = plano.ucId ? notaDaUCComoNaPauta(aluno.id, aluno.turmaId, plano.ucId) : null;
+          if (n == null) return null;
+          const nota20 = n;
           return (
             <div style={{ background:'#6B3FA0', borderRadius:14, padding:16, marginTop:12 }}>
               <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.06em',
