@@ -5,7 +5,7 @@
 import { TIPOS_EVENTO, nomeDoTipoAtividade } from './eventosAvaliacao';
 import { getPlanosAula, horasDoPlano } from './backend';
 import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
-import { horarioDaTurma, temCozinha } from './horarios';
+import { horarioDaTurma, temCozinha, planoNumDiaSemAulas } from './horarios';
 import type { PlanoAula } from './types';
 import { diaSemAulas } from './calendarioEscolar';
 
@@ -48,7 +48,7 @@ export function totalAulasUC(plano: PlanoAula): number {
     // horário só serve para prever as aulas que ainda vêm (Rosa, 5/out/2026).
     const hoje = isoDe(new Date());
     const daUC = getPlanosAula().filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId
-      && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p));
+      && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p) && !planoNumDiaSemAulas(p));
     const passados = daUC.filter(p => String(p.data || '').slice(0, 10) < hoje).length;
     const diasComPlano = new Set(daUC.map(p => String(p.data || '').slice(0, 10)).filter(d => d >= hoje));
     let futuros = daUC.filter(p => String(p.data || '').slice(0, 10) >= hoje).length;
@@ -91,7 +91,7 @@ export function rotuloEvento(plano: PlanoAula): string {
 export function posicaoNaUC(plano: PlanoAula): number {
   if (ehEventoForaDoHorario(plano)) return 0;
   const daUC = getPlanosAula()
-    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p))
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p) && !planoNumDiaSemAulas(p))
     .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || (a.numeroPlan || 0) - (b.numeroPlan || 0));
   const idx = daUC.findIndex(p => p.id === plano.id);
   if (idx >= 0) return idx + 1;
@@ -114,7 +114,7 @@ export function horasDoPlanoNaUC(plano: PlanoAula): { de: number; ate: number; t
   const n = posicaoNaUC(plano);
   const iniUC = String(mod?.dataInicio || '0000-00-00');
   const antes = getPlanosAula()
-    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.id !== plano.id && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p)
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.id !== plano.id && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p) && !planoNumDiaSemAulas(p)
       && String(p.data || '').slice(0, 10) >= iniUC)
     .filter(p => posicaoNaUC(p) < n)
     .reduce((s, p) => s + horasDoPlano(p), 0);

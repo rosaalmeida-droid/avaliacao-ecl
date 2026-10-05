@@ -1913,6 +1913,21 @@ var COR_TURMA = '#7B2233';
 var TURMAS_DO_ANO = ['1º BCR', '1º ACR', '2º ACP', '3º ACP'];
 /** (v25.12) Os planos de aula de antes disto são testes (junho a agosto): não entram nas folhas das turmas. */
 var INICIO_ANO_LETIVO = '2026-09-01';
+// (v26.1) Os dias da semana com aulas de cozinha de cada turma (o mesmo
+// horário da aplicação, horarios.ts): 0 = domingo … 6 = sábado. Um plano
+// de aula noutro dia não conta (Rosa, 5/out/2026: «uma aula do dia 24, que
+// os alunos não tiveram e nunca vão ter numa quinta-feira»), a não ser que o
+// professor tenha confirmado na aplicação que houve aula nesse dia.
+var DIAS_DE_AULA = { '1º BCR': [2], '1º ACR': [4], '2º ACP': [3], '3º ACP': [1, 4, 5] };
+var INICIO_DAS_AULAS = '2026-09-21';
+function planoNumDiaSemAulas_(p) {
+  if (!p || p.tipoEvento) return false;
+  var dias = DIAS_DE_AULA[p.turmaId];
+  var dia = String(p.data || '').slice(0, 10);
+  if (!dias || !/^\d{4}-\d{2}-\d{2}$/.test(dia) || dia < INICIO_DAS_AULAS) return false;
+  if (p.diaSemAulasOk === dia) return false;
+  return dias.indexOf(new Date(dia + 'T12:00:00Z').getUTCDay()) < 0;
+}
 /** Os alunos de ensaio (88, 99, «TESTE») não entram nas folhas das turmas. */
 function alunoDeEnsaio_(a) { return Number(a.numero) === 88 || Number(a.numero) === 99 || /teste|ensaio/i.test(String(a.nome || '')); }
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
@@ -2287,6 +2302,10 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // (v26.1) Os planos arquivados não entram no Sheets: ficam só no Arquivo da
   // aplicação (Rosa, 5/out/2026).
   d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO && p.estado !== 'arquivado'; });
+  // (v26.1) Os planos num dia em que a turma não tem aulas ficam à parte:
+  // não contam como aulas, nem nas notas, nem nas faltas.
+  var planosDiaSemAulas = d.planos.filter(planoNumDiaSemAulas_);
+  d.planos = d.planos.filter(function (p) { return !planoNumDiaSemAulas_(p); });
   var aulas = d.planos.filter(function (p) {
     var dia = String(p.data || '').slice(0, 10);
     return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
@@ -2543,6 +2562,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
+    { nome: 'NUM DIA EM QUE A TURMA NÃO TEM AULAS — não contam (confirme na aplicação se houve aula ou arquive)', cor: '#A23A2E', fundo: '#F8D7DA',
+      lista: planosDiaSemAulas.filter(function (p) { return !p.eliminado; }) },
   ];
   novaFolha('Aulas', 'As aulas da turma, em grupos: as que contam para a nota, as atividades extra, as próximas e os rascunhos. As arquivadas estão só no Arquivo da aplicação.');
   titulo('AS AULAS (' + aulas.length + ' — ' + contam.length + (contam.length === 1 ? ' conta' : ' contam') + ' para a nota)', '#2F5D8A');

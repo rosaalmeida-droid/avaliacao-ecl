@@ -10,6 +10,7 @@ import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
+import { planoNumDiaSemAulas } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
@@ -10175,7 +10176,7 @@ export function planosParaESchooling(nomeProfessor: string, incluirPassadas = fa
   const hoje = agora.toISOString().slice(0, 10);
   return getPlanosAula()
     .filter((p: any) => p.estado !== 'arquivado' && p.estado !== 'rascunho' && planoDoProfessor(p, nomeProfessor)
-      && !eventoForaDoHorario(p) && String(p.data || '').slice(0, 10) <= hoje
+      && !eventoForaDoHorario(p) && !planoNumDiaSemAulas(p) && String(p.data || '').slice(0, 10) <= hoje
       && (incluirPassadas || !p.eschoolingEm))
     .filter((p: any) => String(p.data).slice(0, 10) < hoje || !p.horaFim || p.horaFim <= agora.toTimeString().slice(0, 5))
     .sort((a, b) => `${a.data} ${a.horaInicio || ''}`.localeCompare(`${b.data} ${b.horaInicio || ''}`));

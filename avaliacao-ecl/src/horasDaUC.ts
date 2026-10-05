@@ -9,7 +9,7 @@
 // ============================================================
 import { getPlanosAula, horasDoPlano } from './backend';
 import { modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
-import { horasSugeridas, horarioDaTurma } from './horarios';
+import { horasSugeridas, horarioDaTurma, planoNumDiaSemAulas } from './horarios';
 import { diaSemAulas } from './calendarioEscolar';
 import { TIPOS_EVENTO } from './eventosAvaliacao';
 
@@ -25,7 +25,7 @@ export function horasDaUC(turmaId: string, ucId: string, hojeISO = isoDe(new Dat
   const total = Number(mod?.horasPrevistas) || 0;
   if (!mod || !total || !mod.dataFim) return null;
   const planos = getPlanosAula().filter((p: any) => p.turmaId === turmaId && p.ucId === ucId && p.estado !== 'arquivado'
-    && !p.eliminado && !(p.tipoEvento && TIPOS_EVENTO.includes(p.tipoAtividade)));
+    && !p.eliminado && !(p.tipoEvento && TIPOS_EVENTO.includes(p.tipoAtividade)) && !planoNumDiaSemAulas(p));
   const dia = (p: any) => String(p.data || '').slice(0, 10);
   // Só os planos de aula dentro das datas da UC: os de teste (junho a agosto)
   // ficavam a contar como horas dadas (Rosa, 5/out/2026).
