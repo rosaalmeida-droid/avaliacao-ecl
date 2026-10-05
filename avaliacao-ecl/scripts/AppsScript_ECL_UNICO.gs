@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.9';
+var VERSAO = 'ECL único v25.10';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1961,19 +1961,20 @@ function atualizarFolhasDasTurmas() {
   var nomesFolhas = [];
   turmas.forEach(function (turma) {
     try {
-      var feitas = escreverSeparadorDaTurma(ss, turma, {
+      var feitas = comNovaTentativa_(function () { return escreverSeparadorDaTurma(ss, turma, {
         alunos: alunos[turma] || [], planos: planos[turma] || [], sessoes: sessoes[turma] || [],
         presencas: presencas[turma] || [], selecoes: selecoes[turma] || [], validacoes: validacoes[turma] || [],
         finais: finais[turma] || [], telemoveis: telemoveis[turma] || [],
         recuperacoes: recuperacoes[turma] || [], planoPorId: porIdPlano,
         grupos: grupos[turma] || [], gruposInfo: gruposInfo[turma] || [], pares: pares[turma] || [], lideres: lideres[turma] || [],
         nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || []
-      }, hoje);
+      }, hoje); }, 'Turma ' + turma);
+      SpreadsheetApp.flush();
       nomesFolhas = nomesFolhas.concat(feitas || [nomeDoSeparador(turma)]);
     } catch (e) { Logger.log('Turma ' + turma + ': ' + e); nomesFolhas.push(nomeDoSeparador(turma)); }
   });
   try { escreverFolhasGerais(ss, { planos: todosPlanos, recuperacoes: todasRecup }); } catch (e) { Logger.log('Folhas gerais: ' + e); }
-  arrumarSeparadores(ss, nomesFolhas);
+  try { comNovaTentativa_(function () { arrumarSeparadores(ss, nomesFolhas); }, 'Arrumar'); } catch (e) { Logger.log('Arrumar os separadores: ' + e); }
 }
 
 /** (v25) Os nomes das técnicas, a partir das fichas («SUB-010 Bater claras»,
@@ -2490,7 +2491,6 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     try {
       fo.getRange(2, 1).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('← Voltar ao índice da turma ' + turma)
         .setLinkUrl('#gid=' + gidP + '&range=A1').setTextStyle(estiloForte).build());
-      fo.setFrozenRows(2);
     } catch (e) { Logger.log('Voltar ' + F.nome + ': ' + e); }
   });
   try {
@@ -2511,43 +2511,71 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
 
 /** (v25.7) Escreve uma folha da turma (a do índice ou uma das partes). */
 function escreverFolhaDaTurma_(ss, F) {
+  // (v25.10) Mais leve: as cores e os tipos de letra vão de uma só vez para a
+  // folha toda (antes era uma chamada por linha, centenas por turma, e o Google
+  // desistia: «Service Spreadsheets timed out» — Rosa, 5/out/2026). A folha
+  // fica só com as linhas e colunas que usa.
   var linhas = F.linhas, formatos = F.formatos, largura = F.largura || 12;
+  var nL = Math.max(1, linhas.length);
   var f = ss.getSheetByName(F.nome) || ss.insertSheet(F.nome);
   f.clear();
   try { f.getBandings().forEach(function (b) { b.remove(); }); } catch (e) {}
   if (f.getMaxColumns() < largura) f.insertColumnsAfter(f.getMaxColumns(), largura - f.getMaxColumns());
-  var grelha = linhas.map(function (l) { var c = l.slice(0, largura); while (c.length < largura) c.push(''); return c; });
+  if (f.getMaxRows() < nL) f.insertRowsAfter(f.getMaxRows(), nL - f.getMaxRows());
+  var grelha = linhas.map(function (l) { var c = l.slice(0, largura); while (c.length < largura) c.push(''); return c.map(function (v) { return v === null || v === undefined ? '' : String(v); }); });
+  if (!grelha.length) grelha = [new Array(largura).fill('')];
+  // As matrizes do formato, todas de uma vez.
+  var mat = function (v) { return grelha.map(function () { return new Array(largura).fill(v); }); };
+  var fundo = mat(null), cor = mat('#000000'), peso = mat('normal'), tam = mat(10), estilo = mat('normal'), quebra = mat(false), alinhaV = mat('middle'), alinhaH = mat('left');
+  var pinta = function (l, c0, n, fn) { for (var c = c0; c < Math.min(largura, c0 + n); c++) fn(l - 1, c); };
+  formatos.forEach(function (fm) {
+    var L = fm.linha;
+    if (!L || L > grelha.length) return;
+    if (fm.tipo === 'topo') pinta(L, 0, 1, function (r, c) { peso[r][c] = 'bold'; tam[r][c] = 12; cor[r][c] = COR_TURMA; });
+    if (fm.tipo === 'titulo') pinta(L, 0, largura, function (r, c) { fundo[r][c] = fm.cor; cor[r][c] = '#ffffff'; peso[r][c] = 'bold'; tam[r][c] = 11; });
+    if (fm.tipo === 'cab') pinta(L, 0, fm.n, function (r, c) { fundo[r][c] = '#F3ECEE'; peso[r][c] = 'bold'; quebra[r][c] = true; });
+    if (fm.tipo === 'legenda') pinta(L, 0, 1, function (r, c) { cor[r][c] = '#777777'; estilo[r][c] = 'italic'; });
+    if (fm.tipo === 'cor') pinta(L, 0, fm.n, function (r, c) { fundo[r][c] = fm.cor; });
+    if (fm.tipo === 'sumario') pinta(L, 0, 1, function (r, c) { cor[r][c] = '#444444'; estilo[r][c] = 'italic'; tam[r][c] = 9; });
+    if (fm.tipo === 'voltar') pinta(L, 0, 1, function (r, c) { peso[r][c] = 'bold'; cor[r][c] = '#1a56db'; });
+    var ate = Math.min(fm.ate || 0, grelha.length);
+    if (fm.tipo === 'wrap') for (var r1 = L; r1 <= ate; r1++) pinta(r1, 0, fm.n, function (r, c) { quebra[r][c] = true; alinhaV[r][c] = 'top'; });
+    if (fm.tipo === 'grelhaFaltas') for (var r2 = L; r2 <= ate; r2++) pinta(r2, 2, fm.n - 2, function (r, c) {
+      var v = grelha[r][c]; alinhaH[r][c] = 'center'; cor[r][c] = v === 'F' ? '#C0392B' : v === 'A' ? '#B5651D' : '#333333'; if (v === 'F') peso[r][c] = 'bold'; });
+    if (fm.tipo === 'grelhaPct') for (var r3 = L; r3 <= ate; r3++) pinta(r3, fm.col - 1, fm.n, function (r, c) {
+      var x = Number(String(grelha[r][c]).replace('%', '').replace(',', '.')); alinhaH[r][c] = 'center';
+      if (grelha[r][c] !== '' && !isNaN(x)) fundo[r][c] = x >= 10 ? '#F8D7DA' : x >= 7 ? '#FFF4E0' : null; });
+  });
   var r = f.getRange(1, 1, grelha.length, largura);
   r.setNumberFormat('@');
-  r.setValues(grelha.map(function (l) { return l.map(function (v) { return v === null || v === undefined ? '' : String(v); }); }));
-  r.setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle');
-  formatos.forEach(function (fm) {
-    if (fm.tipo === 'topo') f.getRange(fm.linha, 1).setFontWeight('bold').setFontSize(12).setFontColor(COR_TURMA);
-    if (fm.tipo === 'titulo') f.getRange(fm.linha, 1, 1, largura).setBackground(fm.cor).setFontColor('#ffffff').setFontWeight('bold').setFontSize(11);
-    if (fm.tipo === 'cab') f.getRange(fm.linha, 1, 1, fm.n).setBackground('#F3ECEE').setFontWeight('bold').setWrap(true);
-    if (fm.tipo === 'legenda') f.getRange(fm.linha, 1).setFontColor('#777777').setFontStyle('italic');
-    if (fm.tipo === 'cor') f.getRange(fm.linha, 1, 1, fm.n).setBackground(fm.cor);
-    if (fm.tipo === 'sumario') f.getRange(fm.linha, 1).setFontColor('#444444').setFontStyle('italic').setFontSize(9);
-    if (fm.tipo === 'wrap') f.getRange(fm.linha, 1, fm.ate - fm.linha + 1, fm.n).setWrap(true).setVerticalAlignment('top');
-    if (fm.tipo === 'grelhaFaltas' && fm.ate >= fm.linha) {
-      var gr = f.getRange(fm.linha, 3, fm.ate - fm.linha + 1, fm.n - 2);
-      gr.setHorizontalAlignment('center');
-      gr.setFontColors(gr.getValues().map(function (l) { return l.map(function (v) { return v === 'F' ? '#C0392B' : v === 'A' ? '#B5651D' : '#333333'; }); }));
-    }
-    if (fm.tipo === 'grelhaPct' && fm.ate >= fm.linha) {
-      var gp = f.getRange(fm.linha, fm.col, fm.ate - fm.linha + 1, fm.n);
-      gp.setHorizontalAlignment('center');
-      gp.setBackgrounds(gp.getValues().map(function (l) { return l.map(function (v) {
-        var x = Number(String(v).replace('%', '').replace(',', '.'));
-        return v === '' || isNaN(x) ? '#ffffff' : x >= 10 ? '#F8D7DA' : x >= 7 ? '#FFF4E0' : '#ffffff'; }); }));
-    }
-  });
-  f.setFrozenRows(1);
+  r.setValues(grelha);
+  r.setFontFamily('Arial');
+  r.setBackgrounds(fundo); r.setFontColors(cor); r.setFontWeights(peso); r.setFontSizes(tam); r.setFontStyles(estilo);
+  r.setWraps(quebra); r.setVerticalAlignments(alinhaV); r.setHorizontalAlignments(alinhaH);
+  // Só as linhas e colunas que se usam (o ficheiro fica mais leve).
+  try {
+    if (f.getMaxRows() > grelha.length + 2) f.deleteRows(grelha.length + 3, f.getMaxRows() - grelha.length - 2);
+    if (f.getMaxColumns() > largura + 1) f.deleteColumns(largura + 2, f.getMaxColumns() - largura - 1);
+  } catch (e) {}
+  f.setFrozenRows(F.curto ? 2 : 1);
   f.setFrozenColumns(F.curto ? 2 : 0);
   f.setColumnWidth(1, F.curto ? 44 : 60); f.setColumnWidth(2, 230);
-  for (var c = 3; c <= largura; c++) f.setColumnWidth(c, 88);
+  if (largura > 2) f.setColumnWidths(3, largura - 2, 88);
   try { f.setTabColor(COR_TURMA); } catch (e) {}
   return f;
+}
+
+/** (v25.10) Tenta outra vez quando o Google demora («timed out»), até 3 vezes. */
+function comNovaTentativa_(fn, nome) {
+  for (var t = 1; t <= 3; t++) {
+    try { return fn(); } catch (e) {
+      var demorou = /timed out|tempo limite|Service Spreadsheets/i.test(String(e));
+      Logger.log((nome || '') + ': tentativa ' + t + ' falhou: ' + e);
+      if (!demorou || t === 3) throw e;
+      SpreadsheetApp.flush();
+      Utilities.sleep(5000 * t);
+    }
+  }
 }
 
 /**
