@@ -9,7 +9,7 @@
 // ============================================================
 import { getPlanosAula, horasDoPlano } from './backend';
 import { modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
-import { horasSugeridas, horarioDaTurma } from './horarios';
+import { horasSugeridas, horarioDaTurma, planoNumDiaSemAulas } from './horarios';
 import { diaSemAulas } from './calendarioEscolar';
 import { TIPOS_EVENTO } from './eventosAvaliacao';
 
@@ -25,7 +25,7 @@ export function horasDaUC(turmaId: string, ucId: string, hojeISO = isoDe(new Dat
   const total = Number(mod?.horasPrevistas) || 0;
   if (!mod || !total || !mod.dataFim) return null;
   const planos = getPlanosAula().filter((p: any) => p.turmaId === turmaId && p.ucId === ucId && p.estado !== 'arquivado'
-    && !p.eliminado && !(p.tipoEvento && TIPOS_EVENTO.includes(p.tipoAtividade)));
+    && !p.eliminado && !(p.tipoEvento && TIPOS_EVENTO.includes(p.tipoAtividade)) && !planoNumDiaSemAulas(p));
   const dia = (p: any) => String(p.data || '').slice(0, 10);
   // Só os planos de aula dentro das datas da UC: os de teste (junho a agosto)
   // ficavam a contar como horas dadas (Rosa, 5/out/2026).
@@ -81,8 +81,8 @@ export function fraseDasHorasDaUC(h: HorasDaUC): { frase: string; estado: 'certo
   const dif = Math.round((h.previstas - h.total) * 10) / 10;
   if (Math.abs(dif) < 0.5) return { frase: partes.join(' ') + ' As horas chegam certas.', estado: 'certo' };
   if (dif < 0) return { frase: partes.join(' ') + ` ${Math.round(-dif * 10) / 10 === 1 ? "Falta" : "Faltam"} ${horas(-dif)} para chegar às ${horas(h.total)}: é preciso acertar o cronograma ou marcar mais planos de aula.`, estado: 'faltam' };
-  // Sobram menos horas do que um dia de aula: chega encurtar o último plano.
+  // Sobram menos horas do que um dia de aula: basta encurtar o último plano.
   const umDia = h.diasNoHorario ? h.noHorario / h.diasNoHorario : 0;
-  if (umDia && dif < umDia) return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: no último dia de aula da UC, chega dar ${horas(umDia - dif)}.`, estado: 'sobram' };
+  if (umDia && dif < umDia) return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: no último dia de aula da UC, basta dar ${horas(umDia - dif)}.`, estado: 'sobram' };
   return { frase: partes.join(' ') + ` Passa das ${horas(h.total)} em ${horas(dif)}: a UC pode acabar mais cedo, ou é preciso acertar o cronograma.`, estado: 'sobram' };
 }

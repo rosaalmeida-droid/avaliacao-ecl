@@ -12,7 +12,7 @@
 
 import React from 'react';
 import { VistaProf } from './Header';
-import { PlanosForaDoHorario, PlanosAMaisNaUC } from './PlanosForaDoHorario';
+import { PlanosForaDoHorario, PlanosAMaisNaUC, PlanosEmDiaSemAulas } from './PlanosForaDoHorario';
 import { ProximosNoCalendario } from './ProximosNoCalendario';
 import { HorasDasUCs } from './HorasDasUCs';
 
@@ -139,6 +139,7 @@ export function PainelProfessor({
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
       <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
         {/* Planos com horas fora do horário da turma (Rosa, 5/out/2026). */}
+        <PlanosEmDiaSemAulas turmaId={turmaId} />
         <PlanosForaDoHorario turmaId={turmaId} />
         <PlanosAMaisNaUC turmaId={turmaId} />
         {/* As horas de cada UC: dadas e as que ainda cabem (Rosa, 5/out/2026). */}

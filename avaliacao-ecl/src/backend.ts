@@ -10,6 +10,7 @@ import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
+import { planoNumDiaSemAulas } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
@@ -214,10 +215,22 @@ let semEspacoNoAparelho = false;
 /** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
 export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
 
+// Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
+// GMT+0100 (…)», ou «Sat Dec 30 1899 08:30:00 …» numa hora) voltam a
+// «2026-09-05» e «08:30». Vale para todos os dados guardados (Rosa, 5/out/2026).
+const MESES_EN: Record<string, string> = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+const DATA_EN = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}) (\d{4}) (\d{2}):(\d{2}):\d{2} GMT/;
+export function semDataInglesa(v: unknown): unknown {
+  if (typeof v !== 'string' || v.length < 25 || v.charAt(3) !== ' ') return v;
+  const m = DATA_EN.exec(v);
+  if (!m) return v;
+  return m[4] === '1899' ? `${m[5]}:${m[6]}` : `${m[4]}-${MESES_EN[m[2]]}-${m[3]}`;
+}
+
 function load<T>(key: string): T[] {
   try {
     const r = key in naMemoria ? naMemoria[key] : localStorage.getItem(key);
-    return r ? JSON.parse(r) : [];
+    return r ? JSON.parse(r, (_k, v) => semDataInglesa(v)) : [];
   } catch { return []; }
 }
 
@@ -342,7 +355,7 @@ function despejarFila(chave: string) {
 }
 
 /** Pedidos pequenos e urgentes: vão logo, sozinhos, sem esperar por pacotes. */
-const URGENTES = new Set(['sessao', 'fechar_sessao', 'eliminar_plano', 'eliminar_do_plano', 'eliminar_ficha',
+const URGENTES = new Set(['sessao', 'fechar_sessao', 'anular_sessao', 'eliminar_plano', 'eliminar_do_plano', 'eliminar_ficha',
   'eliminar_requisicao', 'eliminar_aluno', 'eliminar_evento']);
 
 // As gravações dos alunos vão uma segunda vez, 10 a 15 s depois: se o
@@ -788,7 +801,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   const vivos = dados.filter(x => !x?.eliminado);
   if (tipo === 'plano') { if (vivos.length) juntarAula({ planos: vivos }, vivos[0].turmaId || ''); return; }
   if (tipo === 'ficha') { if (vivos.length) juntarAula({ fichas: vivos }, ''); return; }
-  if (tipo === 'sessao') { if (vivos.length) juntarAula({ sessoes: vivos.filter(x => x.abertaEm || x.fechadaEm) }, vivos[0].turmaId || ''); return; }
+  if (tipo === 'sessao') { if (vivos.length) juntarAula({ sessoes: vivos.filter(x => x.abertaEm || x.fechadaEm || x.anuladaEm) }, vivos[0].turmaId || ''); return; }
   if (tipo === 'avaliacao') juntarAvaliacoes(dados);
   else if (tipo === 'validacao') juntarValidacoes(dados);
   else if (tipo === 'presenca') juntarPresencas(dados);
@@ -5578,6 +5591,11 @@ export function abrirSessaoAula(
     toleranciaMin,
   };
   save(KEY_SESSOES as any, [...getSessoesAula().filter(s => s.planoAulaId !== planoAulaId), nova]);
+  // Abrir uma aula num dia em que a turma não tem aulas (uma reposição, uma
+  // troca) é dizer que houve aula: conta nas horas, nas notas e nas faltas,
+  // na aplicação e no Sheets (Rosa, 5/out/2026).
+  const doPlano = getPlanosAula().find(p => p.id === planoAulaId);
+  if (doPlano && planoNumDiaSemAulas(doPlano)) atualizarPlano(planoAulaId, { diaSemAulasOk: String(doPlano.data).slice(0, 10) } as any);
 
   enviarAberturaJa(nova);
   // Confere se chegou; se não, volta a enviar de 10 em 10 segundos.
@@ -5665,20 +5683,61 @@ export async function sincronizarSessoes(turmaId: string): Promise<void> {
   const porId = new Map(locais.map(s => [s.planoAulaId, s]));
 
   for (const r of json.sessoes) {
-    const existente = porId.get(r.planoAulaId);
-    // A abertura mais antiga ganha: é a que iniciou a contagem.
-    if (!existente?.abertaEm || (r.abertaEm && r.abertaEm < existente.abertaEm)) {
-      porId.set(r.planoAulaId, {
-        planoAulaId: r.planoAulaId,
-        turmaId: r.turmaId || turmaId,
-        abertaEm: r.abertaEm,
-        abertaPor: r.abertaPor,
-        toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN,
-        fechadaEm: r.fechadaEm || existente?.fechadaEm,
-      });
-    }
+    if (!r?.planoAulaId) continue;
+    porId.set(r.planoAulaId, juntarSessao(porId.get(r.planoAulaId), r, turmaId));
   }
   save(KEY_SESSOES as any, [...porId.values()]);
+}
+
+/**
+ * Junta a abertura deste aparelho com a que veio de fora. A mais antiga
+ * ganha (é a que iniciou a contagem), mas uma abertura anulada não vale:
+ * uma anulação apaga as aberturas iguais ou anteriores a ela, e uma
+ * abertura depois da anulação volta a valer (Rosa, 5/out/2026).
+ */
+function juntarSessao(ex: SessaoAula | undefined, r: any, turmaId: string): SessaoAula {
+  const anuladaEm = [ex?.anuladaEm, r?.anuladaEm].filter(Boolean).sort().pop() || '';
+  const vale = (a?: string) => !!a && (!anuladaEm || a > anuladaEm);
+  const aberturas = [ex?.abertaEm, r?.abertaEm].filter(vale).sort() as string[];
+  const abertaEm = aberturas[0] || '';
+  const daAbertura = abertaEm && abertaEm === r?.abertaEm ? r : ex;
+  const fecho = [ex?.fechadaEm, r?.fechadaEm].filter(f => !!f && !!abertaEm && f > abertaEm).sort().pop() || '';
+  return {
+    planoAulaId: String(r?.planoAulaId || ex?.planoAulaId), turmaId: r?.turmaId || ex?.turmaId || turmaId,
+    abertaEm, abertaPor: abertaEm ? (daAbertura?.abertaPor || '') : '',
+    toleranciaMin: Number(daAbertura?.toleranciaMin) || TOLERANCIA_PADRAO_MIN,
+    fechadaEm: fecho, fechadaPor: fecho ? (r?.fechadaEm === fecho ? r?.fechadaPor : ex?.fechadaPor) : '',
+    ...(anuladaEm ? { anuladaEm } : {}),
+  };
+}
+
+/**
+ * Anula a abertura de uma aula aberta por engano (Rosa, 5/out/2026: «abri uma
+ * aula que era só para amanhã»). A aula fica como se nunca tivesse sido
+ * aberta: os alunos deixam de a ver aberta e, quando se abrir no dia certo,
+ * os dez minutos contam a partir daí. As entradas dos alunos nessa abertura
+ * saem também (no aparelho e no Sheets).
+ */
+export function anularAberturaAula(planoAulaId: string, professor: string): void {
+  const s = getSessaoAula(planoAulaId);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  const turmaId = plano?.turmaId || s?.turmaId || '';
+  const anuladaEm = new Date().toISOString();
+  const tumulo: SessaoAula = { planoAulaId, turmaId, abertaEm: '', abertaPor: '', toleranciaMin: s?.toleranciaMin || TOLERANCIA_PADRAO_MIN,
+    fechadaEm: '', fechadaPor: '', anuladaEm, anuladaPor: professor };
+  save(KEY_SESSOES as any, [...getSessoesAula().filter(x => x.planoAulaId !== planoAulaId), tumulo]);
+  save(KEYS.presencas, load<any>(KEYS.presencas).filter(p => p.planoAulaId !== planoAulaId));
+  aberturas.delete(planoAulaId); aberturasNaBase.delete(planoAulaId);
+  paraABase('sessao', { ...tumulo });
+  enviar(SHEETS_HISTORICO_URL, 'anular_sessao', { planoAulaId, turmaId, anuladaEm, anuladaPor: professor });
+}
+
+/** A aula é de outro dia (amanhã, por exemplo): pergunta antes de abrir. */
+export function diasAteAAula(plano: PlanoAula): number {
+  const dia = String(plano?.data || '').slice(0, 10);
+  if (!dia) return 0;
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+  return Math.round((new Date(dia + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime()) / 86400000);
 }
 
 export function fecharSessaoAula(planoAulaId: string, professor: string): void {
@@ -8396,6 +8455,18 @@ const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
 };
 
 /** O registo ainda existe neste aparelho (se não, já não há nada a enviar). */
+/** Foi apagado de vez noutro aparelho: sai deste também (fica marcado, para
+ *  nenhuma leitura o trazer de volta). */
+function esquecerEliminado(p: PorConfirmar): void {
+  try {
+    if (p.tipo === 'plano') {
+      const ja = new Set(load<string>(KEYS.eliminadosPlanos));
+      if (!ja.has(String(p.id))) save(KEYS.eliminadosPlanos, [...ja, String(p.id)]);
+      save(KEYS.planos, load<any>(KEYS.planos).filter(x => x?.id !== p.id));
+    }
+  } catch { /* fica para a próxima */ }
+}
+
 function existeAinda(p: PorConfirmar): boolean {
   try {
     if (p.tipo === 'plano') return getPlanosAula().some(x => x.id === p.id) && !load<string>(KEYS.eliminadosPlanos).includes(String(p.id));
@@ -8557,6 +8628,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   // tomada por "não consegui ler" — e o que estava à espera nunca mais era
   // reenviado: a aula criada não chegava ao Sheets nem aos alunos.
   const lidoComSucesso = new Set<string>();
+  /** O que o Sheets diz ter sido eliminado de propósito (apagado de vez).
+   *  O Sheets recusa gravá-lo outra vez («eliminado»), e o aparelho que ainda
+   *  o tinha insistia para sempre: «9.ª tentativa», «62.ª tentativa» (Rosa,
+   *  5/out/2026). Sai da lista e deste aparelho também. */
+  const eliminadosNoSheets = new Map<string, Set<string>>();
 
   for (const tipo of tipos) {
     const [url, pedido] = LEITURA_POR_TIPO[tipo];
@@ -8566,6 +8642,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
         if (json?.ok) algumaLeitura = true;
+        if (Array.isArray(json?.eliminados)) {
+          const el = eliminadosNoSheets.get(tipo) || new Set<string>();
+          json.eliminados.forEach((id: any) => el.add(String(id)));
+          eliminadosNoSheets.set(tipo, el);
+        }
         (json?.dados || []).forEach((x: any) => {
           ids.add(String(x.id));
           if (tipo === 'plano') versaoNoSheets.set(String(x.id), Date.parse(String(x.atualizadoEm || '')));
@@ -8609,6 +8690,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     // enviar, sai da lista. Antes ficava «a caminho do arquivo» para sempre e
     // o botão não fazia nada (Rosa, 5/out/2026).
     if (!existeAinda(p)) { continue; }
+    if (eliminadosNoSheets.get(p.tipo)?.has(String(p.id))) { esquecerEliminado(p); continue; }
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
@@ -9799,12 +9881,7 @@ function juntarAula(json: any, turmaId: string): void {
   const sess = new Map(getSessoesAula().map(s => [s.planoAulaId, s]));
   for (const r of (json.sessoes || [])) {
     if (!r?.planoAulaId) continue;
-    const ex = sess.get(r.planoAulaId);
-    if (!ex?.abertaEm || (r.abertaEm && r.abertaEm < ex.abertaEm) || (r.fechadaEm && !ex.fechadaEm)) {
-      sess.set(r.planoAulaId, { planoAulaId: r.planoAulaId, turmaId: r.turmaId || turmaId,
-        abertaEm: ex?.abertaEm && (!r.abertaEm || ex.abertaEm < r.abertaEm) ? ex.abertaEm : r.abertaEm, abertaPor: r.abertaPor || ex?.abertaPor,
-        toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN, fechadaEm: r.fechadaEm || ex?.fechadaEm });
-    }
+    sess.set(r.planoAulaId, juntarSessao(sess.get(r.planoAulaId), r, turmaId));
   }
   save(KEY_SESSOES as any, [...sess.values()]);
   // Grupos
@@ -10163,7 +10240,7 @@ export function planosParaESchooling(nomeProfessor: string, incluirPassadas = fa
   const hoje = agora.toISOString().slice(0, 10);
   return getPlanosAula()
     .filter((p: any) => p.estado !== 'arquivado' && p.estado !== 'rascunho' && planoDoProfessor(p, nomeProfessor)
-      && !eventoForaDoHorario(p) && String(p.data || '').slice(0, 10) <= hoje
+      && !eventoForaDoHorario(p) && !planoNumDiaSemAulas(p) && String(p.data || '').slice(0, 10) <= hoje
       && (incluirPassadas || !p.eschoolingEm))
     .filter((p: any) => String(p.data).slice(0, 10) < hoje || !p.horaFim || p.horaFim <= agora.toTimeString().slice(0, 5))
     .sort((a, b) => `${a.data} ${a.horaInicio || ''}`.localeCompare(`${b.data} ${b.horaInicio || ''}`));

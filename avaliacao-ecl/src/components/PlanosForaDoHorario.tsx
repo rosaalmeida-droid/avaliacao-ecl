@@ -8,7 +8,7 @@
 import React from 'react';
 import { getPlanosAula, atualizarPlano, horasDoPlano, arquivarPlanoAula, getSelecoes } from '../backend';
 import { horasDoPlanoNaUC } from '../rotuloPlano';
-import { blocosNoDia } from '../horarios';
+import { blocosNoDia, planoNumDiaSemAulas, horarioDaTurma } from '../horarios';
 import { janelaConfirmar } from './janelaConfirmar';
 
 const hhmm = (h?: string) => {
@@ -101,6 +101,93 @@ export function PlanosForaDoHorario({ turmaId }: { turmaId?: string }) {
 }
 
 // ============================================================
+// Planos num dia em que a turma não tem aulas (Rosa, 5/out/2026)
+// ============================================================
+// Um plano de aula numa quinta-feira, quando a turma só tem aulas à terça,
+// não conta como aula dada (nem nas horas da UC, nem na numeração) até o
+// professor dizer o que foi: houve aula nesse dia (troca, reposição), ou
+// foi engano e o plano vai para o Arquivo.
+export function planosEmDiaSemAulas(turmaId?: string) {
+  return getPlanosAula()
+    .filter(p => (!turmaId || p.turmaId === turmaId) && p.estado !== 'arquivado' && !(p as any).eliminado && planoNumDiaSemAulas(p))
+    .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+export function PlanosEmDiaSemAulas({ turmaId }: { turmaId?: string }) {
+  const [aberta, setAberta] = React.useState(false);
+  const [, refazer] = React.useState(0);
+  const lista = planosEmDiaSemAulas(turmaId);
+  if (!lista.length) return null;
+  const dataPT = (iso: string) => new Date(String(iso).slice(0, 10) + 'T00:00:00')
+    .toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const NOMES_DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const diasDaTurma = (t: string) => {
+    const h = horarioDaTurma(t);
+    const dias = h ? [...new Set(h.blocos.map(b => b.dia))].sort().map(d => NOMES_DIAS[d]) : [];
+    return dias.length <= 1 ? (dias[0] || '') : dias.slice(0, -1).join(', ') + ' e ' + dias[dias.length - 1];
+  };
+  const houveAula = async (p: any) => {
+    if (!await janelaConfirmar({
+      titulo: `Houve mesmo aula em ${dataPT(p.data)}?`,
+      texto: 'O plano passa a contar como aula dada: nas horas da UC e na numeração dos planos.',
+      nao: 'Não', sim: 'Sim, houve aula nesse dia',
+    })) return;
+    atualizarPlano(p.id, { diaSemAulasOk: String(p.data).slice(0, 10) } as any);
+    refazer(n => n + 1);
+  };
+  const arquivar = async (p: any) => {
+    const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === p.id).map(s => s.alunoId)).size;
+    if (!await janelaConfirmar({
+      titulo: `Quer arquivar o plano de ${dataPT(p.data)}?`,
+      texto: 'O plano arquivado deixa de contar nas horas, nas faltas e nas notas. Não se apaga: fica no Arquivo e pode voltar atrás.'
+        + (responderam ? ` Atenção: ${responderam} ${responderam === 1 ? 'aluno respondeu' : 'alunos responderam'} a este plano.` : ''),
+      nao: 'Não, deixar como está', sim: 'Sim, arquivar', perigo: true,
+    })) return;
+    arquivarPlanoAula(p.id);
+    refazer(n => n + 1);
+  };
+  return (<>
+    <button onClick={() => setAberta(true)}
+      style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 16, padding: '14px 16px', borderRadius: 14,
+        border: '2px solid #c0392b', background: '#fdf0ef', color: '#8e2418', cursor: 'pointer', fontFamily: 'inherit' }}>
+      <div style={{ fontSize: 16, fontWeight: 800 }}>⚠️ {lista.length === 1 ? 'Há 1 plano de aula' : `Há ${lista.length} planos de aula`} num dia em que a turma não tem aulas.</div>
+      <div style={{ fontSize: 14, marginTop: 3 }}>{lista.length === 1 ? 'Não conta' : 'Não contam'} como aula dada enquanto não confirmar. Carregue aqui para ver.</div>
+    </button>
+    {aberta && (
+      <div onClick={() => setAberta(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+          style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+          <div style={{ padding: '16px 18px 8px' }}>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>Planos de aula num dia sem aulas</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.45 }}>
+              Estes planos estão num dia da semana em que a turma não tem aulas. Não contam nas horas da UC nem na numeração dos planos.
+              Se houve aula nesse dia (uma troca ou uma reposição), confirme. Se foi engano, arquive o plano.
+            </div>
+          </div>
+          <div style={{ overflowY: 'auto', padding: '0 18px 8px' }}>
+            {lista.map((p: any) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '9px 0', borderTop: '1px solid rgba(26,23,20,0.08)' }}>
+                <div style={{ flex: '1 1 260px', fontSize: 14, lineHeight: 1.45 }}>
+                  <b>{p.turmaId}, {dataPT(p.data)}</b>{p.titulo ? ` (${p.titulo})` : ''}.
+                  <div style={{ color: 'rgba(26,23,20,0.75)' }}>A turma {p.turmaId} só tem aulas à {diasDaTurma(p.turmaId)}.</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button onClick={() => arquivar(p)} style={{ fontSize: 13.5, padding: '7px 12px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Foi engano: arquivar</button>
+                  <button onClick={() => houveAula(p)} style={{ fontSize: 13.5, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Houve aula nesse dia</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '12px 18px 16px', borderTop: '1px solid rgba(26,23,20,0.1)', display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button onClick={() => setAberta(false)} style={{ fontSize: 15, padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(26,23,20,0.25)', background: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Fechar</button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>);
+}
+
+// ============================================================
 // Planos a mais numa UC (Rosa, 5/out/2026)
 // ============================================================
 // Quando os planos de uma UC somam mais horas do que a UC tem (13 planos
@@ -110,7 +197,7 @@ export function PlanosForaDoHorario({ turmaId }: { turmaId?: string }) {
 export function ucsComPlanosAMais(turmaId?: string) {
   const grupos = new Map<string, any[]>();
   getPlanosAula()
-    .filter(p => (!turmaId || p.turmaId === turmaId) && p.ucId && p.estado !== 'arquivado' && !(p as any).tipoEvento && !(p as any).eliminado)
+    .filter(p => (!turmaId || p.turmaId === turmaId) && p.ucId && p.estado !== 'arquivado' && !(p as any).tipoEvento && !(p as any).eliminado && !planoNumDiaSemAulas(p))
     .forEach(p => { const k = p.turmaId + '|' + p.ucId; grupos.set(k, [...(grupos.get(k) || []), p]); });
   const out: { turmaId: string; ucId: string; total: number; soma: number; planos: any[] }[] = [];
   grupos.forEach(planos => {

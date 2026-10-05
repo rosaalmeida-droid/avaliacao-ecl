@@ -154,3 +154,19 @@ export function horarioEmTexto(turmaId: string): string {
   if (!h) return '';
   return h.blocos.map(b => `${DIAS[b.dia]} ${b.inicio}–${b.fim}`).join(' · ');
 }
+
+/**
+ * Plano de aula num dia da semana em que a turma não tem aulas (Rosa,
+ * 5/out/2026: «uma aula do dia 24, que os alunos não tiveram e nunca vão ter
+ * numa quinta-feira»). Não conta como aula dada, nem nas horas, nem na
+ * numeração, enquanto o professor não confirmar que houve aula nesse dia.
+ * Os eventos e as atividades podem ser em qualquer dia.
+ */
+export function planoNumDiaSemAulas(p: any): boolean {
+  if (!p || p.tipoEvento) return false;
+  const dia = String(p.data || '').slice(0, 10);
+  const h = horarioDaTurma(p.turmaId);
+  if (!h || !dia || dia < h.inicioAulas) return false;
+  if (p.diaSemAulasOk === dia) return false;
+  return blocosNoDia(p.turmaId, dia).length === 0;
+}

@@ -44,7 +44,23 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.0';
+var VERSAO = 'ECL único v26.1';
+
+// ══════════════════════════════════════════════════════════════
+// (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
+// por ordem alfabética (Rosa, 5/out/2026: «é muito difícil encontrar»).
+// Cada um chama a função de sempre, que continua mais abaixo.
+// ══════════════════════════════════════════════════════════════
+function EXECUTAR_atualizar1ACR() { atualizar1ACR(); }
+function EXECUTAR_atualizar1BCR() { atualizar1BCR(); }
+function EXECUTAR_atualizar2ACP() { atualizar2ACP(); }
+function EXECUTAR_atualizar3ACP() { atualizar3ACP(); }
+function EXECUTAR_atualizarTodasAsTurmas() { atualizarTodasAsTurmas(); }
+function EXECUTAR_copiaDeSeguranca() { copiaDeSeguranca(); }
+function EXECUTAR_instalarTarefas() { instalarTarefas(); }
+function EXECUTAR_verCopias() { verCopias(); }
+function EXECUTAR_verFicheiroDasFichas() { verFicheiroDasFichas(); }
+function EXECUTAR_verPins() { verPins(); }
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -617,6 +633,7 @@ function ler(nome, filtros) {
       // «2026-09-25» numa data com fuso — e isso estragava a hora e o dia.
       if (v !== '' && v !== null && v !== undefined && (obj[colunas[c]] === undefined || obj[colunas[c]] === '')) obj[colunas[c]] = valorTexto(v);
     }
+    corrigirDatasInglesas_(obj);
     // Verdadeiro/falso vindos de texto
     ['presente', 'atrasado', 'fardamentoOk', 'ativo', 'viaFCT'].forEach(function (b) {
       if (typeof obj[b] === 'string') obj[b] = (obj[b] === 'true' || obj[b] === 'Sim' || obj[b] === 'TRUE');
@@ -758,6 +775,15 @@ function fazerExtra(x) {
   } catch (err) { Logger.log(err); }
 }
 
+/** (v26.1) Tira as n primeiras linhas de POR_ARRUMAR. O Google não deixa
+ *  apagar TODAS as linhas de uma folha («Não é possível eliminar todas as
+ *  linhas na página»): quando são todas, junta-se uma vazia antes. Era por
+ *  isto que tratarPendentes e arrumacaoDaNoite falhavam (Rosa, 5/out/2026). */
+function tirarDoTopo_(f, n) {
+  if (n >= f.getMaxRows()) f.insertRowAfter(f.getMaxRows());
+  f.deleteRows(1, n);
+}
+
 /** Logo a seguir a um envio: um bocadinho do que está por arrumar, só se
  *  o script estiver livre agora (não faz ninguém esperar). */
 function arrumarUmPouco() {
@@ -771,7 +797,7 @@ function arrumarUmPouco() {
       if (n < 1) return;
       var linhas = f.getRange(1, 1, n, 2).getValues();
       linhas.forEach(function (l) { try { fazerExtra(JSON.parse(l[1])); } catch (e) {} });
-      f.deleteRows(1, n);
+      tirarDoTopo_(f, n);
     } finally { try { lock.releaseLock(); } catch (e) {} }
   } catch (err) { Logger.log('arrumarUmPouco: ' + err); }
 }
@@ -793,7 +819,7 @@ function tratarPendentes() {
     try {
       linhas.forEach(function (l) { try { fazerExtra(JSON.parse(l[1])); feitos++; } catch (e) {} });
       // Só se tiram as linhas feitas: as que chegaram entretanto ficam no fim.
-      f.deleteRows(1, n);
+      tirarDoTopo_(f, n);
     } finally { try { lock.releaseLock(); } catch (e) {} }
   }
   if (feitos) Logger.log('Por arrumar: ' + feitos + ' feitos.');
@@ -878,6 +904,7 @@ function tratar(d) {
     }
     if (tipo === 'sessao')               return abrirSessao(d);
     if (tipo === 'fechar_sessao')        return fecharSessao(d);
+    if (tipo === 'anular_sessao')        return anularSessao(d);
     if (tipo === 'lider_kf')             return guardar('LIDERES_KF', d);
     if (tipo === 'grupo_membro')         return guardar('GRUPOS', d);
     if (tipo === 'grupo_info')           return guardar('GRUPOS_INFO', d);
@@ -921,16 +948,16 @@ function doGet(e) {
 
     if (tipo === 'get_planos')       return comDados('planos',       ler('PLANOS',       { turmaId: turma }), { eliminados: eliminadosDe('PLANOS') });
     if (tipo === 'get_requisicoes')  return comDados('requisicoes',  ler('REQUISICOES',  { turmaId: turma }));
-    if (tipo === 'get_fichas')       return comDados('fichas',       ler('FICHAS',       {}));
+    if (tipo === 'get_fichas')       return comDados('fichas',       ler('FICHAS',       {}), { eliminados: eliminadosDe('FICHAS') });
     if (tipo === 'buscar_similar')   return comDados('similares',    parecidas(p.nome || ''));
     // (v22) Os PIN só vão para quem entrou como professor ou coordenação.
-    if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token));
+    if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token), { eliminados: eliminadosDe('ALUNOS') });
     if (tipo === 'entrar')           return respostaDados(entrarPessoal(p.quem, p.codigo));
     if (tipo === 'entrar_aluno')     return respostaDados(entrarAluno(p.alunoId, p.pin));
-    if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }));
+    if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }), { eliminados: eliminadosDe('AVALIACOES') });
     if (tipo === 'get_presencas')    return comDados('presencas',    ler('PRESENCAS',    { turmaId: turma }));
-    if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }));
-    if (tipo === 'get_validacoes')   return comDados('validacoes',   ler('VALIDACOES',   { turmaId: turma }));
+    if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }), { eliminados: eliminadosDe('SELECOES') });
+    if (tipo === 'get_validacoes')   return comDados('validacoes',   ler('VALIDACOES',   { turmaId: turma }), { eliminados: eliminadosDe('VALIDACOES') });
     if (tipo === 'get_sessoes')      return comDados('sessoes',      ler('SESSOES',      { turmaId: turma }));
     if (tipo === 'get_aula')         return respostaAula(turma);
     if (tipo === 'get_grupos')       return comDados('membros',      ler('GRUPOS',       { turmaId: turma }), { info: ler('GRUPOS_INFO', { turmaId: turma }) });
@@ -997,6 +1024,20 @@ function fecharSessao(d) {
     fechadaEm: d.fechadaEm || new Date().toISOString(),
     fechadaPor: d.fechadaPor || ''
   });
+}
+
+/** (v26.1) A aula foi aberta por engano (Rosa, 5/out/2026: «abri uma aula que
+ *  era só para amanhã»): a abertura deixa de valer e as entradas dos alunos
+ *  nessa abertura saem (ficam nos ELIMINADOS). Abrir depois volta a valer. */
+function anularSessao(d) {
+  if (!d.planoAulaId) return resposta(false, 'Falta a aula');
+  var r = guardar('SESSOES', {
+    planoAulaId: d.planoAulaId, turmaId: d.turmaId || '',
+    abertaEm: '', abertaPor: '', fechadaEm: '', fechadaPor: '',
+    anuladaEm: d.anuladaEm || new Date().toISOString(), anuladaPor: d.anuladaPor || ''
+  });
+  try { apagarLinhasPor(ficheiro(), 'PRESENCAS', 'planoAulaId', d.planoAulaId); } catch (e) { Logger.log('anularSessao, presenças: ' + e); }
+  return r;
 }
 
 /** Fica ligado ao primeiro telemóvel. Um segundo não rouba o lugar. */
@@ -1887,6 +1928,21 @@ var COR_TURMA = '#7B2233';
 var TURMAS_DO_ANO = ['1º BCR', '1º ACR', '2º ACP', '3º ACP'];
 /** (v25.12) Os planos de aula de antes disto são testes (junho a agosto): não entram nas folhas das turmas. */
 var INICIO_ANO_LETIVO = '2026-09-01';
+// (v26.1) Os dias da semana com aulas de cozinha de cada turma (o mesmo
+// horário da aplicação, horarios.ts): 0 = domingo … 6 = sábado. Um plano
+// de aula noutro dia não conta (Rosa, 5/out/2026: «uma aula do dia 24, que
+// os alunos não tiveram e nunca vão ter numa quinta-feira»), a não ser que o
+// professor tenha confirmado na aplicação que houve aula nesse dia.
+var DIAS_DE_AULA = { '1º BCR': [2], '1º ACR': [4], '2º ACP': [3], '3º ACP': [1, 4, 5] };
+var INICIO_DAS_AULAS = '2026-09-21';
+function planoNumDiaSemAulas_(p) {
+  if (!p || p.tipoEvento) return false;
+  var dias = DIAS_DE_AULA[p.turmaId];
+  var dia = String(p.data || '').slice(0, 10);
+  if (!dias || !/^\d{4}-\d{2}-\d{2}$/.test(dia) || dia < INICIO_DAS_AULAS) return false;
+  if (p.diaSemAulasOk === dia) return false;
+  return dias.indexOf(new Date(dia + 'T12:00:00Z').getUTCDay()) < 0;
+}
 /** Os alunos de ensaio (88, 99, «TESTE») não entram nas folhas das turmas. */
 function alunoDeEnsaio_(a) { return Number(a.numero) === 88 || Number(a.numero) === 99 || /teste|ensaio/i.test(String(a.nome || '')); }
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
@@ -1897,6 +1953,34 @@ function porTurma(lista) {
   var m = {};
   lista.forEach(function (x) { var t = String(x.turmaId || ''); if (!t) return; (m[t] = m[t] || []).push(x); });
   return m;
+}
+
+/** (v26.1) Datas e horas escritas à inglesa por um telemóvel ou computador
+ *  («Sat Sep 05 2026 00:00:00 GMT+0100 (…)» ou, numa hora, «Sat Dec 30 1899
+ *  08:30:00 …») voltam a ser «2026-09-05» e «08:30». Vale para todas as folhas. */
+var MESES_EN_ = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+var DATA_EN_ = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}) (\d{4}) (\d{2}):(\d{2}):\d{2} GMT/;
+function semDataInglesa_(v) {
+  if (typeof v !== 'string') return v;
+  var m = DATA_EN_.exec(v);
+  if (!m) return v;
+  if (m[4] === '1899') return m[5] + ':' + m[6];
+  return m[4] + '-' + MESES_EN_[m[2]] + '-' + m[3];
+}
+function corrigirDatasInglesas_(obj) {
+  for (var k in obj) if (typeof obj[k] === 'string' && obj[k].length > 20 && obj[k].charAt(3) === ' ') obj[k] = semDataInglesa_(obj[k]);
+  return obj;
+}
+
+/** (v26.1) O dia em AAAA-MM-DD, venha como vier (texto, data ou «Mon Sep 21 2026 …»). */
+function diaISO_(v) {
+  if (v === null || v === undefined || v === '') return '';
+  var t = String(v);
+  // Como na aplicação: se começa por AAAA-MM-DD, é esse o dia.
+  if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10);
+  var d = v instanceof Date ? v : new Date(t);
+  if (isNaN(d.getTime())) return t;
+  return Utilities.formatDate(d, 'Europe/Lisbon', 'yyyy-MM-dd');
 }
 
 function diaCurto(s) {
@@ -1944,10 +2028,27 @@ function nomeDoSeparador(turma) {
  *  execução fica curta e não passa dos 6 minutos do Google). */
 function atualizarFolhasDasTurmas() {
   var props = PropertiesService.getScriptProperties();
+  // (v26.1) Primeiro a turma onde houve novidades desde a última vez (uma
+  // aula publicada, uma autoavaliação…), a que espera há mais tempo. Antes
+  // ia sempre pela ordem e uma aula nova podia levar horas a aparecer
+  // (Rosa, 5/out/2026: «mandei uma aula e há uma hora não aparece»).
+  var feitas = {};
+  try { feitas = JSON.parse(props.getProperty('FOLHAS_FEITAS') || '{}'); } catch (e) {}
+  var c = contadores();
+  var comNovidades = TURMAS_DO_ANO.filter(function (t) { return Number(c[t] || 0) > Number(feitas[t] || 0); })
+    .sort(function (a, b) { return Number(feitas[a] || 0) - Number(feitas[b] || 0); });
   var i = Number(props.getProperty('PROXIMA_TURMA') || 0) || 0;
-  var turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
-  props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
-  atualizarTurmas_([turma], i % TURMAS_DO_ANO.length === 0);
+  var turma, comGerais;
+  if (comNovidades.length) { turma = comNovidades[0]; comGerais = false; }
+  else {
+    turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
+    comGerais = i % TURMAS_DO_ANO.length === 0;
+    props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
+  }
+  var inicio = new Date().getTime();
+  if (!atualizarTurmas_([turma], comGerais)) return;
+  feitas[turma] = inicio;
+  props.setProperty('FOLHAS_FEITAS', JSON.stringify(feitas));
 }
 /** Para correr à mão: uma turma já. */
 function atualizar1BCR() { atualizarTurmas_(['1º BCR'], true); }
@@ -1957,12 +2058,32 @@ function atualizar3ACP() { atualizarTurmas_(['3º ACP'], true); }
 /** Todas as turmas de uma vez (pode passar dos 6 minutos: só se for preciso). */
 function atualizarTodasAsTurmas() { atualizarTurmas_(TURMAS_DO_ANO.slice(), true); }
 
+/** (v26.1) Só uma atualização das folhas de cada vez. Duas ao mesmo tempo
+ *  (a automática e uma à mão) apagavam e escreviam as mesmas folhas, e uma
+ *  delas falhava: «Sheet … not found» (Rosa, 5/out/2026). A segunda espera
+ *  pela vez seguinte. Devolve false quando não correu. */
 function atualizarTurmas_(quais, comGerais) {
+  var props = PropertiesService.getScriptProperties();
+  var desde = Number(props.getProperty('FOLHAS_A_DECORRER') || 0);
+  if (desde && new Date().getTime() - desde < 7 * 60 * 1000) {
+    Logger.log('Já está a decorrer outra atualização das folhas (começou às '
+      + Utilities.formatDate(new Date(desde), 'Europe/Lisbon', 'HH:mm') + '). Esta fica para a vez seguinte.');
+    return false;
+  }
+  props.setProperty('FOLHAS_A_DECORRER', String(new Date().getTime()));
+  try { atualizarTurmasJa_(quais, comGerais); }
+  finally { props.deleteProperty('FOLHAS_A_DECORRER'); }
+  return true;
+}
+
+function atualizarTurmasJa_(quais, comGerais) {
   var ss = ficheiro();
   var hoje = hojeLisboa(0);
   // Cada folha lê-se uma vez para todas as turmas.
   var alunos = porTurma(ler('ALUNOS', {}));
-  var planos = porTurma(ler('PLANOS', {}));
+  // (v26.1) Há planos com o dia escrito à inglesa («Mon Sep 21 2026 00:00:00
+  // GMT+0100 …») e o script tomava-os por aulas dos próximos dias.
+  var planos = porTurma(ler('PLANOS', {}).map(function (p) { p.data = diaISO_(p.data); return p; }));
   var sessoes = porTurma(ler('SESSOES', {}));
   var presencas = porTurma(ler('PRESENCAS', {}));
   var selecoes = porTurma(ler('SELECOES', {}).filter(function (s) { return !ehRegistoEspecial(s); }));
@@ -1978,6 +2099,9 @@ function atualizarTurmas_(quais, comGerais) {
   var grupos = porTurma(lerOuNada('GRUPOS')), gruposInfo = porTurma(lerOuNada('GRUPOS_INFO'));
   var pares = porTurma(lerOuNada('AVALIACAO_PARES')), lideres = porTurma(lerOuNada('LIDERES_KF'));
   var notasApp = porTurma(lerOuNada('NOTAS_APP'));
+  // (v26.1) O email da escola de cada aluno (o que ele escreveu ao entrar).
+  var emailDe = {};
+  lerOuNada('EMAILS_ALUNOS').forEach(function (e) { if (e.alunoId && e.email) emailDe[e.alunoId] = String(e.email).trim(); });
   var fichasTodas = lerOuNada('FICHAS');
   var nomesComp = nomesDasCompetenciasDasFichas(fichasTodas);
   var nomeFicha = {}; fichasTodas.forEach(function (f) { nomeFicha[f.id] = f.nomePrato || ''; });
@@ -1985,7 +2109,7 @@ function atualizarTurmas_(quais, comGerais) {
   var turmas = Object.keys(alunos).filter(function (t) { return TURMAS_DO_ANO.indexOf(t) >= 0 && quais.indexOf(t) >= 0; }).sort();
   // As folhas de turmas que já não existem (o 1.º ACP) saem. Os dados ficam.
   ss.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }   // já saiu
     Object.keys(alunos).forEach(function (t) {
       if (TURMAS_DO_ANO.indexOf(t) >= 0) return;
       var b = nomeDoSeparador(t);
@@ -2001,7 +2125,7 @@ function atualizarTurmas_(quais, comGerais) {
         finais: finais[turma] || [], telemoveis: telemoveis[turma] || [],
         recuperacoes: recuperacoes[turma] || [], planoPorId: porIdPlano,
         grupos: grupos[turma] || [], gruposInfo: gruposInfo[turma] || [], pares: pares[turma] || [], lideres: lideres[turma] || [],
-        nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || []
+        nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || [], emailDe: emailDe
       }, hoje); }, 'Turma ' + turma);
       SpreadsheetApp.flush();
       nomesFolhas = nomesFolhas.concat(feitas || [nomeDoSeparador(turma)]);
@@ -2193,7 +2317,17 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     .sort(function (a, b) { return (Number(a.numero) || 0) - (Number(b.numero) || 0); });
   // As aulas que já aconteceram (ou são hoje) e não são rascunho — e não os
   // testes de antes do ano letivo (v25.12).
-  d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO; });
+  // (v26.1) Os planos arquivados não entram no Sheets: ficam só no Arquivo da
+  // aplicação (Rosa, 5/out/2026).
+  d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO && p.estado !== 'arquivado'; });
+  // (v26.1) Os planos num dia em que a turma não tem aulas ficam à parte:
+  // não contam como aulas, nem nas notas, nem nas faltas.
+  // Uma aula que foi aberta aos alunos conta sempre: houve aula nesse dia.
+  var abertaNoDia = {};
+  (d.sessoes || []).forEach(function (s) { if (s.abertaEm) abertaNoDia[s.planoAulaId] = true; });
+  var semAulaDeVerdade = function (p) { return planoNumDiaSemAulas_(p) && !abertaNoDia[p.id]; };
+  var planosDiaSemAulas = d.planos.filter(semAulaDeVerdade);
+  d.planos = d.planos.filter(function (p) { return !semAulaDeVerdade(p); });
   var aulas = d.planos.filter(function (p) {
     var dia = String(p.data || '').slice(0, 10);
     return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
@@ -2296,7 +2430,14 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // 1. Os alunos
   novaFolha('Alunos', 'Um aluno por linha: presenças, faltas, atrasos, autoavaliações e a média das aulas. As aulas em que esteve e não se autoavaliou contam 0, como na aplicação.');
   titulo('OS ALUNOS (' + alunos.length + ')');
-  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado']);
+  // (v26.1) O email da escola: serve para os avisos das autoavaliações em
+  // falta (todos os dias às 18h). Quem não o deu não recebe avisos.
+  var emailDe = d.emailDe || {};
+  var semEmail = alunos.filter(function (a) { return !emailDe[a.id]; }).length;
+  junta([(alunos.length - semEmail) + ' de ' + alunos.length + ' alunos já deram o email da escola.'
+    + (semEmail ? ' ' + (semEmail === 1 ? 'O aluno que ainda não o deu não recebe' : 'Os ' + semEmail + ' que ainda não o deram não recebem') + ' os avisos das autoavaliações em falta: ' + (semEmail === 1 ? 'é-lhe pedido' : 'é-lhes pedido') + ' quando entrar na aplicação.' : '')]);
+  formatos.push({ tipo: 'legenda', linha: linhas.length });
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
   alunos.forEach(function (a) {
     // (v25.9) A média das aulas conta 0 nas aulas em que o aluno esteve e não
     // se autoavaliou, como na aplicação. Antes era a média só das validadas,
@@ -2311,7 +2452,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       else if (!auto[k] && esteve(x, pl.id) && !faltou(x, pl.id)) semResposta++;
     });
     var nMedia = va + semResposta;
-    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não']);
+    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não',
+      emailDe[a.id] || 'Ainda não deu']);
   });
   vazia();
 
@@ -2440,7 +2582,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   }
 
   // 3. As aulas, em grupos (v25.3, Rosa, out/2026): as que contam para a
-  // nota, as atividades extra e, por fim, os rascunhos e as arquivadas.
+  // nota, as atividades extra, as próximas e os rascunhos (as arquivadas ficam só na aplicação).
   var gruposAulas = [
     { nome: 'AULAS LANÇADAS — contam para a nota', cor: '#3E7A31', fundo: '#DFF0D8',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
@@ -2450,10 +2592,10 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
-    { nome: 'ARQUIVADAS — não contam', cor: '#A23A2E', fundo: '#F8D7DA',
-      lista: aulas.filter(function (p) { return p.estado === 'arquivado'; }) },
+    { nome: 'NUM DIA EM QUE A TURMA NÃO TEM AULAS — não contam (confirme na aplicação se houve aula ou arquive)', cor: '#A23A2E', fundo: '#F8D7DA',
+      lista: planosDiaSemAulas.filter(function (p) { return !p.eliminado; }) },
   ];
-  novaFolha('Aulas', 'Todas as aulas da turma, em grupos: as que contam para a nota, as atividades extra, as próximas, os rascunhos e as arquivadas.');
+  novaFolha('Aulas', 'As aulas da turma, em grupos: as que contam para a nota, as atividades extra, as próximas e os rascunhos. As arquivadas estão só no Arquivo da aplicação.');
   titulo('AS AULAS (' + aulas.length + ' — ' + contam.length + (contam.length === 1 ? ' conta' : ' contam') + ' para a nota)', '#2F5D8A');
   junta(['Em cada grupo, a aula mais recente primeiro. Presentes e faltas: o que o professor declarou (nas aulas abertas depois do dia, não há faltas automáticas).']);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
@@ -2574,7 +2716,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // As partes que já não existem (por exemplo, sem recuperações) saem.
   var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; }));
   ss.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ss.deleteSheet(fo); } catch (e) {}
   });
   return nomesAgora;
@@ -2807,7 +2949,7 @@ function escreverFichasDosAlunos_(turma, alunos, linhasFicha, _resumo, daApp, re
   });
   // Saem as fichas desta turma que já não interessam (alunos que saíram, versões antigas).
   ssF.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ssF.deleteSheet(fo); } catch (e) {}
   });
   try { indiceDasFichas_(ssF); } catch (e) { Logger.log('Índice das fichas: ' + e); }
@@ -2820,7 +2962,7 @@ function indiceDasFichas_(ssF) {
   var bases = TURMAS_DO_ANO.map(nomeDoSeparador);
   var ind = ssF.getSheetByName('ÍNDICE') || ssF.insertSheet('ÍNDICE', 0);
   ssF.getSheets().forEach(function (fo) {
-    var n = fo.getName();
+    var n; try { n = fo.getName(); } catch (e) { return; }
     if (n === 'ÍNDICE') return;
     var daTurma = bases.some(function (b) { return n.indexOf(b + ' · ') === 0; });
     if (!daTurma) try { ssF.deleteSheet(fo); } catch (e) {}
@@ -3393,7 +3535,7 @@ function linhaDeRecuperacao(r, alunos, planoPorId, comTurma) {
  *  «TURMA …» da v20 saem: foram substituídos por estes. */
 function arrumarSeparadores(ss, nomesTurmas) {
   ss.getSheets().forEach(function (f) {
-    var n = f.getName();
+    var n; try { n = f.getName(); } catch (e) { return; }
     if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); } }
   });
   // (v25) Por ordem: as turmas; as folhas gerais (fichas, requisições,
@@ -3806,7 +3948,7 @@ var SUMARIOS = {
   TURMA: [
     'PARA QUE SERVE: o que falta fazer nesta turma e o ÍNDICE. Cada parte está na sua folha: carregue no nome para a abrir; em cada folha, «← Voltar ao índice» volta aqui. As partes são os alunos, as faltas (em horas e dia a dia), as notas de cada UC, as recuperações, as aulas, os grupos e o que os colegas disseram, e o que chegou a cada aluno (o que respondeu, a nota do professor e os casos à parte).',
     'DE ONDE VEM E PARA ONDE VAI: os alunos respondem no telemóvel; o professor valida na aplicação; a nota validada é a que o aluno vê e a que entra na nota da UC. A coordenação vê aqui o mesmo. Só para ler: refaz-se sozinho de 10 em 10 minutos; mexer aqui não muda nada na aplicação.',
-    'CORES: verde = aula publicada, conta para a nota · vermelho = arquivada/anulada, não conta · roxo = atividade extra, só dá bónus. Faltas: F · Autoavaliou-se e falta validar: AA.'
+    'CORES: verde = aula publicada, conta para a nota · roxo = atividade extra, só dá bónus. As aulas arquivadas não aparecem aqui: estão no Arquivo da aplicação. Faltas: F · Autoavaliou-se e falta validar: AA.'
   ],
   'FICHAS TÉCNICAS': [
     'PARA QUE SERVE: todas as fichas técnicas da escola, com o guião. Cada linha diz onde a ficha entrou (que plano, de que turma, ou que evento).',
@@ -3843,7 +3985,7 @@ var SUMARIOS = {
 /** O resumo das folhas de dados: vai para a nota da célula A1. */
 var SUMARIO_DADOS = {
   ALUNOS: 'Os alunos de cada turma. A aplicação lê daqui quem é de que turma. Para ler: o separador da turma.',
-  PLANOS: 'Os planos de aula e as atividades. Para ler: «AS AULAS» no separador da turma (verde conta, vermelho arquivada, roxo atividade extra).',
+  PLANOS: 'Os planos de aula e as atividades. Para ler: «AS AULAS» no separador da turma (verde conta, roxo atividade extra; as arquivadas só na aplicação).',
   SESSOES: 'Quando cada aula foi aberta e fechada aos alunos. Para ler: coluna «Aberta aos alunos» no separador da turma.',
   PRESENCAS: 'Quem entrou em cada aula, atrasos e farda. Para ler: presenças e faltas no separador da turma.',
   SELECOES: 'As autoavaliações que os alunos enviaram, inteiras (com as respostas às perguntas). Para ler: «O QUE CHEGOU A CADA ALUNO» no separador da turma.',
@@ -4003,7 +4145,7 @@ function formatarFolha(f, cor) {
 // coisa, a memória dessa aula é esquecida e o primeiro telemóvel que a
 // pedir monta-a outra vez a partir das folhas.
 
-var MUDAM_A_AULA = { plano: 1, eliminar_plano: 1, eliminar_do_plano: 1, sessao: 1, fechar_sessao: 1,
+var MUDAM_A_AULA = { plano: 1, eliminar_plano: 1, eliminar_do_plano: 1, sessao: 1, fechar_sessao: 1, anular_sessao: 1,
   ficha: 1, eliminar_ficha: 1, grupo_info: 1, requisicao: 1 };
 var MEMORIA_SEGUNDOS = 21600;          // 6 horas (o máximo)
 var PEDACO = 90000;                    // cada valor na memória tem de ter menos de 100 KB
@@ -4202,7 +4344,7 @@ function lerComEliminados(nome) {
       var v = dados[i][c];
       if (v !== '' && v !== null && v !== undefined && obj[colunas[c]] === undefined) obj[colunas[c]] = valorTexto(v);
     }
-    vivos.push(obj);
+    vivos.push(corrigirDatasInglesas_(obj));
   }
   return { vivos: vivos, linhasEliminadas: elim };
 }
