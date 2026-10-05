@@ -4052,7 +4052,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         const ehConhecimento = c.rotulo === 'Conhecimento';
         const frases = frasesVisiveis(c);
         // Nas aulas teóricas não há «não tive oportunidade» nos conhecimentos:
-        // a matéria foi dada à turma toda (Rosa, set/2026).
+        // os conteúdos foram dados à turma toda (Rosa, set/2026).
         const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico';
         const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
