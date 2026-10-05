@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.12';
+var VERSAO = 'ECL único v26.0';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1940,7 +1940,24 @@ function nomeDoSeparador(turma) {
   return String(turma).replace(/[\[\]\*\?\/\\:]/g, ' ').trim().substring(0, 90) || 'Turma';
 }
 
+/** (v26) Corre sozinho de 10 em 10 minutos: UMA turma de cada vez (cada
+ *  execução fica curta e não passa dos 6 minutos do Google). */
 function atualizarFolhasDasTurmas() {
+  var props = PropertiesService.getScriptProperties();
+  var i = Number(props.getProperty('PROXIMA_TURMA') || 0) || 0;
+  var turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
+  props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));
+  atualizarTurmas_([turma], i % TURMAS_DO_ANO.length === 0);
+}
+/** Para correr à mão: uma turma já. */
+function atualizar1BCR() { atualizarTurmas_(['1º BCR'], true); }
+function atualizar1ACR() { atualizarTurmas_(['1º ACR'], true); }
+function atualizar2ACP() { atualizarTurmas_(['2º ACP'], true); }
+function atualizar3ACP() { atualizarTurmas_(['3º ACP'], true); }
+/** Todas as turmas de uma vez (pode passar dos 6 minutos: só se for preciso). */
+function atualizarTodasAsTurmas() { atualizarTurmas_(TURMAS_DO_ANO.slice(), true); }
+
+function atualizarTurmas_(quais, comGerais) {
   var ss = ficheiro();
   var hoje = hojeLisboa(0);
   // Cada folha lê-se uma vez para todas as turmas.
@@ -1965,7 +1982,7 @@ function atualizarFolhasDasTurmas() {
   var nomesComp = nomesDasCompetenciasDasFichas(fichasTodas);
   var nomeFicha = {}; fichasTodas.forEach(function (f) { nomeFicha[f.id] = f.nomePrato || ''; });
 
-  var turmas = Object.keys(alunos).filter(function (t) { return TURMAS_DO_ANO.indexOf(t) >= 0; }).sort();
+  var turmas = Object.keys(alunos).filter(function (t) { return TURMAS_DO_ANO.indexOf(t) >= 0 && quais.indexOf(t) >= 0; }).sort();
   // As folhas de turmas que já não existem (o 1.º ACP) saem. Os dados ficam.
   ss.getSheets().forEach(function (fo) {
     var n = fo.getName();
@@ -1990,8 +2007,16 @@ function atualizarFolhasDasTurmas() {
       nomesFolhas = nomesFolhas.concat(feitas || [nomeDoSeparador(turma)]);
     } catch (e) { Logger.log('Turma ' + turma + ': ' + e); nomesFolhas.push(nomeDoSeparador(turma)); }
   });
-  try { escreverFolhasGerais(ss, { planos: todosPlanos, recuperacoes: todasRecup }); } catch (e) { Logger.log('Folhas gerais: ' + e); }
-  try { comNovaTentativa_(function () { arrumarSeparadores(ss, nomesFolhas); }, 'Arrumar'); } catch (e) { Logger.log('Arrumar os separadores: ' + e); }
+  if (comGerais) try { escreverFolhasGerais(ss, { planos: todosPlanos, recuperacoes: todasRecup }); } catch (e) { Logger.log('Folhas gerais: ' + e); }
+  // A ordem: as folhas de todas as turmas deste ano, mesmo as que não se refizeram agora.
+  var todasDasTurmas = [];
+  TURMAS_DO_ANO.forEach(function (t) {
+    var b = nomeDoSeparador(t);
+    ss.getSheets().forEach(function (fo) { var n = fo.getName(); if (n === b) todasDasTurmas.push(n); });
+    ss.getSheets().forEach(function (fo) { var n = fo.getName(); if (n.indexOf(b + ' · ') === 0) todasDasTurmas.push(n); });
+  });
+  try { comNovaTentativa_(function () { arrumarSeparadores(ss, todasDasTurmas); }, 'Arrumar'); } catch (e) { Logger.log('Arrumar os separadores: ' + e); }
+  Logger.log('Feito: ' + turmas.join(', '));
 }
 
 /** (v25) Os nomes das técnicas, a partir das fichas («SUB-010 Bater claras»,
@@ -2155,7 +2180,8 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       // (v25.12) A mesma linha vai para a ficha do aluno.
       if (d.fichaLinhas) d.fichaLinhas.push([String(a.numero || '') + ' — ' + (a.nome || ''), diaCurto(p.data) + '/' + String(p.data).slice(0, 4),
         p.ucId || '', p.titulo || '', presenca || 'Sem registo', respondeu.join('\n') || '—', respostas.join('\n') || '—',
-        notasProf.join('\n') || '—', isNaN(n20) ? '' : virgula(Math.round(n20 * 10) / 10), casos.join('\n')]);
+        notasProf.join('\n') || '—', isNaN(n20) ? '' : virgula(Math.round(n20 * 10) / 10), casos.join('\n'),
+        String(p.data || '').slice(0, 10), a.id, p.ucNome || '']);
     });
     vazia();
   });
@@ -2355,6 +2381,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     if (!resumo.length) resumo.push('Ainda sem notas nem faltas registadas.');
     fichaResumo.push([String(a.numero || '') + ' — ' + (a.nome || ''), resumo.join('\n')]);
   });
+  var fichaResumoPorAluno = {};
   d.fichaLinhas = [];
 
   // 2. As notas de cada UC: um aluno por linha, uma aula por coluna (a UC mais recente primeiro).
@@ -2368,6 +2395,16 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     titulo('NOTAS — ' + uc + (nome ? ' · ' + nome : '') + ' (' + daUC.length + ' aula' + (daUC.length === 1 ? '' : 's') + ')', '#3E7A31');
     junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · 0 (sem resposta) = esteve e não se autoavaliou, conta 0 · vazio = sem registo. A média, o bónus e a nota da UC são os da aplicação (cada aula pelo seu peso, as faltas a 0).']);
     formatos.push({ tipo: 'legenda', linha: linhas.length });
+    // (v26) A turma nesta UC: a média e quantos estão com negativa (pela nota da UC da aplicação).
+    var notasUC = alunos.map(function (a) { var ap = daApp[a.id + '|' + uc]; return ap && ap.final !== '' && ap.final !== undefined ? Number(String(ap.final).replace(',', '.')) : NaN; })
+      .filter(function (n) { return !isNaN(n); });
+    if (notasUC.length) {
+      var mediaT = notasUC.reduce(function (x, y) { return x + y; }, 0) / notasUC.length;
+      var neg = notasUC.filter(function (n) { return n < 9.5; }).length;
+      junta(['A turma nesta UC: média ' + virgula(Math.round(mediaT * 10) / 10) + ' · ' + neg + (neg === 1 ? ' aluno com negativa' : ' alunos com negativa')
+        + ' · ' + (notasUC.length - neg) + (notasUC.length - neg === 1 ? ' com positiva' : ' com positiva') + ' (nota da UC, como na aplicação).']);
+      formatos.push({ tipo: 'destaque', linha: linhas.length });
+    }
     cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
       .concat(['Média', 'Faltas (contam 0)', 'Bónus', 'Nota da UC (como na aplicação)', 'Nota final publicada']));
     alunos.forEach(function (a) {
@@ -2445,32 +2482,6 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   novaFolha('Por aula', 'Cada aula com o que chegou de cada aluno: o que respondeu, a nota do professor e os casos à parte. A mais recente primeiro.');
   seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, vazia, formatos, linhas);
 
-  // (v25.12) A FICHA DO ALUNO: escolhe-se o aluno numa caixa e aparece só ele,
-  // com cada plano de aula: presença, competências avaliadas e o que
-  // respondeu, as perguntas e as respostas, as notas do professor e os casos
-  // à parte (Rosa, 5/out/2026: «se um pai me perguntar, tenho de saber tudo»).
-  var nomeDados = base + ' · dados da ficha';
-  var dadosF = { curto: '', nome: nomeDados, linhas: [], formatos: [], secoes: [], largura: 13, oculta: true };
-  var nDados = Math.max(d.fichaLinhas.length, fichaResumo.length);
-  dadosF.linhas.push(['Aluno', 'Dia', 'UC', 'Plano de aula', 'Presença', 'Competências avaliadas e o que o aluno respondeu', 'Perguntas e respostas',
-    'Notas do professor', 'Nota da aula (0-20)', 'Casos à parte', '', 'Aluno', 'Resumo']);
-  for (var iD = 0; iD < nDados; iD++) {
-    var lf = d.fichaLinhas[iD] || ['', '', '', '', '', '', '', '', '', ''];
-    var rf = fichaResumo[iD] || ['', ''];
-    dadosF.linhas.push(lf.concat(['']).concat(rf));
-  }
-  novaFolha('Ficha do aluno', 'Escolha o aluno na caixa amarela. Aparece só esse aluno: o resumo da UC e, em cada plano de aula, a presença, as competências avaliadas, as perguntas e o que respondeu, e as notas do professor.');
-  titulo('FICHA DO ALUNO', '#5B4A7A');
-  junta(['Aluno:', fichaResumo.length ? fichaResumo[0][0] : '']);
-  var linhaEscolha = linhas.length;
-  formatos.push({ tipo: 'escolha', linha: linhaEscolha });
-  vazia();
-  junta(['Resumo:']); var linhaResumo = linhas.length;
-  vazia();
-  cabecalho(['Dia', 'UC', 'Plano de aula', 'Presença', 'Competências avaliadas e o que o aluno respondeu', 'Perguntas e respostas', 'Notas do professor', 'Nota da aula (0-20)', 'Casos à parte']);
-  var linhaDados = linhas.length + 1;
-  atualF.ficha = { linhaEscolha: linhaEscolha, linhaResumo: linhaResumo, linhaDados: linhaDados, nomeDados: nomeDados,
-    nAlunos: fichaResumo.length, nLinhas: d.fichaLinhas.length };
   fecharFolhas();
 
   // (v25.7) A folha da turma: o que falta fazer e o índice. Escreve-se no fim,
@@ -2514,6 +2525,13 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   vazia();
   titulo('ÍNDICE — carregue num nome para abrir essa parte', '#444444');
   var ligacoes = [];   // { linha, folha, linhaDestino }
+  // (v26) Os alunos: cada nome abre a ficha do aluno, no ficheiro «Fichas dos alunos».
+  junta(['OS ALUNOS (a ficha de cada aluno, noutro ficheiro)']);
+  formatos.push({ tipo: 'destaque', linha: linhas.length });
+  var linhasAlunos = [];
+  alunos.forEach(function (a) { junta(['      ' + String(a.numero || '') + ' — ' + (a.nome || '')]); linhasAlunos.push({ linha: linhas.length, aluno: a }); });
+  junta(['A TURMA']);
+  formatos.push({ tipo: 'destaque', linha: linhas.length });
   folhasT.forEach(function (F) {
     junta([F.curto.toUpperCase()]); ligacoes.push({ linha: linhas.length, folha: F, destino: 1, forte: true });
     F.secoes.forEach(function (sc) {
@@ -2527,13 +2545,9 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var gidP = fp.getSheetId();
   var estiloLig = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).build();
   var estiloForte = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).setBold(true).build();
-  // Os dados da ficha (folha escondida, não se mexe): primeiro, para a ficha os ler.
-  var foDados = escreverFolhaDaTurma_(ss, dadosF);
-  try { if (!foDados.isSheetHidden()) foDados.hideSheet(); } catch (e) {}
   folhasT.forEach(function (F) {
     var fo = escreverFolhaDaTurma_(ss, F);
     F.gid = fo.getSheetId();
-    if (F.ficha) try { prepararFichaDoAluno_(fo, F.ficha); } catch (e) { Logger.log('Ficha do aluno ' + turma + ': ' + e); }
     try {
       fo.getRange(2, 1).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('← Voltar ao índice da turma ' + turma)
         .setLinkUrl('#gid=' + gidP + '&range=A1').setTextStyle(estiloForte).build());
@@ -2546,40 +2560,26 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         .setLinkUrl('#gid=' + lg.folha.gid + '&range=A' + lg.destino).setTextStyle(lg.forte ? estiloForte : estiloLig).build());
     });
   } catch (e) { Logger.log('Índice da turma ' + turma + ': ' + e); }
+  // (v26) As fichas dos alunos, no outro ficheiro, e as ligações para elas.
+  try {
+    var urlTurma = ss.getUrl() + '#gid=' + gidP;
+    var fichas = escreverFichasDosAlunos_(turma, alunos, d.fichaLinhas || [], fichaResumoPorAluno, daApp, d.recuperacoes || [], urlTurma, hoje);
+    linhasAlunos.forEach(function (la) {
+      var url = fichas[la.aluno.id];
+      if (!url) return;
+      fp.getRange(la.linha, 1).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('      ' + String(la.aluno.numero || '') + ' — ' + (la.aluno.nome || ''))
+        .setLinkUrl(url).setTextStyle(estiloLig).build());
+    });
+  } catch (e) { Logger.log('Fichas dos alunos ' + turma + ': ' + e); }
   // As partes que já não existem (por exemplo, sem recuperações) saem.
-  var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; })).concat([nomeDados]);
+  var nomesAgora = [base].concat(folhasT.map(function (F) { return F.nome; }));
   ss.getSheets().forEach(function (fo) {
     var n = fo.getName();
     if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ss.deleteSheet(fo); } catch (e) {}
   });
-  // A folha dos dados fica escondida: não vai para a lista das que se mostram.
-  return nomesAgora.filter(function (n) { return n !== nomeDados; });
+  return nomesAgora;
 }
 
-/** (v25.12) A ficha do aluno: a caixa para escolher o aluno e as fórmulas que
- *  mostram só esse aluno (lidas da folha escondida dos dados da ficha). */
-function prepararFichaDoAluno_(f, x) {
-  var q = "'" + x.nomeDados.replace(/'/g, "''") + "'";
-  var ult = Math.max(2, x.nAlunos + 1), ultL = Math.max(2, x.nLinhas + 1);
-  var caixa = f.getRange(x.linhaEscolha, 2);
-  var dadosSheet = f.getParent().getSheetByName(x.nomeDados);
-  caixa.setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInRange(dadosSheet.getRange(2, 12, ult - 1, 1), true).setAllowInvalid(false).build());
-  caixa.setBackground('#FFF4C2').setFontWeight('bold').setFontSize(12);
-  f.getRange(x.linhaEscolha, 1).setFontWeight('bold');
-  var resumo = f.getRange(x.linhaResumo, 2);
-  resumo.setNumberFormat('General').setWrap(true).setVerticalAlignment('top');
-  resumo.setFormula('=IFERROR(VLOOKUP($B$' + x.linhaEscolha + ',' + q + '!L2:M' + ult + ',2,FALSE),"")');
-  f.getRange(x.linhaResumo, 1).setFontWeight('bold');
-  // As linhas para a lista das aulas (a fórmula estende-se para baixo).
-  var precisa = x.linhaDados + x.nLinhas + 5;
-  if (f.getMaxRows() < precisa) f.insertRowsAfter(f.getMaxRows(), precisa - f.getMaxRows());
-  var zona = f.getRange(x.linhaDados, 1, Math.max(1, precisa - x.linhaDados), 9);
-  zona.setNumberFormat('General').setWrap(true).setVerticalAlignment('top');
-  f.getRange(x.linhaDados, 1).setFormula('=IFERROR(FILTER(' + q + '!B2:J' + ultL + ',' + q + '!A2:A' + ultL + '=$B$' + x.linhaEscolha
-    + '),"Ainda não há planos de aula registados para este aluno.")');
-  f.setColumnWidth(5, 280); f.setColumnWidth(6, 320); f.setColumnWidth(7, 200); f.setColumnWidth(9, 220);
-}
 
 /** (v25.7) Escreve uma folha da turma (a do índice ou uma das partes). */
 function escreverFolhaDaTurma_(ss, F) {
@@ -2610,6 +2610,12 @@ function escreverFolhaDaTurma_(ss, F) {
     if (fm.tipo === 'cor') pinta(L, 0, fm.n, function (r, c) { fundo[r][c] = fm.cor; });
     if (fm.tipo === 'sumario') pinta(L, 0, 1, function (r, c) { cor[r][c] = '#444444'; estilo[r][c] = 'italic'; tam[r][c] = 9; });
     if (fm.tipo === 'voltar') pinta(L, 0, 1, function (r, c) { peso[r][c] = 'bold'; cor[r][c] = '#1a56db'; });
+    if (fm.tipo === 'destaque') pinta(L, 0, largura, function (r, c) { fundo[r][c] = '#F3ECEE'; peso[r][c] = 'bold'; cor[r][c] = '#7B2233'; });
+    if (fm.tipo === 'nomeAluno') pinta(L, 0, largura, function (r, c) { fundo[r][c] = '#7B2233'; cor[r][c] = '#ffffff'; peso[r][c] = 'bold'; tam[r][c] = 20; });
+    if (fm.tipo === 'subNome') pinta(L, 0, largura, function (r, c) { fundo[r][c] = '#F3ECEE'; cor[r][c] = '#7B2233'; tam[r][c] = 11; peso[r][c] = 'bold'; });
+    if (fm.tipo === 'aulaTit') pinta(L, 0, largura, function (r, c) { fundo[r][c] = '#EDE3F6'; cor[r][c] = '#3f2466'; peso[r][c] = 'bold'; });
+    if (fm.tipo === 'rotulo') { pinta(L, 0, 1, function (r, c) { peso[r][c] = 'bold'; cor[r][c] = '#555555'; alinhaV[r][c] = 'top'; });
+      pinta(L, 1, largura - 1, function (r, c) { quebra[r][c] = true; alinhaV[r][c] = 'top'; }); }
     var ate = Math.min(fm.ate || 0, grelha.length);
     if (fm.tipo === 'wrap') for (var r1 = L; r1 <= ate; r1++) pinta(r1, 0, fm.n, function (r, c) { quebra[r][c] = true; alinhaV[r][c] = 'top'; });
     if (fm.tipo === 'grelhaFaltas') for (var r2 = L; r2 <= ate; r2++) pinta(r2, 2, fm.n - 2, function (r, c) {
@@ -2629,12 +2635,216 @@ function escreverFolhaDaTurma_(ss, F) {
     if (f.getMaxRows() > grelha.length + 2) f.deleteRows(grelha.length + 3, f.getMaxRows() - grelha.length - 2);
     if (f.getMaxColumns() > largura + 1) f.deleteColumns(largura + 2, f.getMaxColumns() - largura - 1);
   } catch (e) {}
-  f.setFrozenRows(F.curto ? 2 : 1);
-  f.setFrozenColumns(F.curto ? 2 : 0);
+  f.setFrozenRows(F.congelar || (F.curto ? 2 : 1));
+  f.setFrozenColumns(F.semColunaFixa ? 0 : (F.curto ? 2 : 0));
   f.setColumnWidth(1, F.curto ? 44 : 60); f.setColumnWidth(2, 230);
   if (largura > 2) f.setColumnWidths(3, largura - 2, 88);
+  if (F.larguras) Object.keys(F.larguras).forEach(function (c) { f.setColumnWidth(Number(c), F.larguras[c]); });
+  if (F.alturaLinha1) try { f.setRowHeight(1, F.alturaLinha1); } catch (e) {}
   try { f.setTabColor(COR_TURMA); } catch (e) {}
   return f;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// (v26) FICHAS DOS ALUNOS — um ficheiro à parte, uma folha por aluno
+// ══════════════════════════════════════════════════════════════
+// Rosa, 5/out/2026: «quando escolho o aluno, abro outro índice para ver o que
+// quero: só as notas, só o trimestre, só aquela UC, as faltas». Cada folha tem
+// o nome do aluno sempre à vista, o índice do aluno no topo e cada parte curta.
+// Ficam num ficheiro à parte para não encherem o ficheiro dos dados.
+var PROP_FICHAS = 'ID_FICHEIRO_FICHAS_ALUNOS';
+
+function ficheiroDasFichas_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty(PROP_FICHAS);
+  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) { Logger.log('O ficheiro das fichas não abriu, faz-se outro: ' + e); } }
+  var novo = SpreadsheetApp.create('Avaliação ECL — Fichas dos alunos');
+  props.setProperty(PROP_FICHAS, novo.getId());
+  // Para a mesma pasta do ficheiro dos dados.
+  try {
+    var pasta = DriveApp.getFileById(ficheiro().getId()).getParents();
+    if (pasta.hasNext()) DriveApp.getFileById(novo.getId()).moveTo(pasta.next());
+  } catch (e) { Logger.log('Não mudei o ficheiro das fichas de pasta: ' + e); }
+  return novo;
+}
+
+/** Abre o ficheiro das fichas e diz onde está (para correr à mão). */
+function verFicheiroDasFichas() { Logger.log(ficheiroDasFichas_().getUrl()); }
+
+function trimestreDe_(iso) {
+  var m = Number(String(iso).slice(5, 7)), md = String(iso).slice(5, 10);
+  if (m >= 9) return 1;
+  return md <= '03-29' ? 2 : 3;
+}
+function anoLetivoDe_(iso) {
+  var y = Number(String(iso).slice(0, 4)), m = Number(String(iso).slice(5, 7));
+  return m >= 9 ? y + '/' + String(y + 1).slice(2) : (y - 1) + '/' + String(y).slice(2);
+}
+
+/** Escreve a folha de cada aluno da turma. Devolve { alunoId: ligação }. */
+function escreverFichasDosAlunos_(turma, alunos, linhasFicha, _resumo, daApp, recs, urlTurma, hoje) {
+  var ssF = ficheiroDasFichas_();
+  var base = nomeDoSeparador(turma);
+  var ligacoes = {}, nomesAgora = [];
+  var estiloLig = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).build();
+  var estiloVolta = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).setBold(true).build();
+  var estiloTopo = SpreadsheetApp.newTextStyle().setForegroundColor('#ffffff').setUnderline(true).setBold(true).build();
+  var LARG = 6;
+  alunos.forEach(function (a) {
+    var minhas = linhasFicha.filter(function (l) { return l[11] === a.id; })
+      .sort(function (x, y) { return String(y[10]).localeCompare(String(x[10])); });
+    var primeiro = String(a.nome || '').split(' ')[0], ultimo = String(a.nome || '').split(' ').slice(-1)[0];
+    var nomeFolha = (base + ' · ' + (Number(a.numero) < 10 ? '0' : '') + (a.numero || '') + ' ' + primeiro + (ultimo && ultimo !== primeiro ? ' ' + ultimo : '')).substring(0, 95);
+    nomesAgora.push(nomeFolha);
+    // As partes, cada uma com as suas linhas.
+    var partes = [];
+    var parte = function (titulo, cor, linhasP, forms) { partes.push({ titulo: titulo, cor: cor, linhas: linhasP, forms: forms || [] }); };
+    // UC do aluno: as das notas da aplicação e as das aulas.
+    var ucs = [];
+    Object.keys(daApp).forEach(function (k) { var ap = daApp[k]; if (ap.alunoId === a.id && ucs.indexOf(String(ap.ucId)) < 0) ucs.push(String(ap.ucId)); });
+    minhas.forEach(function (l) { if (l[2] && ucs.indexOf(l[2]) < 0) ucs.push(l[2]); });
+    var nomeUC = {}; minhas.forEach(function (l) { if (l[12]) nomeUC[l[2]] = l[12]; });
+    // RESUMO
+    var res = [['UC', 'Média das aulas', 'Nota da UC', 'Faltas (horas)', 'Faltas (%)', 'Recuperação']];
+    ucs.forEach(function (u) {
+      var ap = daApp[a.id + '|' + u] || {};
+      var hf = Number(ap.horasFaltadas) || 0, tot = Number(ap.horasUC) || 0;
+      var rc = recs.filter(function (r) { return r.alunoId === a.id && String(r.ucId) === u; }).pop();
+      res.push([u + (nomeUC[u] ? ' — ' + nomeUC[u] : ''), ap.media !== undefined && ap.media !== '' ? virgula(ap.media) : '—',
+        ap.final !== undefined && ap.final !== '' ? virgula(ap.final) : '—', tot ? virgula(hf) + ' h de ' + virgula(tot) : '—',
+        tot ? virgula(Math.round(hf / tot * 1000) / 10) + '%' + (hf / tot >= 0.1 ? ' (acima dos 10%)' : '') : '—',
+        rc ? (NOME_ESTADO_RECUP[rc.estado] || rc.estado || '') : '—']);
+    });
+    if (res.length === 1) res.push(['Ainda sem notas nem faltas registadas.', '', '', '', '', '']);
+    parte('RESUMO', '#7B2233', res, [{ tipo: 'cab', rel: 0, n: 6 }]);
+    // NOTAS
+    var notas = [];
+    var fNotas = [];
+    ucs.forEach(function (u) {
+      var daUC = minhas.filter(function (l) { return l[2] === u; });
+      if (!daUC.length) return;
+      notas.push([u + (nomeUC[u] ? ' — ' + nomeUC[u] : '')]); fNotas.push({ tipo: 'aulaTit', rel: notas.length - 1 });
+      notas.push(['Dia', 'Plano de aula', 'Nota da aula (0-20)']); fNotas.push({ tipo: 'cab', rel: notas.length - 1, n: 3 });
+      daUC.forEach(function (l) { notas.push([l[1], l[3], l[8] !== '' ? l[8] : (l[4] === 'Faltou' ? 'Faltou (conta 0)' : /Não respondeu/.test(l[9]) ? '0 (sem resposta)' : 'Por validar')]); });
+    });
+    if (!notas.length) notas.push(['Ainda não há notas.']);
+    parte('NOTAS', '#3E7A31', notas, fNotas);
+    // FALTAS
+    var faltas = [['Dia', 'UC', 'Plano de aula', 'Presença']];
+    minhas.forEach(function (l) { if (l[4] === 'Faltou' || l[4] === 'Atrasado') faltas.push([l[1], l[2], l[3], l[4]]); });
+    if (faltas.length === 1) faltas = [['Sem faltas nem atrasos.']];
+    parte('FALTAS', '#A23A2E', faltas, faltas.length > 1 ? [{ tipo: 'cab', rel: 0, n: 4 }] : []);
+    // TRIMESTRES
+    var porTri = {};
+    minhas.forEach(function (l) { var k = anoLetivoDe_(l[10]) + '|' + trimestreDe_(l[10]); (porTri[k] = porTri[k] || []).push(l); });
+    Object.keys(porTri).sort().forEach(function (k) {
+      var ls = porTri[k], t = k.split('|');
+      var linhasT = [['UC', 'Planos de aula', 'Média das notas validadas', 'Faltas']];
+      var ucsT = []; ls.forEach(function (l) { if (ucsT.indexOf(l[2]) < 0) ucsT.push(l[2]); });
+      ucsT.forEach(function (u) {
+        var du = ls.filter(function (l) { return l[2] === u; });
+        var ns2 = du.filter(function (l) { return l[8] !== ''; }).map(function (l) { return Number(String(l[8]).replace(',', '.')); });
+        var m = ns2.length ? virgula(Math.round(ns2.reduce(function (x, y) { return x + y; }, 0) / ns2.length * 10) / 10) : '—';
+        linhasT.push([u + (nomeUC[u] ? ' — ' + nomeUC[u] : ''), du.length, m, du.filter(function (l) { return l[4] === 'Faltou'; }).length]);
+      });
+      parte(t[1] + '.º TRIMESTRE (' + t[0] + ')', '#2F5D8A', linhasT, [{ tipo: 'cab', rel: 0, n: 4 }]);
+    });
+    // CADA UC: cada plano de aula com tudo
+    ucs.forEach(function (u) {
+      var daUC = minhas.filter(function (l) { return l[2] === u; });
+      if (!daUC.length) return;
+      var ls = [], fs = [];
+      daUC.forEach(function (l) {
+        ls.push([l[1] + ' · ' + l[3] + ' · ' + l[4]]); fs.push({ tipo: 'aulaTit', rel: ls.length - 1 });
+        [['Competências avaliadas e o que respondeu', l[5]], ['Perguntas e respostas', l[6]], ['Notas do professor', l[7]],
+         ['Nota da aula (0-20)', l[8] !== '' ? l[8] : '—'], ['Casos à parte', l[9] || '—']].forEach(function (par) {
+          ls.push(par); fs.push({ tipo: 'rotulo', rel: ls.length - 1 });
+        });
+        ls.push(['']);
+      });
+      parte(u + (nomeUC[u] ? ' — ' + nomeUC[u] : ''), '#6B4C9A', ls, fs);
+    });
+    // RECUPERAÇÕES
+    var rr = recs.filter(function (r) { return r.alunoId === a.id; }).map(function (r) {
+      return [(r.ucId || 'UC') + ': ' + (NOME_ESTADO_RECUP[r.estado] || r.estado || '') + (r.dataLimite ? ' · prazo ' + diaPT(r.dataLimite) : '')
+        + (r.resultadoNota !== undefined && r.resultadoNota !== '' ? ' · nota ' + String(r.resultadoNota).replace('.', ',') : '')];
+    });
+    parte('RECUPERAÇÕES', '#B5651D', rr.length ? rr : [['Nenhuma.']]);
+
+    // Montar a folha: nome, linha da turma, índice, partes.
+    var F = { curto: '', nome: nomeFolha, linhas: [], formatos: [], secoes: [], largura: LARG, congelar: 2, semColunaFixa: true,
+      larguras: { 1: 300, 2: 380, 3: 140, 4: 140, 5: 140, 6: 160 }, alturaLinha1: 40 };
+    F.linhas.push([String(a.nome || '').toUpperCase()]); F.formatos.push({ tipo: 'nomeAluno', linha: 1 });
+    F.linhas.push(['Turma ' + turma + ' · Nº ' + (a.numero || '') + ' · atualizado a ' + agoraLisboa()]); F.formatos.push({ tipo: 'subNome', linha: 2 });
+    F.linhas.push(['']);
+    F.linhas.push(['ÍNDICE DO ALUNO — carregue no que quer ver']); F.formatos.push({ tipo: 'titulo', linha: 4, cor: '#444444' });
+    var inicioIndice = 5;
+    partes.forEach(function (p) { F.linhas.push(['      ' + p.titulo]); });
+    F.linhas.push(['']);
+    partes.forEach(function (p) {
+      F.linhas.push([p.titulo]); p.linha = F.linhas.length; F.formatos.push({ tipo: 'titulo', linha: p.linha, cor: p.cor });
+      var ini = F.linhas.length + 1;
+      p.linhas.forEach(function (l) { F.linhas.push(l); });
+      p.forms.forEach(function (fm) { var o = { tipo: fm.tipo, linha: ini + fm.rel }; if (fm.n) o.n = fm.n; F.formatos.push(o); });
+      F.linhas.push(['']);
+    });
+    var fo = comNovaTentativa_(function () { return escreverFolhaDaTurma_(ssF, F); }, 'Ficha ' + nomeFolha);
+    var gid = fo.getSheetId();
+    // As ligações: o índice do aluno, «↑ Índice do aluno» em cada parte, «← Voltar à turma».
+    try {
+      fo.getRange(inicioIndice, 1, partes.length, 1).setRichTextValues(partes.map(function (p) {
+        return [SpreadsheetApp.newRichTextValue().setText('      ' + p.titulo).setLinkUrl('#gid=' + gid + '&range=A' + p.linha).setTextStyle(estiloLig).build()];
+      }));
+      partes.forEach(function (p) {
+        fo.getRange(p.linha, LARG).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('↑ Índice do aluno')
+          .setLinkUrl('#gid=' + gid + '&range=A4').setTextStyle(estiloTopo).build());
+      });
+      fo.getRange(2, LARG).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('← Voltar à turma').setLinkUrl(urlTurma).setTextStyle(estiloVolta).build());
+      try { fo.setTabColor('#7B2233'); } catch (e) {}
+    } catch (e) { Logger.log('Ligações da ficha ' + nomeFolha + ': ' + e); }
+    ligacoes[a.id] = ssF.getUrl() + '#gid=' + gid;
+  });
+  // Saem as fichas desta turma que já não interessam (alunos que saíram, versões antigas).
+  ssF.getSheets().forEach(function (fo) {
+    var n = fo.getName();
+    if (n.indexOf(base + ' · ') === 0 && nomesAgora.indexOf(n) < 0) try { ssF.deleteSheet(fo); } catch (e) {}
+  });
+  try { indiceDasFichas_(ssF); } catch (e) { Logger.log('Índice das fichas: ' + e); }
+  return ligacoes;
+}
+
+/** A primeira folha do ficheiro das fichas: as turmas e os alunos, com ligações.
+ *  Tira as folhas que não são de nenhuma turma deste ano (e a «Folha1» vazia). */
+function indiceDasFichas_(ssF) {
+  var bases = TURMAS_DO_ANO.map(nomeDoSeparador);
+  var ind = ssF.getSheetByName('ÍNDICE') || ssF.insertSheet('ÍNDICE', 0);
+  ssF.getSheets().forEach(function (fo) {
+    var n = fo.getName();
+    if (n === 'ÍNDICE') return;
+    var daTurma = bases.some(function (b) { return n.indexOf(b + ' · ') === 0; });
+    if (!daTurma) try { ssF.deleteSheet(fo); } catch (e) {}
+  });
+  var linhas = [['FICHAS DOS ALUNOS · atualizado a ' + agoraLisboa()], ['Carregue no nome do aluno para abrir a ficha dele.'], ['']];
+  var links = [];
+  bases.forEach(function (b) {
+    var daT = ssF.getSheets().filter(function (fo) { return fo.getName().indexOf(b + ' · ') === 0; })
+      .sort(function (x, y) { return x.getName().localeCompare(y.getName()); });
+    if (!daT.length) return;
+    linhas.push(['TURMA ' + b]);
+    daT.forEach(function (fo) { linhas.push([fo.getName().slice(b.length + 3)]); links.push({ linha: linhas.length, gid: fo.getSheetId() }); });
+    linhas.push(['']);
+  });
+  ind.clear();
+  ind.getRange(1, 1, linhas.length, 1).setValues(linhas);
+  ind.getRange(1, 1).setFontSize(16).setFontWeight('bold').setFontColor('#7B2233');
+  linhas.forEach(function (l, i) { if (/^TURMA /.test(l[0])) ind.getRange(i + 1, 1).setFontWeight('bold').setBackground('#F3ECEE'); });
+  var est = SpreadsheetApp.newTextStyle().setForegroundColor('#1a56db').setUnderline(true).build();
+  links.forEach(function (x) {
+    ind.getRange(x.linha, 1).setRichTextValue(SpreadsheetApp.newRichTextValue().setText(linhas[x.linha - 1][0]).setLinkUrl('#gid=' + x.gid).setTextStyle(est).build());
+  });
+  ind.setColumnWidth(1, 420);
+  if (ind.getIndex() !== 1) { ssF.setActiveSheet(ind); ssF.moveActiveSheet(1); }
 }
 
 /** (v25.10) Tenta outra vez quando o Google demora («timed out»), até 3 vezes. */
