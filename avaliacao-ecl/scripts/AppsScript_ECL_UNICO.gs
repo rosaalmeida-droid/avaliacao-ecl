@@ -2241,7 +2241,9 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     .sort(function (a, b) { return (Number(a.numero) || 0) - (Number(b.numero) || 0); });
   // As aulas que já aconteceram (ou são hoje) e não são rascunho — e não os
   // testes de antes do ano letivo (v25.12).
-  d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO; });
+  // (v26.1) Os planos arquivados não entram no Sheets: ficam só no Arquivo da
+  // aplicação (Rosa, 5/out/2026).
+  d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO && p.estado !== 'arquivado'; });
   var aulas = d.planos.filter(function (p) {
     var dia = String(p.data || '').slice(0, 10);
     return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
@@ -2488,7 +2490,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   }
 
   // 3. As aulas, em grupos (v25.3, Rosa, out/2026): as que contam para a
-  // nota, as atividades extra e, por fim, os rascunhos e as arquivadas.
+  // nota, as atividades extra, as próximas e os rascunhos (as arquivadas ficam só na aplicação).
   var gruposAulas = [
     { nome: 'AULAS LANÇADAS — contam para a nota', cor: '#3E7A31', fundo: '#DFF0D8',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
@@ -2498,10 +2500,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
-    { nome: 'ARQUIVADAS — não contam', cor: '#A23A2E', fundo: '#F8D7DA',
-      lista: aulas.filter(function (p) { return p.estado === 'arquivado'; }) },
   ];
-  novaFolha('Aulas', 'Todas as aulas da turma, em grupos: as que contam para a nota, as atividades extra, as próximas, os rascunhos e as arquivadas.');
+  novaFolha('Aulas', 'As aulas da turma, em grupos: as que contam para a nota, as atividades extra, as próximas e os rascunhos. As arquivadas estão só no Arquivo da aplicação.');
   titulo('AS AULAS (' + aulas.length + ' — ' + contam.length + (contam.length === 1 ? ' conta' : ' contam') + ' para a nota)', '#2F5D8A');
   junta(['Em cada grupo, a aula mais recente primeiro. Presentes e faltas: o que o professor declarou (nas aulas abertas depois do dia, não há faltas automáticas).']);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
@@ -3854,7 +3854,7 @@ var SUMARIOS = {
   TURMA: [
     'PARA QUE SERVE: o que falta fazer nesta turma e o ÍNDICE. Cada parte está na sua folha: carregue no nome para a abrir; em cada folha, «← Voltar ao índice» volta aqui. As partes são os alunos, as faltas (em horas e dia a dia), as notas de cada UC, as recuperações, as aulas, os grupos e o que os colegas disseram, e o que chegou a cada aluno (o que respondeu, a nota do professor e os casos à parte).',
     'DE ONDE VEM E PARA ONDE VAI: os alunos respondem no telemóvel; o professor valida na aplicação; a nota validada é a que o aluno vê e a que entra na nota da UC. A coordenação vê aqui o mesmo. Só para ler: refaz-se sozinho de 10 em 10 minutos; mexer aqui não muda nada na aplicação.',
-    'CORES: verde = aula publicada, conta para a nota · vermelho = arquivada/anulada, não conta · roxo = atividade extra, só dá bónus. Faltas: F · Autoavaliou-se e falta validar: AA.'
+    'CORES: verde = aula publicada, conta para a nota · roxo = atividade extra, só dá bónus. As aulas arquivadas não aparecem aqui: estão no Arquivo da aplicação. Faltas: F · Autoavaliou-se e falta validar: AA.'
   ],
   'FICHAS TÉCNICAS': [
     'PARA QUE SERVE: todas as fichas técnicas da escola, com o guião. Cada linha diz onde a ficha entrou (que plano, de que turma, ou que evento).',
@@ -3891,7 +3891,7 @@ var SUMARIOS = {
 /** O resumo das folhas de dados: vai para a nota da célula A1. */
 var SUMARIO_DADOS = {
   ALUNOS: 'Os alunos de cada turma. A aplicação lê daqui quem é de que turma. Para ler: o separador da turma.',
-  PLANOS: 'Os planos de aula e as atividades. Para ler: «AS AULAS» no separador da turma (verde conta, vermelho arquivada, roxo atividade extra).',
+  PLANOS: 'Os planos de aula e as atividades. Para ler: «AS AULAS» no separador da turma (verde conta, roxo atividade extra; as arquivadas só na aplicação).',
   SESSOES: 'Quando cada aula foi aberta e fechada aos alunos. Para ler: coluna «Aberta aos alunos» no separador da turma.',
   PRESENCAS: 'Quem entrou em cada aula, atrasos e farda. Para ler: presenças e faltas no separador da turma.',
   SELECOES: 'As autoavaliações que os alunos enviaram, inteiras (com as respostas às perguntas). Para ler: «O QUE CHEGOU A CADA ALUNO» no separador da turma.',
