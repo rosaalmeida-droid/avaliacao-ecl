@@ -500,12 +500,20 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       }
     } catch { /* */ }
   }, []);
+  // O professor pediu «Fichas técnicas» no menu: fica marcado lá enquanto
+  // estiver na vista geral, com a gaveta das fichas aberta.
+  const [focoFichas, setFocoFichas] = useState(false);
   React.useEffect(() => {
     if (!moduloPedido) return;
+    setFocoFichas(moduloPedido === 'fichas');
     if (moduloPedido === 'turma') { setModulo('inicio'); setTabInicio('turma'); }
     else if (moduloPedido === 'competencias') { setModulo('inicio'); setTabInicio('competencias'); }
     else if (moduloPedido === 'grupos') { setModulo('inicio'); setTabInicio('grupos'); }
     else if (moduloPedido === 'inicio') { setModulo('inicio'); setTabInicio('resumo'); }
+    else if (moduloPedido === 'fichas') {
+      setModulo('inicio'); setTabInicio('resumo');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('ecl-abrir-gaveta', { detail: 'fichas' })), 80);
+    }
     else setModulo(moduloPedido as Modulo);
   }, [moduloPedido]);
   // O botão «Criar Requisição →» da ficha pede para abrir a requisição deste plano.
@@ -573,8 +581,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // O menu da esquerda marca onde o professor está. As competências abrem-se
   // dentro do Início: antes o menu ficava em «Fichas» (Rosa, out/2026).
   React.useEffect(() => {
-    aoMudarModulo?.(modulo === 'inicio' && tabInicio === 'competencias' ? 'competencias' : modulo);
-  }, [modulo, tabInicio]);
+    aoMudarModulo?.(modulo === 'inicio' && tabInicio === 'competencias' ? 'competencias'
+      : modulo === 'inicio' && tabInicio === 'resumo' && focoFichas ? 'fichas' : modulo);
+  }, [modulo, tabInicio, focoFichas]);
   // Título antigo «Atividade fora da escola — …»: a atividade pode ser na escola.
   // Passa a «Atividade extra — …» (só o título; não obriga a responder outra vez).
   React.useEffect(() => {
