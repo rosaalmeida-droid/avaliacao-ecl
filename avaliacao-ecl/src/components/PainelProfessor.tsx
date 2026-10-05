@@ -14,6 +14,7 @@ import React from 'react';
 import { VistaProf } from './Header';
 import { PlanosForaDoHorario, PlanosAMaisNaUC } from './PlanosForaDoHorario';
 import { ProximosNoCalendario } from './ProximosNoCalendario';
+import { HorasDasUCs } from './HorasDasUCs';
 
 const C = {
   fundo:         '#F5F2F3',
@@ -140,6 +141,8 @@ export function PainelProfessor({
         {/* Planos com horas fora do horário da turma (Rosa, 5/out/2026). */}
         <PlanosForaDoHorario turmaId={turmaId} />
         <PlanosAMaisNaUC turmaId={turmaId} />
+        {/* As horas de cada UC: dadas e as que ainda cabem (Rosa, 5/out/2026). */}
+        <HorasDasUCs turmaId={turmaId} professor={nomeProfessor} />
 
         {/* A aula de hoje. O aluno tinha um botão grande para a aula; o
             professor tinha de ir a Planos, encontrar o plano e só lá
