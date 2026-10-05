@@ -2264,16 +2264,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             fontSize:15, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>✓ Gravar e terminar</button>
         </div>
       )}
-      <Gaveta soLeitura={!aAlterar} id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
         resumo={`${fmtDataCurta(plano.data)} · ${String(plano.horaInicio || '').slice(0, 5)}–${String(plano.horaFim || '').slice(0, 5)} · ${plano.ucId || 'sem unidade'}`}>
         <QuandoEUnidade plano={plano} onPlanoActualizado={onPlanoActualizado} onAbrirCriar={() => setModulo('editar')} />
       </Gaveta>
-      <Gaveta soLeitura={!aAlterar} id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
         resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!, !!(plano as any).tipoEvento) : 'Falta escolher o tipo de aula'}
         feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       </Gaveta>
-      <Gaveta soLeitura={!aAlterar} id="conteudos" n={3} titulo="Conteúdos e sumário"
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="conteudos" n={3} titulo="Conteúdos e sumário"
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
@@ -2570,7 +2570,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ))}
         </div>
       </Gaveta>
-      <Gaveta soLeitura={!aAlterar} id="responde" n={5} titulo="O que o aluno responde"
+      <Gaveta soLeitura={!aAlterar} onEditar={() => setAAlterar(true)} id="responde" n={5} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolha primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,

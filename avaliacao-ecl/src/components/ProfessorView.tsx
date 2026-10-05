@@ -1406,7 +1406,9 @@ function PassoFichaTecnica({
   // O que a IA direta não escreveu (registos, técnicas, perguntas): avisa-se aqui, uma vez.
   const [avisoIAFicha] = useState(() => { try { const a = localStorage.getItem('ecl_aviso_ia_ficha') || ''; localStorage.removeItem('ecl_aviso_ia_ficha'); return a; } catch { return ''; } });
   // Subtécnicas detetadas automaticamente
-  const subtecnicasDetetadas = sugerirSubtecnicas(textoReceita + ' ' + ficha.nomePrato);
+  // As subtécnicas detetadas que o professor tirou não voltam (Rosa, 5/out/2026).
+  const [subIgnoradas, setSubIgnoradas] = useState<string[]>([]);
+  const subtecnicasDetetadas = sugerirSubtecnicas(textoReceita + ' ' + ficha.nomePrato).filter(x => !subIgnoradas.includes(x.id));
 
   return (
     <div>
@@ -1757,11 +1759,14 @@ function PassoFichaTecnica({
         <Card>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>🔍 Subtécnicas detetadas automaticamente</div>
           <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
-            Com base no texto da receita. Serão usadas no passo seguinte para sugerir competências.
+            Com base no texto da receita. Se a ficha não tiver técnicas escolhidas, ficam estas ao guardar.
+            Para tirar uma que não faz sentido neste prato, carregue no ✕.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {subtecnicasDetetadas.map((s: { id: string; nome: string }) => (
-              <span key={s.id} className="chip suggested">★ {s.nome}</span>
+              <span key={s.id} className="chip suggested" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>★ {s.nome}
+                <button type="button" title="Tirar esta técnica" onClick={() => setSubIgnoradas(l => [...l, s.id])}
+                  style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 15, fontWeight: 800, padding: 0, lineHeight: 1 }}>✕</button></span>
             ))}
           </div>
         </Card>
@@ -2780,7 +2785,11 @@ function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
       </div>
       {apps.map(a => (
         <div key={a.id} style={{ borderLeft: '3px solid var(--copper)', paddingLeft: 10, marginBottom: 12 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 800 }}>Aparelho · {a.nome || a.id}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span style={{ flex: 1, fontSize: 14.5, fontWeight: 800 }}>Aparelho · {a.nome || a.id}</span>
+            <button type="button" onClick={() => onMudar(tecnicas, aparelhos.filter(l => lerLinhaDaFicha(l).id !== a.id))}
+              style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Tirar</button>
+          </div>
           {tecs.map((t, i) => t.aparelhoId === a.id ? <Tec key={i} t={t} i={i} /> : null)}
           <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>Como se faz o aparelho
             <input style={campo} defaultValue={a.como || ''} placeholder="Ex.: juntas o leite quente aos poucos, a bater com as varas (fouet)"

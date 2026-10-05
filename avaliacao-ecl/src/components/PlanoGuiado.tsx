@@ -84,10 +84,10 @@ export function CabecalhoPasso({ n, titulo, sub, direita }: { n: number; titulo:
 /** Uma parte do plano que abre e fecha (Rosa, out/2026: «campo a campo»).
  *  Fechada, mostra só o resumo e se está feita ou por fazer. Lembra-se,
  *  neste aparelho, de como o professor a deixou. */
-export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura = false, children }: {
+export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura = false, onEditar, children }: {
   id: string; n: number; titulo: string; resumo?: string; feito?: boolean; abertaAoInicio?: boolean;
   /** Só para ver: nada se muda sem carregar em «Editar o plano» (Rosa, out/2026). */
-  soLeitura?: boolean; children: React.ReactNode;
+  soLeitura?: boolean; onEditar?: () => void; children: React.ReactNode;
 }) {
   const chave = `ecl_gaveta_${id}`;
   const [aberta, setAberta] = useState<boolean>(() => {
@@ -119,6 +119,17 @@ export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, soLeitura
       {aberta && (
         <div style={{ padding: '2px 18px 18px', borderTop: `1px solid ${C.linha}` }}>
           <div style={{ height: 14 }} />
+          {/* Plano só para ler: diz-se porquê os botões não respondem, e
+              o botão para mudar está aqui mesmo (Rosa, 5/out/2026). */}
+          {soLeitura && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff7e6', border: '1.5px solid #b5651d',
+              borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
+              <span style={{ flex: '1 1 220px', fontSize: 14, fontWeight: 600, color: '#7a4310' }}>
+                Esta parte está só para ler. Para mudar alguma coisa (o sumário, as fichas, os conteúdos), carregue em «Editar o plano».</span>
+              {onEditar && <button type="button" onClick={onEditar} style={{ padding: '8px 14px', borderRadius: 9, border: 'none', background: '#b5651d',
+                color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar o plano</button>}
+            </div>
+          )}
           {soLeitura ? (
             <fieldset disabled style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: 0.85 }}>
               <ModoDoPasso.Provider value="gaveta">{children}</ModoDoPasso.Provider>
