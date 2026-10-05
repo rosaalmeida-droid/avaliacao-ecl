@@ -802,6 +802,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'aluno_fantasma') juntarFantasmas(dados);
   else if (tipo === 'config') juntarConfigs(dados);
   else if (tipo === 'aviso_coord') juntarAvisosDaCoordenacao(dados);
+  else if (tipo === 'ocorrencia') juntarOcorrencias(dados);
   else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
   else if (tipo === 'evento') juntarEventosDaBase(dados);
   else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
@@ -10036,19 +10037,31 @@ export function atrasosContamNaAula(planoAulaId: string): boolean {
 // o sumário e as faltas já registados aqui, e a extensão Claude no Chrome
 // passa-os para a eSchooling (o professor confirma antes de gravar).
 // As faltas seguem as mesmas regras da assiduidade (calcularBonusAssiduidadeUC).
+export interface AlunoESch { id?: string; alunoId: string; numero: number; nome: string; minutos?: number; faltaPorAtraso?: boolean; itens?: string; descricao?: string }
+/** Ocorrência disciplinar numa aula (Rosa, out/2026): na eSchooling vai para
+ *  «Comportamento», com a explicação do que aconteceu. */
+export interface OcorrenciaDisciplinar {
+  id: string; planoAulaId: string; turmaId: string; alunoId: string; tipo?: string; nota?: string; descricao: string;
+  registadaEm: string; registadaPor: string; atualizadoEm: string; eliminado?: boolean;
+}
 export interface AulaParaESchooling {
   plano: PlanoAula;
   sumario: string;
-  faltas: { alunoId: string; numero: number; nome: string }[];
-  atrasos: { alunoId: string; numero: number; nome: string }[];
+  faltas: AlunoESch[];
+  atrasos: AlunoESch[];
+  /** «Material» na eSchooling: a farda incompleta (com os itens em falta). */
+  material: AlunoESch[];
+  /** «Comportamento» na eSchooling: as ocorrências disciplinares, com a explicação. */
+  ocorrencias: AlunoESch[];
   /** As presenças desta aula ainda não foram tiradas (aula não aberta). */
   semPresencas: boolean;
 }
-export function faltasDaAulaParaESchooling(p: PlanoAula): Pick<AulaParaESchooling, 'faltas' | 'atrasos' | 'semPresencas'> {
+export function faltasDaAulaParaESchooling(p: PlanoAula): Pick<AulaParaESchooling, 'faltas' | 'atrasos' | 'material' | 'ocorrencias' | 'semPresencas'> {
   const alunos = getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const pres = getPresencas().filter(x => x.planoAulaId === p.id);
   const aberta = !!getSessaoAula(p.id)?.abertaEm;
-  const faltas: AulaParaESchooling['faltas'] = [], atrasos: AulaParaESchooling['atrasos'] = [];
+  const faltas: AlunoESch[] = [], atrasos: AlunoESch[] = [], material: AlunoESch[] = [];
+  const exigeFarda = (p as any).exigeFarda !== false && (p as any).tipoPlanAula !== 'atitudinal' && (p as any).tipoPlanAula !== 'teorico';
   let decididas = 0;
   for (const a of alunos) {
     const quem = { alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}` };
@@ -10058,12 +10071,26 @@ export function faltasDaAulaParaESchooling(p: PlanoAula): Pick<AulaParaESchoolin
     const decisao = r?.decisaoProfessor;
     if (decisao) decididas++;
     if (decisao === 'falta_presenca') { faltas.push(quem); continue; }
-    if (decisao === 'falta_atraso') { atrasos.push(quem); continue; }
-    if (!aberta || (aberturaTardia(p.id) && !decisao)) continue;
-    if (!r || r.presente === false) { faltas.push(quem); continue; }
-    if (atrasoConta(r, p.id)) atrasos.push(quem);
+    const minutos = Number(r?.atrasadoMins) || undefined;
+    if (decisao === 'falta_atraso') atrasos.push({ ...quem, minutos, faltaPorAtraso: true });
+    else {
+      if (!aberta || (aberturaTardia(p.id) && !decisao)) continue;
+      if (!r || r.presente === false) { faltas.push(quem); continue; }
+      if (atrasoConta(r, p.id)) atrasos.push({ ...quem, minutos });
+    }
+    // O aluno atrasado também pode vir sem a farda completa: regista-se as duas.
+    if (!r) continue;
+    // Falta de material: a farda incompleta, com os itens que faltaram.
+    if (exigeFarda && r.fardamentoOk === false) {
+      const obs = String(r.observacao || '').replace(MARCA_MAOS, '');
+      material.push({ ...quem, itens: obs.includes('em falta:') ? obs.split('em falta:')[1].trim() : 'farda incompleta' });
+    }
   }
-  return { faltas, atrasos, semPresencas: !aberta && decididas === 0 };
+  const ocorrencias: AlunoESch[] = ocorrenciasDaAula(p.id).map(o => {
+    const a = alunos.find(x => x.id === o.alunoId);
+    return { id: o.id, alunoId: o.alunoId, numero: a?.numero || 0, nome: a?.nome || o.alunoId, descricao: o.descricao };
+  });
+  return { faltas, atrasos, material, ocorrencias, semPresencas: !aberta && decididas === 0 };
 }
 /** As aulas já dadas deste professor que ainda não passaram para a eSchooling. */
 export function aulasParaESchooling(nomeProfessor: string, incluirPassadas = false): AulaParaESchooling[] {
@@ -10080,6 +10107,67 @@ export function planosParaESchooling(nomeProfessor: string, incluirPassadas = fa
       && (incluirPassadas || !p.eschoolingEm))
     .filter((p: any) => String(p.data).slice(0, 10) < hoje || !p.horaFim || p.horaFim <= agora.toTimeString().slice(0, 5))
     .sort((a, b) => `${a.data} ${a.horaInicio || ''}`.localeCompare(`${b.data} ${b.horaInicio || ''}`));
+}
+// ── Ocorrências disciplinares ──────────────────────────────────
+// O professor escolhe o tipo e escreve uma nota curta; a aplicação monta a
+// explicação formal que vai para «Comportamento» na eSchooling.
+export const TIPOS_OCORRENCIA: { id: string; nome: string; frase: string }[] = [
+  { id: 'telemovel', nome: 'Uso do telemóvel', frase: 'utilizou o telemóvel durante a aula, sem autorização' },
+  { id: 'linguagem', nome: 'Linguagem imprópria', frase: 'utilizou linguagem imprópria' },
+  { id: 'desrespeito_prof', nome: 'Falta de respeito ao professor', frase: 'teve uma atitude de falta de respeito para com o professor' },
+  { id: 'desrespeito_colegas', nome: 'Falta de respeito aos colegas', frase: 'teve uma atitude de falta de respeito para com os colegas' },
+  { id: 'recusa', nome: 'Recusa em realizar as tarefas', frase: 'recusou-se a realizar as tarefas propostas' },
+  { id: 'perturbacao', nome: 'Perturbação da aula', frase: 'perturbou o normal funcionamento da aula' },
+  { id: 'saida', nome: 'Saída sem autorização', frase: 'saiu da sala/cozinha sem autorização' },
+  { id: 'higiene', nome: 'Incumprimento das regras de higiene e segurança', frase: 'não cumpriu as regras de higiene e segurança alimentar da cozinha' },
+  { id: 'equipamento', nome: 'Uso indevido de equipamento', frase: 'fez uso indevido de equipamentos ou utensílios da escola' },
+  { id: 'outra', nome: 'Outra', frase: '' },
+];
+export function textoDaOcorrencia(tipo: string, nota: string, aluno: { nome?: string; numero?: number }, p: any): string {
+  const t = TIPOS_OCORRENCIA.find(x => x.id === tipo);
+  const quando = `${String(p?.data || '').slice(0, 10).split('-').reverse().join('/')}${p?.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''}`;
+  const base = t?.frase ? `Na aula de ${quando}${p?.ucId ? ` (${p.ucId})` : ''}, o(a) aluno(a) ${aluno.nome || ''} (n.º ${aluno.numero || ''}) ${t.frase}.` : '';
+  const extra = String(nota || '').trim().replace(/([^.!?])$/, '$1.');
+  return [base, extra].filter(Boolean).join(' ');
+}
+/** Regista uma ocorrência disciplinar numa aula. Fica no plano (vai para todos os aparelhos). */
+// Ficam num registo à parte, só dos professores, e não no plano da aula: o
+// plano vai para o Sheets e para os telemóveis dos alunos, e o plano já tem
+// coisas que chegue (Rosa, out/2026). Vão para a base por turma, para se
+// poderem registar no iPad e passar à eSchooling noutro computador.
+const KEY_OCORRENCIAS = 'ecl_ocorrencias';
+export function ocorrenciasDaAula(planoId: string): OcorrenciaDisciplinar[] {
+  return load<OcorrenciaDisciplinar>(KEY_OCORRENCIAS).filter(o => o.planoAulaId === planoId && !o.eliminado)
+    .sort((a, b) => String(a.registadaEm).localeCompare(String(b.registadaEm)));
+}
+function guardarOcorrencia(o: OcorrenciaDisciplinar): void {
+  save(KEY_OCORRENCIAS, [...load<OcorrenciaDisciplinar>(KEY_OCORRENCIAS).filter(x => x.id !== o.id), o]);
+  gravarNaBase('ocorrencia', o as any);
+}
+export function registarOcorrenciaDisciplinar(planoId: string, alunoId: string, tipo: string, nota: string, quem: string): void {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  const a = getAlunos().find(x => x.id === alunoId);
+  if (!p || !a || (!tipo && !nota.trim()) || (tipo === 'outra' && !nota.trim())) return;
+  const agora = new Date().toISOString();
+  guardarOcorrencia({ id: novoId('ocorr'), planoAulaId: p.id, turmaId: p.turmaId, alunoId, tipo, nota: nota.trim(),
+    descricao: textoDaOcorrencia(tipo, nota, a, p), registadaEm: agora, registadaPor: quem, atualizadoEm: agora });
+}
+export function apagarOcorrenciaDisciplinar(ocorrenciaId: string): void {
+  const o = load<OcorrenciaDisciplinar>(KEY_OCORRENCIAS).find(x => x.id === ocorrenciaId);
+  if (o) guardarOcorrencia({ ...o, eliminado: true, atualizadoEm: new Date().toISOString() });
+}
+function juntarOcorrencias(lista: any[]): void {
+  const m = new Map(load<OcorrenciaDisciplinar>(KEY_OCORRENCIAS).map(x => [x.id, x]));
+  for (const x of lista) {
+    if (!x?.id || !x.planoAulaId) continue;
+    const velho = m.get(x.id);
+    if (!velho || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) m.set(x.id, { ...x, eliminado: x.eliminado === true || x.eliminado === 'true' });
+  }
+  save(KEY_OCORRENCIAS, [...m.values()]);
+}
+/** Todas as turmas onde este professor tem aulas (para a página juntar tudo). */
+export function turmasDoProfessor(nomeProfessor: string): string[] {
+  return [...new Set(getPlanosAula().filter(p => planoDoProfessor(p, nomeProfessor)).map(p => p.turmaId).filter(Boolean))];
 }
 export function marcarPassadoAESchooling(planoIds: string[], passado = true): void {
   const em = new Date().toISOString();
