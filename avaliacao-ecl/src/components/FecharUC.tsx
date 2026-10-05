@@ -237,7 +237,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
           {[
             [`${escolhidas.length} alunos na pauta`, '#f7f5f2'],
             [`${produtos.length} produto${produtos.length === 1 ? '' : 's'} avaliado${produtos.length === 1 ? '' : 's'}`, '#f7f5f2'],
-            [`${negativas} com a)`, negativas ? '#fdf0ef' : '#f7f5f2'],
+            [`${negativas} com negativa a)`, negativas ? '#fdf0ef' : '#f7f5f2'],
             ...(naoCorrespondem.length ? [[`${naoCorrespondem.length} classificaç${naoCorrespondem.length === 1 ? 'ão' : 'ões'} a rever`, '#fdf0ef']] : []),
             [`${semProposta.length} sem proposta do aluno`, semProposta.length ? '#fdf0e6' : '#eef4eb'],
           ].map(([txt, cor]) => (
@@ -367,6 +367,13 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             )}
           </div>
         )}
+        {/* Legenda sempre à vista (auditoria 5/out/2026, ponto 16). */}
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', lineHeight: 1.6, background: '#f7f5f2', borderRadius: 10,
+          padding: '8px 12px', marginBottom: 8 }}>
+          <b>Legenda:</b> CP Competente · CR Criativo · CO Consciente · CM Comprometido · CL Colaborativo ·
+          {' '}<b>0</b> = faltou ou não se autoavaliou nesse produto · <b>célula em branco</b> = ainda sem nota validada (autoavaliação por validar, ou aula ainda por dar) ·
+          {' '}<b>a)</b> = negativa · «produtos» = os planos de avaliação escolhidos para a pauta (as colunas).
+        </div>
         <details style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', marginBottom: 8 }}>
           <summary style={{ cursor: 'pointer', fontWeight: 700 }}>De onde vêm os 5 C</summary>
           <div style={{ padding: '6px 0 0 4px', lineHeight: 1.6 }}>

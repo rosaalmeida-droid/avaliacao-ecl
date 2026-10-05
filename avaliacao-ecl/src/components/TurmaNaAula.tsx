@@ -132,6 +132,11 @@ export function TurmaNaAula({
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: C.tinta }}>{e.nome}</span>
                 {e.ehLider && <Pastilha texto="líder KF" cor="#0e7490" fundo="rgba(14,116,144,0.1)" />}
+                {/* O líder faltou ou esteve só parte da aula: avisar para o substituir (auditoria 5/out/2026). */}
+                {e.ehLider && (e.decisaoFalta === 'parcial' || e.decisaoFalta === 'falta_presenca' || (!e.entrou && !e.decisaoFalta)) && (
+                  <Pastilha texto={e.decisaoFalta === 'parcial' ? 'líder só parte da aula: substituir?' : 'líder ausente: escolher substituto'}
+                    cor={C.bordeaux} fundo={C.bordeauxSuave} />
+                )}
               </div>
 
               {/* Estado, por ordem de importância para quem está a dar aula */}
