@@ -62,7 +62,7 @@ export function PlanosForaDoHorario({ turmaId }: { turmaId?: string }) {
       style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 16, padding: '14px 16px', borderRadius: 14,
         border: '2px solid #c0392b', background: '#fdf0ef', color: '#8e2418', cursor: 'pointer', fontFamily: 'inherit' }}>
       <div style={{ fontSize: 16, fontWeight: 800 }}>⚠️ {lista.length === 1 ? 'Há 1 plano' : `Há ${lista.length} planos`} com horas diferentes do horário da turma.</div>
-      <div style={{ fontSize: 14, marginTop: 3 }}>Pode ter sido de propósito. Carregue aqui para confirmar.</div>
+      <div style={{ fontSize: 14, marginTop: 3 }}>Pode ter sido intencional. Carregue aqui para confirmar.</div>
     </button>
     {aberta && (
       <div onClick={() => setAberta(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -72,7 +72,7 @@ export function PlanosForaDoHorario({ turmaId }: { turmaId?: string }) {
             <div style={{ fontSize: 18, fontWeight: 800 }}>Planos com horas diferentes do horário da turma</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.45 }}>
               Mudar as horas de uma aula pode estar certo (por exemplo, por acerto com outro professor). Veja cada aula:
-              se foi de propósito, carregue em «Está certo» e o aviso não volta a aparecer. Se foi engano, ponha as horas do horário.
+              se foi intencional, carregue em «Está certo, foi intencional» e o aviso não volta a aparecer. Se foi engano, ponha as horas do horário.
               As horas contam nas faltas e na numeração das horas da UC.
             </div>
           </div>
@@ -84,7 +84,7 @@ export function PlanosForaDoHorario({ turmaId }: { turmaId?: string }) {
                   <div style={{ color: 'rgba(26,23,20,0.75)' }}>A aula está marcada das {x.ini} às {x.fim}. No horário da turma, nesse dia, a aula é das {x.novoIni} às {x.novoFim}.</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button onClick={() => estaCerto(x)} style={{ fontSize: 13.5, padding: '7px 12px', borderRadius: 8, border: 'none', background: 'var(--sage)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Está certo, foi de propósito</button>
+                  <button onClick={() => estaCerto(x)} style={{ fontSize: 13.5, padding: '7px 12px', borderRadius: 8, border: 'none', background: 'var(--sage)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Está certo, foi intencional</button>
                   <button onClick={() => porHorario(x)} style={{ fontSize: 13.5, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--copper)', background: '#fff', color: 'var(--copper)', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>Foi engano: pôr das {x.novoIni} às {x.novoFim}</button>
                 </div>
               </div>
