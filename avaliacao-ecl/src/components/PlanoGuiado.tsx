@@ -26,6 +26,7 @@ import {
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
 import { conhecimentosDaAula } from '../compatECL';
 import { sumarioDoPlano, ehAtividadeComServico } from '../sumarioAutomatico';
+import { janelaConfirmar } from './janelaConfirmar';
 import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
 
 const C = {
@@ -277,11 +278,16 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   );
   // Recomeçar (Rosa, out/2026): apaga as escolhas e volta à 1.ª pergunta.
   // Ficam a data, as horas, a turma, a unidade e as fichas.
-  function recomecar() {
+  async function recomecar() {
     const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-    if (!confirm('Recomeçar este plano do zero?\n\nApaga o tipo de aula, a forma de trabalhar, as fases, os conteúdos e o sumário. '
-      + 'Ficam a data, as horas, a turma, a unidade e as fichas.'
-      + (responderam ? `\n\nAtenção: ${responderam} aluno${responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.` : ''))) return;
+    // Janela à parte, com «Não» em destaque (Rosa, out/2026): é uma ação grave.
+    if (!await janelaConfirmar({
+      titulo: 'Quer mesmo recomeçar este plano do zero?', perigo: true,
+      texto: 'Apaga o tipo de aula, a forma de trabalhar, as fases, os conteúdos e o sumário. '
+        + 'Ficam a data, as horas, a turma, a unidade e as fichas.'
+        + (responderam ? `\n\nAtenção: ${responderam} aluno${responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.` : ''),
+      nao: 'Não, deixar o plano como está', sim: 'Sim, apagar e recomeçar',
+    })) return;
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual };
     ['triagemAula', 'sumario', 'conhecimentosProf', 'compAdicionadas', 'compRemovidas', 'perguntaCO', 'perguntaCR', 'trabalhos']

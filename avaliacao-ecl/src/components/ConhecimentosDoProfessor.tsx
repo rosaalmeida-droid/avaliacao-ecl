@@ -3,7 +3,7 @@
 // Usa-se no plano e no ecrã de criar ou alterar o plano.
 // ============================================================
 import React from 'react';
-import { addOrUpdatePlanoAula, getPlanosAula } from '../backend';
+import { addOrUpdatePlanoAula, getPlanosAula, getFichasProducao } from '../backend';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
@@ -52,7 +52,7 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
         {trabalho
           ? 'Cada aluno escolhe o seu tema entre os conteúdos marcados. Sem nada marcado, entram todos os do manual.'
-          : 'Com 1 ou 2 conteúdos, o aluno responde a cada indicador. Com mais (ou o manual todo), o aluno diz qual trabalhou e responde aos desse.'}
+          : 'Todos os alunos respondem a todos os indicadores marcados, em todos os conteúdos. O aluno não escolhe.'}
       </div>
       {trabalho && new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size === 1 && (
         <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 10, padding: '8px 12px', marginBottom: 8,
@@ -188,6 +188,32 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
           </div>
         )}
       </details>
+    </div>
+  );
+}
+
+// ── Aula mista: duas partes à vista (Rosa, 5/out/2026) ──────────
+// «A aula teórica incide sobre» (o manual ou o que o professor escreve) e
+// «A aula prática incide sobre» (as fichas técnicas do plano).
+export function ehAulaMista(plano: any): boolean {
+  return String(plano?.tipoPlanAula || '').replace('_obr', '') === 'misto';
+}
+
+export function DuasPartesDaAulaMista({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
+  const titulo = (t: string) => (
+    <div style={{ fontSize: 15, fontWeight: 800, margin: '4px 0 8px' }}>{t}</div>
+  );
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {titulo('📚 A aula teórica incide sobre:')}
+      <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      {titulo('🔪 A aula prática incide sobre:')}
+      <div style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(181,101,29,0.3)', background: 'rgba(181,101,29,0.05)', fontSize: 14, lineHeight: 1.5 }}>
+        {fichas.length
+          ? fichas.map(f => <div key={f.id}>● {f.nomePrato || 'Ficha técnica'}</div>)
+          : <span style={{ color: 'rgba(26,23,20,0.6)' }}>Ainda sem fichas técnicas. Juntam-se no plano, no campo «Fichas, guião e requisição».</span>}
+      </div>
     </div>
   );
 }

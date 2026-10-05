@@ -124,9 +124,10 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const marcados = new Set(conhecimentos.map(k => capituloDoCampo(k.id)?.capitulo.n).filter((n): n is number => n != null));
   // Num trabalho, cada aluno (ou grupo) escolhe o seu tema: entre os conteúdos
   // marcados, ou entre todos se não houver nenhum marcado (Rosa, out/2026).
-  // Numa aula dada pelo professor com muitos conteúdos (o manual todo, por
-  // exemplo), o aluno diz qual trabalhou, em vez de responder a todos.
-  const temTema = !ehAtitudinal && (escolheTema(triagem) || marcados.size > 2);
+  // Numa aula dada pelo professor, todos os alunos respondem a tudo o que o
+  // professor marcou, em todos os conteúdos: o aluno não escolhe (Rosa,
+  // 5/out/2026). Antes, com mais de 2 conteúdos, o aluno escolhia um.
+  const temTema = !ehAtitudinal && escolheTema(triagem);
   const md = temTema ? manualDaUC(p.ucId) : null;
   // O tema que o aluno já trabalha (trabalho que continua) aparece sempre,
   // mesmo que não esteja entre os marcados: antes ficava escolhido por trás,

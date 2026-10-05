@@ -6,7 +6,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { perguntasDe, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, calculoDaAulaValidada, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas, esteveNaAula } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, calculoDaAulaValidada, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas, esteveNaAula, alunosPorResponderVersaoNova } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -298,7 +298,10 @@ function QuemFalta({ planoId, turmaId, selecoes }: { planoId: string; turmaId: s
   if (!esperados.length) return null;
   const enviaram = new Set(selecoes.filter(s => s.planoAulaId === planoId).map(s => s.alunoId));
   const faltam = esperados.filter(a => !enviaram.has(a.id)).sort((a, b) => a.numero - b.numero);
-  return (
+  // Pediu-se para responder outra vez: quem ainda não respondeu à versão atual.
+  const porVersaoNova = new Set(planoQF ? alunosPorResponderVersaoNova(planoQF) : []);
+  const antigos = esperados.filter(a => porVersaoNova.has(a.id)).sort((a, b) => a.numero - b.numero);
+  return (<>
     <div style={{ background: faltam.length ? '#FFF4E0' : 'rgba(90,122,78,0.12)', border: `1.5px solid ${faltam.length ? '#E8A33D' : 'var(--sage)'}`,
       borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 14.5, lineHeight: 1.5 }}>
       <b>{esperados.length - faltam.length} de {esperados.length}</b> {entraram.size ? 'alunos que entraram' : 'alunos da turma'} já enviaram a autoavaliação.
@@ -309,7 +312,14 @@ function QuemFalta({ planoId, turmaId, selecoes }: { planoId: string; turmaId: s
         </div>
       </>)}
     </div>
-  );
+    {antigos.length > 0 && (
+      <div style={{ background: '#fdf0ef', border: '1.5px solid #c0392b', borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 14.5, lineHeight: 1.5 }}>
+        <b>{antigos.length} {antigos.length === 1 ? 'aluno ainda não respondeu' : 'alunos ainda não responderam'} à versão atual do plano</b>
+        {' '}(pediu para responderem outra vez). Até responderem, conta a resposta antiga.
+        <div style={{ fontWeight: 700, marginTop: 4 }}>{antigos.map(a => `${a.numero}. ${a.nome}`).join(' · ')}</div>
+      </div>
+    )}
+  </>);
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────

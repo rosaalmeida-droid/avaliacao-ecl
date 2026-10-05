@@ -5,7 +5,7 @@ import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } f
 import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
 import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { SumarioAula } from './SumarioAula';
-import { ConhecimentosDoProfessor } from './ConhecimentosDoProfessor';
+import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { contextoDoPlano } from '../backend';
 import React, { useState, useEffect } from 'react';
@@ -1486,33 +1486,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         </>)}
         {passo === 3 && (<>
-        <div className="field" style={{ marginBottom: 14, display: ehAtividadeExtra(dados, turmaId) ? 'none' : undefined }}>
-          <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {([
-              { v: 'pratico',  label: '🔪 Prática',  desc: 'Produção em cozinha' },
-              { v: 'misto',    label: '📚+🔪 Mista',  desc: 'Teoria + produção' },
-              { v: 'teorico',  label: '📚 Teórica',  desc: 'Só conhecimentos' },
-              { v: 'atitudinal', label: '🤝 Atitudinal', desc: 'Dinâmicas e atitudes' },
-            ] as const).map(opt => (
-              <button key={opt.v} type="button" onClick={() => {
-                  setD('tipoPlanAula', opt.v);
-                  // O nome da atividade (e o título do plano) acompanha o tipo: uma
-                  // aula teórica chamava-se «Aula prática» (Rosa, out/2026).
-                  const nomes: Record<string, string> = { pratico: 'Aula prática', misto: 'Aula mista', teorico: 'Aula teórica', atitudinal: 'Dinâmica de grupo — atitudes' };
-                  if (Object.values(nomes).includes(dados.tipoAtividade)) setD('tipoAtividade', nomes[opt.v]);
-                }}
-                style={{ flex: '1 1 120px', padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
-                  border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
-                  background: dados.tipoPlanAula === opt.v ? 'var(--copper-pale)' : '#fff',
-                  color: dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
-                  fontSize: 13, fontWeight: dados.tipoPlanAula === opt.v ? 700 : 400, textAlign: 'center' }}>
-                <div>{opt.label}</div>
-                <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* O tipo de aula pergunta-se uma só vez, no passo seguinte («Como é a
+            aula»): antes perguntava-se aqui e lá (Rosa, 5/out/2026). */}
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label">Tipo de atividade</label>
           <select className="input" value={dados.tipoAtividade} onChange={e => {
@@ -1604,10 +1579,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           </div>
         </>)}
         {passo === 5 && alvo && (<>
+          {ehAulaMista(alvo) && !(alvo as any).tipoEvento ? <DuasPartesDaAulaMista plano={alvo} onPlanoActualizado={aoMudarPlano} /> : (<>
           {(!contextoDoPlano(alvo).producao || escolheTema(triagemDoPlano(alvo))) && !(alvo as any).tipoEvento && (
             <ConhecimentosDoProfessor plano={alvo} onPlanoActualizado={aoMudarPlano} />
           )}
-          {contextoDoPlano(alvo).producao && (
+          </>)}
+          {contextoDoPlano(alvo).producao && !ehAulaMista(alvo) && (
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '0 0 12px', lineHeight: 1.5 }}>
               As fichas, o guião e a requisição juntam-se no plano, no campo «Fichas, guião e requisição».
             </div>

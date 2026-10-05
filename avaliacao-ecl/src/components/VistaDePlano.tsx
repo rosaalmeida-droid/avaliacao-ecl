@@ -1,4 +1,5 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { janelaConfirmar } from './janelaConfirmar';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
@@ -6,7 +7,7 @@ import { BotaoPublicar } from './BotaoPublicar';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula, alunosPorResponderVersaoNova } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -46,7 +47,7 @@ import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
 import { CriarPlano } from './PlanoAula';
-import { ConhecimentosDoProfessor } from './ConhecimentosDoProfessor';
+import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
 import { modulosDaTurma } from '../cronograma';
 import { AvisoAvaliacaoAnterior } from './AvisoAvaliacaoAnterior';
 import { PinTemporarioPanel } from './PinTemporarioPanel';
@@ -555,6 +556,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
    *  e grava-se com «Gravar e terminar» (Rosa, out/2026: mudava-se sem querer
    *  e não havia botão para gravar). */
   const [aAlterar, setAAlterar] = useState(false);
+  /** A janela «O que tem de fazer agora» já foi vista neste plano (nesta sessão). */
+  const [avisoVisto, setAvisoVisto] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('ecl_aviso_plano_' + plano.id) === '1'; } catch { return false; }
+  });
+  const fecharAviso = () => { setAvisoVisto(true); try { sessionStorage.setItem('ecl_aviso_plano_' + plano.id, '1'); } catch { /* */ } };
   // O menu da esquerda marca onde o professor está. As competências abrem-se
   // dentro do Início: antes o menu ficava em «Fichas» (Rosa, out/2026).
   React.useEffect(() => {
@@ -758,7 +764,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
   const nKnwManual = [...capsDoManual.values()].reduce((n, g) => n + g.ids.filter(id => !compRemovidas.includes(id)).length, 0);
   const capsAtivos = [...capsDoManual.values()].filter(g => g.ids.some(id => !compRemovidas.includes(id))).length;
-  const temaAEscolher = !ehAtitudinal && (capsAtivos > 2 || escolheTema(triagemDoPlano(plano)));
+  const temaAEscolher = !ehAtitudinal && escolheTema(triagemDoPlano(plano));
   const nConhecimentosAvaliados = temaAEscolher
     ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.max(0, ...[...capsDoManual.values()].map(g => g.ids.filter(id => !compRemovidas.includes(id)).length))
     : compConhecimentos.length;
@@ -797,11 +803,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             return x?.nome || nomeConhecimentoProf(id) || id;
           };
           return (
-            <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, border:'1px dashed rgba(26,23,20,0.25)', background:'#fff' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ flex:1, fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.55)' }}>
-                  Retiradas desta aula ({retiradas.length + porCap.size})
-                </div>
+            // Fechado e discreto: o que conta é o que fica na aula, e não o que
+            // se tirou (Rosa, 5/out/2026). Abre-se para voltar a incluir.
+            <details style={{ marginBottom:14, padding:'8px 12px', borderRadius:10, border:'1px dashed rgba(26,23,20,0.2)', background:'#fff' }}>
+              <summary style={{ cursor:'pointer', fontSize:13, color:'rgba(26,23,20,0.55)' }}>
+                Ver o que tirou desta aula ({retiradas.length + porCap.size}) — não é perguntado aos alunos
+              </summary>
+              <div style={{ display:'flex', alignItems:'center', gap:10, margin:'8px 0' }}>
+                <div style={{ flex:1 }} />
                 <button onClick={() => guardarCompetencias(compRemovidas.filter(x => /^OBR_0[12]$/.test(x)), compAdicionadas)}
                   style={{ fontSize:13, padding:'5px 12px', borderRadius:8, border:'none', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:700, fontFamily:'inherit' }}>
                   Repor todas
@@ -825,7 +834,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   </button>
                 </div>
               ))}
-            </div>
+            </details>
           );
         })();
 
@@ -1018,9 +1027,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             {modoSelecaoReq && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
-                <button onClick={() => {
+                <button onClick={async () => {
                   if (reqSelecionadasIds.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} ${reqSelecionadasIds.size === 1 ? 'requisição' : 'requisições'}?`)) {
+                  if (await janelaConfirmar({ titulo: `Quer mesmo eliminar ${reqSelecionadasIds.size === 1 ? 'esta requisição' : `estas ${reqSelecionadasIds.size} requisições`}?`,
+                    texto: 'Fica apagada de vez e não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) {
                     reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
                     setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
@@ -1043,7 +1053,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {' · '}{(r?.linhas || []).length} ingredientes
                 </span>
                 {!modoSelecaoReq && (
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Eliminar DEFINITIVAMENTE esta requisição?')) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
+                  <button onClick={async (e) => { e.stopPropagation(); if (await janelaConfirmar({ titulo: 'Quer mesmo eliminar esta requisição?', texto: 'Fica apagada de vez e não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
                     style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}>🗑️</button>
                 )}
               </div>
@@ -1603,6 +1613,52 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     <div>
       {/* Finalizar as alterações (Rosa, out/2026): o professor vê o plano todo
           como fica e o que mudou agora, e só então confirma. */}
+      {/* (Rosa, 5/out/2026) O que o professor tem de fazer não pode estar a
+          meio do ecrã: ao abrir o plano, uma janela diz logo o que é e tem um
+          só botão para o fazer. */}
+      {modulo === 'inicio' && !avisoVisto && !finalizar && plano.estado === 'publicado' && (() => {
+        let porValidar = 0, porDecidir = 0, deNovo = 0;
+        try {
+          const est = estadoDaTurmaNaAula(plano.id, plano.turmaId).filter(e => !(e.numero === 99 || e.numero === 88 || alunoDeTeste(e.alunoId)));
+          const sessao = getSessaoAula(plano.id);
+          const passou = !!sessao?.fechadaEm || String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10);
+          porValidar = est.filter(e => e.autoavaliou && !e.validado).length;
+          porDecidir = passou ? est.filter(e => !e.decisaoFalta && (!e.entrou || e.foraDeTempo)).length : 0;
+          deNovo = (plano as any).pedirDeNovoEm || (plano as any).reabertaPara
+            ? est.filter(e => e.autoavaliou && !e.validado && getValidacoes().some(v => v.alunoId === e.alunoId && v.planoAulaId === plano.id)).length : 0;
+        } catch { /* sem dados: não mostra */ }
+        if (!porValidar && !porDecidir) return null;
+        const btn = (cheio: boolean): React.CSSProperties => ({ display: 'block', width: '100%', minHeight: 54, borderRadius: 12, marginTop: 10,
+          border: cheio ? 'none' : '1px solid rgba(26,23,20,0.2)', background: cheio ? 'var(--sage, #5a7a4e)' : '#fff',
+          color: cheio ? '#fff' : 'rgba(26,23,20,0.7)', fontSize: cheio ? 17 : 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' });
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 18, padding: '22px 22px 18px', maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--copper)' }}>O que tem de fazer nesta aula</div>
+              {porValidar > 0 && (
+                <div style={{ fontSize: 19, fontWeight: 800, marginTop: 8, lineHeight: 1.35 }}>
+                  {porValidar === 1 ? '1 autoavaliação' : `${porValidar} autoavaliações`} à espera de validação
+                  {deNovo > 0 && <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
+                    {deNovo === 1 ? '1 aluno respondeu outra vez' : `${deNovo} alunos responderam outra vez`} e precisa{deNovo === 1 ? '' : 'm'} de nova validação.</span>}
+                </div>
+              )}
+              {porDecidir > 0 && (
+                <div style={{ fontSize: porValidar ? 15.5 : 19, fontWeight: porValidar ? 600 : 800, marginTop: 8, color: porValidar ? 'rgba(26,23,20,0.75)' : undefined }}>
+                  {porDecidir === 1 ? '1 aluno' : `${porDecidir} alunos`} com a presença por decidir (não entrou ou chegou fora de tempo).
+                </div>
+              )}
+              <button style={btn(true)} onClick={() => { fecharAviso(); if (porValidar) setModulo('validacao'); else setTabInicio('turma'); }}>
+                {porValidar ? 'Validar agora →' : 'Decidir as presenças agora →'}
+              </button>
+              {porValidar > 0 && porDecidir > 0 && (
+                <button style={btn(false)} onClick={() => { fecharAviso(); setTabInicio('turma'); }}>Primeiro, decidir as presenças</button>
+              )}
+              <button style={btn(false)} onClick={fecharAviso}>Mais tarde</button>
+            </div>
+          </div>
+        );
+      })()}
       {finalizar && (() => {
         const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
         const fecha = () => setFinalizar(null);
@@ -2094,6 +2150,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         if (aconteceu && r.porValidar > 0) acoes.push({ t: `Validar ${r.porValidar === 1 ? 'a autoavaliação que falta' : `as ${r.porValidar} autoavaliações`}`, ao: () => setModulo('validacao') });
         if (aconteceu && porDecidir > 0) acoes.push({ t: `Confirmar as presenças (${porDecidir} por decidir)`, ao: () => setTabInicio('turma') });
         if (aconteceu && r.porAvaliar > 0) acoes.push({ t: `Ver quem ainda não se avaliou (${r.porAvaliar})`, ao: () => setModulo('validacao') });
+        const versaoNova = alunosPorResponderVersaoNova(getPlanosAula().find(x => x.id === plano.id) || plano).filter(id => !alunoDeTeste(id)).length;
+        if (versaoNova > 0) acoes.push({ t: `Ver quem ainda não respondeu à versão nova (${versaoNova})`, ao: () => setModulo('validacao') });
         const [prox, depois] = acoes;
         const n = (v: number, cor: string, rot: string, total?: number) => (
           <div style={{ flex: '1 1 110px', background: '#fff', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, textAlign: 'center', padding: '10px 4px' }}>
@@ -2175,7 +2233,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
-      {(!contextoDoPlano(plano).producao || escolheTema(triagemDoPlano(plano))) && !(plano as any).tipoEvento && (
+      {ehAulaMista(plano) && !(plano as any).tipoEvento ? <DuasPartesDaAulaMista plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        : (!contextoDoPlano(plano).producao || escolheTema(triagemDoPlano(plano))) && !(plano as any).tipoEvento && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
       )}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
@@ -2297,7 +2356,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       </Gaveta>
       {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
           cozinha» tirava a requisição aos eventos e aos planos antigos). */}
-      <Gaveta soLeitura={!aAlterar} id="fichas" n={4} titulo="Fichas, guião e requisição"
+      <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato

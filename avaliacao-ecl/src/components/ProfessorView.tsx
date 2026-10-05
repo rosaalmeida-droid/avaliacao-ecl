@@ -1,4 +1,5 @@
 import { getLibrary } from '../libraryService';
+import { janelaConfirmar } from './janelaConfirmar';
 import { ImagemDoIngrediente, BancoEmpratamentoJanela } from './BancoEmpratamento';
 import React, { useState } from 'react';
 import { REGRAS_PERGUNTAS, promptPerguntasDaFicha, lerPerguntasDaIA, type PerguntaTecnica } from '../bancoPerguntas';
@@ -2391,9 +2392,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
               {fichasSelecionadasIds.size} ficha(s) selecionada(s)
             </span>
-            <button onClick={() => {
+            <button onClick={async () => {
               if (fichasSelecionadasIds.size === 0) return;
-              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Serão apagadas neste aparelho e no arquivo da escola, e esta ação não pode ser desfeita.`)) {
+              if (await janelaConfirmar({ titulo: `Quer mesmo eliminar ${fichasSelecionadasIds.size === 1 ? 'esta ficha' : `estas ${fichasSelecionadasIds.size} fichas`}?`,
+                texto: 'São apagadas neste aparelho e no arquivo da escola. Não se pode desfazer.', perigo: true, sim: 'Sim, eliminar' })) {
                 fichasSelecionadasIds.forEach(id => eliminarFichaProducaoDefinitivamente(id));
                 setFichasSelecionadasIds(new Set());
                 setModoSelecao(false);

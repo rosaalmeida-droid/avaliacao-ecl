@@ -10,6 +10,7 @@
 //     orçamentos, Preparação, Material, Dia do evento, Fechar.
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
+import { janelaConfirmar } from './janelaConfirmar';
 import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento } from '../eventos/doPlano';
 import { modulosAtivos } from '../cronograma';
 import { EventosWizard } from './EventosWizard';
@@ -816,7 +817,7 @@ function Pedido({ e, mudar, onEditar, onApagar }: { e: EventoECL; mudar: (x: Par
         </div>
       </div>
 
-      <button onClick={() => { if (confirm(`Apagar o evento «${e.nome}»? Não se pode desfazer.`)) onApagar(); }} style={{ ...botao('perigo'), width: '100%', marginTop: 8 }}>Apagar o evento</button>
+      <button onClick={async () => { if (await janelaConfirmar({ titulo: `Quer mesmo apagar o evento «${e.nome}»?`, texto: 'Não se pode desfazer.', perigo: true, sim: 'Sim, apagar o evento' })) onApagar(); }} style={{ ...botao('perigo'), width: '100%', marginTop: 8 }}>Apagar o evento</button>
     </>
   );
 }

@@ -3226,6 +3226,20 @@ export function pedidoParaOAluno(plano: any, alunoId?: string): string | undefin
   const a = plano?.pedirDeNovoEm, b = alunoId ? plano?.reabertaPara?.[alunoId] : undefined;
   return !a ? b : !b ? a : (quandoFoi(b) > quandoFoi(a) ? b : a);
 }
+/** Os alunos que já tinham respondido e ainda não responderam à versão
+ *  atual do plano, depois de o professor pedir para responder outra vez (à
+ *  turma ou só a eles). Até responderem, conta a resposta antiga (Rosa, out/2026). */
+export function alunosPorResponderVersaoNova(plano: any, sels: SelecaoAluno[] = getSelecoes()): string[] {
+  if (!plano?.pedirDeNovoEm && !plano?.reabertaPara) return [];
+  const ids = [...new Set(sels.filter(s => s.planoAulaId === plano.id).map(s => s.alunoId))];
+  return ids.filter(id => {
+    const pedido = pedidoParaOAluno(plano, id);
+    if (!pedido) return false;
+    const r = ultimaResposta(id, plano.id, sels);
+    return !r || !respostaDepoisDoPedido(r, pedido);
+  });
+}
+
 /** A autoavaliação deste aluno foi reaberta e ele ainda não respondeu outra vez? */
 export function reabertaPorResponder(plano: any, alunoId: string): boolean {
   const r = plano?.reabertaPara?.[alunoId];
