@@ -764,7 +764,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
   const nKnwManual = [...capsDoManual.values()].reduce((n, g) => n + g.ids.filter(id => !compRemovidas.includes(id)).length, 0);
   const capsAtivos = [...capsDoManual.values()].filter(g => g.ids.some(id => !compRemovidas.includes(id))).length;
-  const temaAEscolher = !ehAtitudinal && escolheTema(triagemDoPlano(plano));
+  const temaAEscolher = !ehAtitudinal && (escolheTema(triagemDoPlano(plano)) || ((plano as any).alunoEscolheTema === true && capsAtivos > 1));
   const nConhecimentosAvaliados = temaAEscolher
     ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.max(0, ...[...capsDoManual.values()].map(g => g.ids.filter(id => !compRemovidas.includes(id)).length))
     : compConhecimentos.length;

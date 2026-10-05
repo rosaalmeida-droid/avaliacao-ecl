@@ -290,7 +290,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     })) return;
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual };
-    ['triagemAula', 'sumario', 'conhecimentosProf', 'compAdicionadas', 'compRemovidas', 'perguntaCO', 'perguntaCR', 'trabalhos']
+    ['triagemAula', 'sumario', 'conhecimentosProf', 'compAdicionadas', 'compRemovidas', 'perguntaCO', 'perguntaCR', 'trabalhos', 'alunoEscolheTema']
       .forEach(k => { delete novo[k]; });
     addOrUpdatePlanoAula(novo);
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);

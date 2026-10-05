@@ -52,8 +52,35 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
         {trabalho
           ? 'Cada aluno escolhe o seu tema entre os conteúdos marcados. Sem nada marcado, entram todos os do manual.'
-          : 'Todos os alunos respondem a todos os indicadores marcados, em todos os conteúdos. O aluno não escolhe.'}
+          : 'Marque os conteúdos e os indicadores. Depois escolha abaixo como os alunos respondem.'}
       </div>
+      {/* Aula dada pelo professor: as duas opções, à escolha do professor (Rosa, 5/out/2026). */}
+      {!trabalho && (() => {
+        const nCaps = new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size;
+        if (nCaps < 2) return null;
+        const escolhe = plano.alunoEscolheTema === true;
+        const mudar = (v: boolean) => {
+          const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+          const p = { ...atual, alunoEscolheTema: v, atualizadoEm: new Date().toISOString() };
+          addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+        };
+        const opcao = (on: boolean, titulo: string, sub: string, ao: () => void) => (
+          <button onClick={ao} style={{ flex: '1 1 220px', textAlign: 'left', padding: '10px 12px', borderRadius: 11, cursor: 'pointer', fontFamily: 'inherit',
+            border: on ? `2px solid ${azul}` : '1px solid rgba(26,23,20,0.22)', background: on ? azul : '#fff', color: on ? '#fff' : '#1a1714' }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800 }}>{on ? '✓ ' : ''}{titulo}</div>
+            <div style={{ fontSize: 12.5, opacity: 0.85 }}>{sub}</div>
+          </button>
+        );
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Como respondem os alunos? ({nCaps} conteúdos marcados)</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {opcao(!escolhe, 'Todos respondem a tudo', 'Cada aluno responde a todos os indicadores marcados, em todos os conteúdos.', () => mudar(false))}
+              {opcao(escolhe, 'Cada aluno escolhe um conteúdo', 'O aluno escolhe um dos conteúdos marcados e responde só aos indicadores desse.', () => mudar(true))}
+            </div>
+          </div>
+        );
+      })()}
       {trabalho && new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size === 1 && (
         <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 10, padding: '8px 12px', marginBottom: 8,
           fontSize: 13.5, fontWeight: 700, color: '#8e2418', lineHeight: 1.45 }}>
