@@ -34,7 +34,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -1715,7 +1715,12 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   const validacaoDaAula: any = soConsultaPedida ? null : getValidacoes()
     .filter((v: any) => v.alunoId === aluno.id && v.planoAulaId === planoAberto.id)
     .sort((a: any, b: any) => String(b.validadoEm || b.criadoEm || '').localeCompare(String(a.validadoEm || a.criadoEm || '')))[0];
-  const aulaValidada = !!validacaoDaAula;
+  // MAS: se o professor pediu para responder outra vez (perguntas novas ou
+  // reabertura só para este aluno), a aula volta a estar por fazer — senão o
+  // aluno não conseguia avançar (Rosa, 5/out/2026).
+  const temDeResponderOutraVez = !jaSubmeteuAutoavaliacao(planoAberto, aluno.id)
+    && !!pedidoParaOAluno(getPlanosAula().find(p => p.id === planoAberto.id) || planoAberto, aluno.id);
+  const aulaValidada = !!validacaoDaAula && !temDeResponderOutraVez;
   const notaValidada = aulaValidada ? notaDaAulaValidada(validacaoDaAula) : null;
   const soConsulta = soConsultaPedida || aulaValidada;
   const versao = String((plano as any).atualizadoEm || '');
