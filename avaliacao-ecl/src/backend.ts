@@ -6594,12 +6594,29 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
     } catch { /* falha na leitura não é falha no envio */ }
   };
 
+  // (Rosa, 5/out/2026: «carrego no botão e nunca dá em nada») Os planos de
+  // outras turmas confirmam-se na turma deles: antes só se lia a turma
+  // aberta, e os das outras ficavam «a caminho» para sempre.
+  const planosLocais = getPlanosAula();
+  const turmasDaFila = new Set<string>([turmaId]);
+  fila.forEach(i => { const p = planosLocais.find(x => x.id === i.id); if (p?.turmaId) turmasDaFila.add(p.turmaId); });
+  const tentaTurma = async (url: string, tipo: string, campo: string, t: string) => {
+    try {
+      const json = await lerDoSheets(url, { tipo, turmaId: t });
+      const itens = json?.[campo] || json?.dados || [];
+      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(String(x.id)); });
+    } catch { /* falha na leitura não é falha no envio */ }
+  };
   await Promise.all([
     tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas'),
-    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos'),
+    ...[...turmasDaFila].map(t => tentaTurma(SHEETS_PLANOS_URL, 'get_planos', 'planos', t)),
     tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes'),
     tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes'),
   ]);
+  // O que já não existe neste aparelho (um plano de aula ou uma ficha que
+  // foi apagada) já não tem nada para enviar: sai da fila.
+  const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
+  const fichasLocais = new Set(getFichasProducao().map(f => f.id));
 
   const agora = new Date().toISOString();
   const todos = getFilaSync();
@@ -6607,9 +6624,11 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
 
   todos.forEach(item => {
     if (item.confirmadoEm) return;
-    if (idsNoSheets.has(item.id)) {
+    const apagado = (item.tipo === 'plano' && (eliminados.has(item.id) || !planosLocais.some(p => p.id === item.id)))
+      || (item.tipo === 'ficha' && !fichasLocais.has(item.id));
+    if (idsNoSheets.has(item.id) || apagado) {
       item.confirmadoEm = agora;
-      confirmados += 1;
+      if (!apagado) confirmados += 1;
     }
   });
   guardarFila(todos);
@@ -8376,6 +8395,18 @@ const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
   validacao: [SHEETS_HISTORICO_URL, 'get_validacoes'],
 };
 
+/** O registo ainda existe neste aparelho (se não, já não há nada a enviar). */
+function existeAinda(p: PorConfirmar): boolean {
+  try {
+    if (p.tipo === 'plano') return getPlanosAula().some(x => x.id === p.id) && !load<string>(KEYS.eliminadosPlanos).includes(String(p.id));
+    if (p.tipo === 'ficha') return getFichasProducao().some(x => x.id === p.id);
+    if (p.tipo === 'aluno') return getAlunos().some(x => x.id === p.id);
+    if (p.tipo === 'selecao') return load<SelecaoAluno>(KEYS.selecoes).some(x => x.id === p.id);
+    if (p.tipo === 'validacao') return getValidacoes().some(x => x.id === p.id);
+  } catch { /* na dúvida, fica */ }
+  return true;
+}
+
 function reenviar(p: PorConfirmar): void {
   if (p.tipo === 'plano') {
     const plano = getPlanosAula().find(x => x.id === p.id);
@@ -8574,6 +8605,10 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   const atual = espera();
   for (const p0 of l) {
     const p = atual.find(x => x.tipo === p0.tipo && x.id === p0.id) || p0;
+    // Já não existe neste aparelho (foi apagado de vez): não há nada para
+    // enviar, sai da lista. Antes ficava «a caminho do arquivo» para sempre e
+    // o botão não fazia nada (Rosa, 5/out/2026).
+    if (!existeAinda(p)) { continue; }
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }

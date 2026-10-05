@@ -193,6 +193,8 @@ function AppInterno() {
   const [moduloPedido, setModuloPedido] = useState<string | null>(null);
   /** O que ainda não se sabe se chegou ao Sheets. */
   const [espera, setEspera] = useState<{ total: number; teimosos: any[] }>({ total: 0, teimosos: [] });
+  /** A resposta do botão «Tentar enviar agora» (antes não dizia nada). */
+  const [msgEnvio, setMsgEnvio] = useState('');
 
   // De minuto a minuto: conferir o que foi enviado e repetir o que não
   // chegou. Um plano podia ficar uma hora sem aparecer no Sheets e
@@ -554,6 +556,10 @@ function AppInterno() {
                 <EstadoSincronizacao turmaId={turmaId} outrosPorEnviar={espera.teimosos.length} />
               </div>
 
+              {espera.teimosos.length === 0 && msgEnvio.startsWith('✓') && (
+                <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#EEF6EA', border: '1.5px solid #3E7A31', borderRadius: 12,
+                  padding: '11px 16px', fontSize: 14.5, fontWeight: 700, color: '#3E7A31' }}>{msgEnvio}</div>
+              )}
               {espera.teimosos.length > 0 && (
                 <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#fdf0e6',
                   border: '1.5px solid var(--copper)', borderRadius: 12, padding: '13px 16px' }}>
@@ -564,12 +570,17 @@ function AppInterno() {
                     {espera.teimosos.slice(0, 3).map((x: any) => rotuloDaEspera(x)).join(' · ')}
                     {espera.teimosos.length > 3 ? ` · e mais ${espera.teimosos.length - 3}` : ''}
                   </div>
-                  <button onClick={() => confirmarEReenviar().then(() => setEspera(estadoDaEspera()))}
+                  <button onClick={() => { setMsgEnvio('A enviar e a confirmar no arquivo da escola…');
+                      confirmarEReenviar().then(r => { setEspera(estadoDaEspera());
+                        setMsgEnvio(r.aRepetir === 0 ? '✓ Ficou tudo guardado no arquivo da escola.'
+                          : `${r.confirmados ? `Chegaram ${r.confirmados}. ` : ''}Ainda falta${r.aRepetir === 1 ? '' : 'm'} ${r.aRepetir}: a aplicação continua a tentar sozinha. Tente outra vez dentro de um minuto.`); })
+                      .catch(() => setMsgEnvio('Não foi possível ligar ao arquivo da escola. Verifique a internet e tente outra vez.')); }}
                     style={{ marginTop: 9, padding: '8px 14px', borderRadius: 8, border: 'none',
                       background: 'var(--copper)', color: '#fff', fontSize: 13.5, fontWeight: 700,
                       cursor: 'pointer', fontFamily: 'inherit' }}>
                     Tentar enviar agora
                   </button>
+                  {msgEnvio && <div style={{ fontSize: 13.5, marginTop: 8, fontWeight: 600, color: msgEnvio.startsWith('✓') ? '#3E7A31' : '#7a4310' }}>{msgEnvio}</div>}
                 </div>
               )}
 
