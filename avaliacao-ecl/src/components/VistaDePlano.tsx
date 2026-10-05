@@ -555,7 +555,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   /** O plano abre só para ver; muda-se depois de carregar em «Editar o plano»
    *  e grava-se com «Gravar e terminar» (Rosa, out/2026: mudava-se sem querer
    *  e não havia botão para gravar). */
-  const [aAlterar, setAAlterar] = useState(false);
+  // Um plano de aula em rascunho (a ser criado) abre logo para mudar: só os
+  // publicados abrem para ler (Rosa, 5/out/2026: «não me deixa selecionar as
+  // atitudes» num plano novo).
+  const [aAlterar, setAAlterar] = useState(() => plano.estado !== 'publicado' && (plano.estado as string) !== 'realizada');
+  React.useEffect(() => { setAAlterar(plano.estado !== 'publicado' && (plano.estado as string) !== 'realizada'); }, [plano.id]);
   /** A janela «O que tem de fazer agora» já foi vista neste plano (nesta sessão). */
   const [avisoVisto, setAvisoVisto] = useState<boolean>(() => {
     try { return sessionStorage.getItem('ecl_aviso_plano_' + plano.id) === '1'; } catch { return false; }
