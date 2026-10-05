@@ -37,7 +37,7 @@ export function horasDaUC(turmaId: string, ucId: string, hojeISO = isoDe(new Dat
     const ini = new Date(Math.max(new Date(hojeISO + 'T00:00:00').getTime(), new Date((mod.dataInicio || hojeISO) + 'T00:00:00').getTime()));
     for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
       const iso = isoDe(d);
-      if (comPlano.has(iso) || diaSemAulas(iso)) continue;
+      if (comPlano.has(iso) || diaSemAulas(iso, turmaId)) continue;
       const h = horasSugeridas(turmaId, iso);
       if (!h) continue;
       noHorario += horasDoPlano({ horaInicio: h.inicio, horaFim: h.fim } as any);

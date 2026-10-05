@@ -36,9 +36,15 @@ export const INTERRUPCOES: DiaMarcado[] = [
   ['2027-06-02', '2027-08-31', 'Fim das aulas: Formação em Contexto de Trabalho (FCT) e férias'],
 ].map(([inicio, fim, nome]) => ({ inicio, fim, nome, tipo: 'interrupcao' as const }));
 
+/** Dias sem aulas só de uma turma (o outdoor de cada turma do 1.º ano, por
+ *  exemplo). A 1.º BCR fez o outdoor a 29/09/2026 (Rosa, 5/out/2026). */
+export const DIAS_DA_TURMA: Record<string, DiaMarcado[]> = {
+  '1º BCR': [{ inicio: '2026-09-29', fim: '2026-09-29', nome: 'Outdoor da turma (sem aulas de cozinha)', tipo: 'interrupcao' }],
+};
+
 /** A agenda da escola: não tira aulas, mas convém lembrar. */
 export const AGENDA: DiaMarcado[] = [
-  ['2026-09-21', '2026-10-09', 'Outdoors'],
+  ['2026-09-21', '2026-10-09', 'Período dos outdoors dos 1.º anos (cada turma faz o seu num só dia)'],
   ['2026-09-30', '2026-09-30', 'Fórum de Encarregados de Educação (Cursos Profissionais, 1.º ano, 18h; CEF, 18h30)'],
   ['2026-10-01', '2026-10-01', 'Fórum de Encarregados de Educação (2.º e 3.º anos: Profissionais 18h, Aprendizagem 19h)'],
   ['2026-10-01', '2026-10-02', 'Outdoors (CEF)'],
@@ -75,16 +81,21 @@ export const AGENDA: DiaMarcado[] = [
 const entre = (iso: string, x: DiaMarcado) => iso >= x.inicio && iso <= x.fim;
 
 /** O dia não tem aulas (feriado ou interrupção)? Devolve o motivo, ou null. */
-export function diaSemAulas(iso: string): DiaMarcado | null {
+export function diaSemAulas(iso: string, turmaId?: string): DiaMarcado | null {
   const d = String(iso || '').slice(0, 10);
   if (!d) return null;
-  return FERIADOS.find(x => entre(d, x)) || INTERRUPCOES.find(x => entre(d, x)) || null;
+  return FERIADOS.find(x => entre(d, x)) || INTERRUPCOES.find(x => entre(d, x))
+    || (turmaId ? (DIAS_DA_TURMA[turmaId] || []).find(x => entre(d, x)) : undefined) || null;
 }
 
 /** O que a agenda tem neste dia. */
+// Os períodos longos (outdoors, mercado de Natal, recuperações) não aparecem
+// em cada dia: davam a ideia de que todas as terças eram de outdoor (Rosa,
+// 5/out/2026). Aparecem só em «o que vem aí».
 export function agendaDoDia(iso: string): DiaMarcado[] {
   const d = String(iso || '').slice(0, 10);
-  return AGENDA.filter(x => entre(d, x));
+  const dias = (x: DiaMarcado) => (new Date(x.fim + 'T00:00:00').getTime() - new Date(x.inicio + 'T00:00:00').getTime()) / 86400000 + 1;
+  return AGENDA.filter(x => entre(d, x) && dias(x) <= 5);
 }
 
 /** O que vem aí nos próximos dias (feriados, interrupções e agenda), por ordem. */

@@ -225,7 +225,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
     // Evento ou concurso neste dia: cor própria (roxo), para não se confundir com as aulas.
     const temEvento = planosNesteDia.some((p: any) => p.tipoEvento);
     // Feriado ou interrupção da escola: outra cor (Rosa, 5/out/2026).
-    const semAulas = diaSemAulas(chave);
+    const semAulas = diaSemAulas(chave, turmaId);
     return (
       <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
         title={semAulas ? semAulas.nome : diaDeCozinha ? 'Dia de cozinha' : undefined}
@@ -408,7 +408,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                   const iso2 = diaSelecionado
                     ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
                     : '';
-                  const sa = iso2 ? diaSemAulas(iso2) : null;
+                  const sa = iso2 ? diaSemAulas(iso2, turmaId) : null;
                   const ag = iso2 ? agendaDoDia(iso2) : [];
                   if (sa || ag.length) return (
                     <div style={{ fontSize: 13.5, lineHeight: 1.5, margin: '8px 0 4px' }}>
@@ -451,7 +451,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                         style={{ padding: '12px 20px', borderRadius: 10, border: 'none',
                           background: 'var(--copper)', color: '#fff', fontSize: 14.5,
                           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        {diaSemAulas(iso) ? '+ Criar uma atividade para este dia' : '+ Criar plano de aula para este dia'}
+                        {diaSemAulas(iso, turmaId) ? '+ Criar uma atividade para este dia' : '+ Criar plano de aula para este dia'}
                       </button>}
                     </>
                   );
@@ -1324,9 +1324,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
           </div>
         </div>
-        {dados.data && diaSemAulas(dados.data) && (
+        {dados.data && diaSemAulas(dados.data, turmaId) && (
           <div style={{ fontSize: 14, color: '#8e2418', background: '#fdf0ef', border: '1.5px solid #c0392b', borderRadius: 10, padding: '10px 12px', margin: '-6px 0 14px', lineHeight: 1.5 }}>
-            <b>⛔ {diaSemAulas(dados.data)!.nome}.</b> Não há aulas neste dia, por isso não se pode criar um plano de aula.
+            <b>⛔ {diaSemAulas(dados.data, turmaId)!.nome}.</b> Não há aulas neste dia, por isso não se pode criar um plano de aula.
             Pode criar uma atividade (evento, concurso, visita): no passo 3, escolha «Atividade extra» ou outro tipo de atividade.
           </div>
         )}
@@ -1588,12 +1588,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           {passo > 1 && <button className="btn btn-secondary" onClick={() => setPasso(passo - 1)} style={{ flex: 1 }}>← Anterior</button>}
           {(() => {
             // Dia sem aulas (feriado ou interrupção): só atividades (Rosa, 5/out/2026).
-            const bloqueado = !!(dados.data && diaSemAulas(dados.data) && !tipoEventoDe(dados.tipoAtividade));
+            const bloqueado = !!(dados.data && diaSemAulas(dados.data, turmaId) && !tipoEventoDe(dados.tipoAtividade));
             return (<>
               <button className="btn btn-primary" disabled={!dados.ucId || bloqueado} onClick={() => guardar(false, true)}
                 style={{ flex: 2, fontSize: 15, padding: '13px', opacity: (!!dados.ucId && !bloqueado) ? 1 : 0.5 }}>Seguinte →</button>
               {bloqueado && <div style={{ flexBasis: '100%', fontSize: 13.5, color: '#8e2418', fontWeight: 700, marginTop: 4 }}>
-                {diaSemAulas(dados.data)!.nome}: neste dia não há aulas, por isso não se pode criar um plano de aula. Escolha um tipo de atividade, ou mude a data no passo 1.</div>}
+                {diaSemAulas(dados.data, turmaId)!.nome}: neste dia não há aulas, por isso não se pode criar um plano de aula. Escolha um tipo de atividade, ou mude a data no passo 1.</div>}
             </>);
           })()}
         </div>

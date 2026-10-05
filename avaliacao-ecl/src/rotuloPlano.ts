@@ -22,8 +22,6 @@ function modDaUC(plano: PlanoAula): any {
 // 2026/27.
 // Os dias sem aulas (feriados nacionais e de Lisboa, interrupções da ECL)
 // estão no calendário escolar (Rosa, 5/out/2026).
-const FERIADOS_2026_27 = { has: (iso: string) => diaSemAulas(iso)?.tipo === 'feriado' };
-const emInterrupcao = (iso: string) => diaSemAulas(iso)?.tipo === 'interrupcao';
 
 /**
  * Quantas aulas tem a UC — os dias de cozinha reais da turma entre o
@@ -57,7 +55,7 @@ export function totalAulasUC(plano: PlanoAula): number {
     for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
       const iso = isoDe(d);
       if (iso < hoje || diasComPlano.has(iso)) continue;
-      if (!FERIADOS_2026_27.has(iso) && !emInterrupcao(iso) && temCozinha(plano.turmaId, iso)) futuros++;
+      if (!diaSemAulas(iso, plano.turmaId) && temCozinha(plano.turmaId, iso)) futuros++;
     }
     if (passados + futuros > 0) return passados + futuros;
   }
