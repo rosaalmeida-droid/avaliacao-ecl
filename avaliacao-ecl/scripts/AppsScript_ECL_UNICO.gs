@@ -904,6 +904,7 @@ function tratar(d) {
     }
     if (tipo === 'sessao')               return abrirSessao(d);
     if (tipo === 'fechar_sessao')        return fecharSessao(d);
+    if (tipo === 'anular_sessao')        return anularSessao(d);
     if (tipo === 'lider_kf')             return guardar('LIDERES_KF', d);
     if (tipo === 'grupo_membro')         return guardar('GRUPOS', d);
     if (tipo === 'grupo_info')           return guardar('GRUPOS_INFO', d);
@@ -1023,6 +1024,20 @@ function fecharSessao(d) {
     fechadaEm: d.fechadaEm || new Date().toISOString(),
     fechadaPor: d.fechadaPor || ''
   });
+}
+
+/** (v26.1) A aula foi aberta por engano (Rosa, 5/out/2026: «abri uma aula que
+ *  era só para amanhã»): a abertura deixa de valer e as entradas dos alunos
+ *  nessa abertura saem (ficam nos ELIMINADOS). Abrir depois volta a valer. */
+function anularSessao(d) {
+  if (!d.planoAulaId) return resposta(false, 'Falta a aula');
+  var r = guardar('SESSOES', {
+    planoAulaId: d.planoAulaId, turmaId: d.turmaId || '',
+    abertaEm: '', abertaPor: '', fechadaEm: '', fechadaPor: '',
+    anuladaEm: d.anuladaEm || new Date().toISOString(), anuladaPor: d.anuladaPor || ''
+  });
+  try { apagarLinhasPor(ficheiro(), 'PRESENCAS', 'planoAulaId', d.planoAulaId); } catch (e) { Logger.log('anularSessao, presenças: ' + e); }
+  return r;
 }
 
 /** Fica ligado ao primeiro telemóvel. Um segundo não rouba o lugar. */
@@ -2304,8 +2319,12 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   d.planos = d.planos.filter(function (p) { return String(p.data || '').slice(0, 10) >= INICIO_ANO_LETIVO && p.estado !== 'arquivado'; });
   // (v26.1) Os planos num dia em que a turma não tem aulas ficam à parte:
   // não contam como aulas, nem nas notas, nem nas faltas.
-  var planosDiaSemAulas = d.planos.filter(planoNumDiaSemAulas_);
-  d.planos = d.planos.filter(function (p) { return !planoNumDiaSemAulas_(p); });
+  // Uma aula que foi aberta aos alunos conta sempre: houve aula nesse dia.
+  var abertaNoDia = {};
+  (d.sessoes || []).forEach(function (s) { if (s.abertaEm) abertaNoDia[s.planoAulaId] = true; });
+  var semAulaDeVerdade = function (p) { return planoNumDiaSemAulas_(p) && !abertaNoDia[p.id]; };
+  var planosDiaSemAulas = d.planos.filter(semAulaDeVerdade);
+  d.planos = d.planos.filter(function (p) { return !semAulaDeVerdade(p); });
   var aulas = d.planos.filter(function (p) {
     var dia = String(p.data || '').slice(0, 10);
     return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
@@ -4115,7 +4134,7 @@ function formatarFolha(f, cor) {
 // coisa, a memória dessa aula é esquecida e o primeiro telemóvel que a
 // pedir monta-a outra vez a partir das folhas.
 
-var MUDAM_A_AULA = { plano: 1, eliminar_plano: 1, eliminar_do_plano: 1, sessao: 1, fechar_sessao: 1,
+var MUDAM_A_AULA = { plano: 1, eliminar_plano: 1, eliminar_do_plano: 1, sessao: 1, fechar_sessao: 1, anular_sessao: 1,
   ficha: 1, eliminar_ficha: 1, grupo_info: 1, requisicao: 1 };
 var MEMORIA_SEGUNDOS = 21600;          // 6 horas (o máximo)
 var PEDACO = 90000;                    // cada valor na memória tem de ter menos de 100 KB

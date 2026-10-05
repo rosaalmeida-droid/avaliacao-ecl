@@ -1,5 +1,6 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { janelaConfirmar } from './janelaConfirmar';
+import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
@@ -1574,10 +1575,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {/* Ao abrir, o professor diz se os atrasos contam (Rosa, out/2026):
                   quando foi o professor a atrasar-se a enviar a aula, não contam. */}
               {(() => {
-                const abrir = (contarAtrasos: boolean) => {
+                const abrir = async (contarAtrasos: boolean) => {
                   // Um clique só. Abrir não se repete: a hora de abertura é
                   // a primeira, e a tolerância conta a partir dela.
                   if (aAbrir) return;
+                  if (!await confirmarAberturaAntecipada(plano)) return;
                   setAAbrir(true);
                   // A turma do PLANO — é a que os alunos leem. A turma escolhida no
                   // menu pode ser outra, e os alunos nunca viam a aula aberta.
@@ -1651,6 +1653,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </div>
               </div>
               <EstadoAberturaAula planoAulaId={plano.id} />
+              <button onClick={async () => { if (await anularAberturaComConfirmacao(plano, nomeProfessor || 'professor')) onPlanoActualizado?.({ ...plano }); }}
+                style={{ marginTop: 10, padding: '7px 12px', borderRadius: 9, border: '1.5px solid #c0392b', background: '#fff', color: '#c0392b',
+                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Anular a abertura (foi engano)
+              </button>
             </div>
 
             {/* A aplicação regista a hora, não decide a falta. Quem entrou

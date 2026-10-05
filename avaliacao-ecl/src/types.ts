@@ -1054,6 +1054,10 @@ export interface SessaoAula {
   toleranciaMin: number;
   fechadaEm?: string;
   fechadaPor?: string;
+  /** (Rosa, 5/out/2026) A abertura foi anulada (aberta por engano). Uma
+   *  abertura igual ou anterior a esta hora não vale; uma depois, vale. */
+  anuladaEm?: string;
+  anuladaPor?: string;
 }
 
 export const TOLERANCIA_PADRAO_MIN = 10;

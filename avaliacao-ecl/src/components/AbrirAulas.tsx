@@ -15,6 +15,7 @@ import {
 import { confirmarTurmaAoPublicar } from '../professores';
 import { registarVersaoEnviada } from './PlanoGuiado';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
+import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
 
 const C = {
   fundo: '#F5F2F3', branco: '#fff', bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE', bordeauxClaro: '#EBCDD3',
@@ -38,10 +39,15 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
   const abertaHoje = (p: PlanoAula) => String(getSessaoAula(p.id)?.abertaEm || '').slice(0, 10) === new Date().toISOString().slice(0, 10);
   const passadas = planos.filter(p => dia(p) < hoje && dia(p) >= limite && (!getSessaoAula(p.id)?.abertaEm || abertaHoje(p)))
     .sort((a, b) => dia(b).localeCompare(dia(a)));
+  // Aulas de outro dia que já estão abertas (abertas por engano, por exemplo):
+  // aparecem aqui para se poder anular a abertura.
+  const abertasAntes = planos.filter(p => dia(p) > hoje && !!getSessaoAula(p.id)?.abertaEm && !getSessaoAula(p.id)?.fechadaEm)
+    .sort((a, b) => dia(a).localeCompare(dia(b)));
   const nAlunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).length;
 
   async function abrir(p: PlanoAula, contarAtrasos = true) {
     if (aTratar) return;
+    if (!await confirmarAberturaAntecipada(p)) return;
     setATratar(p.id);
     try {
       if (p.estado !== 'publicado') {
@@ -107,6 +113,9 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
               <button onClick={() => { if (confirm('Fechar a aula? Os alunos deixam de poder entrar.')) { fecharSessaoAula(p.id, nomeProfessor || 'professor'); redesenhar(n => n + 1); } }}
                 style={{ minHeight: 44, padding: '8px 14px', borderRadius: 12, border: '1.5px solid #E4DDE0', background: '#fff', color: C.texto,
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5 }}>Fechar a aula</button>
+              <button onClick={async () => { if (await anularAberturaComConfirmacao(p, nomeProfessor || 'professor')) redesenhar(n => n + 1); }}
+                style={{ minHeight: 44, padding: '8px 14px', borderRadius: 12, border: `1.5px solid ${C.vermelho}`, background: '#fff', color: C.vermelho,
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5 }}>Anular a abertura (foi engano)</button>
             </div>
           </div>
         )}
@@ -134,6 +143,16 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
           </div>
         )}
         {deHoje.map(p => <Cartao key={p.id} p={p} />)}
+
+        {abertasAntes.length > 0 && (
+          <>
+            {rotulo('Abertas antes do dia da aula')}
+            <div style={{ fontSize: 14, color: C.texto, margin: '-4px 4px 10px', lineHeight: 1.5 }}>
+              Estas aulas são de outro dia e já estão abertas. Se foi engano, anule a abertura e abra a aula no próprio dia.
+            </div>
+            {abertasAntes.map(p => <Cartao key={p.id} p={p} passada />)}
+          </>
+        )}
 
         {passadas.length > 0 && (
           <>
