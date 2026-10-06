@@ -7,7 +7,7 @@ import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { SumarioAula } from './SumarioAula';
 import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
 import { sumarioDoPlano } from '../sumarioAutomatico';
-import { contextoDoPlano } from '../backend';
+import { contextoDoPlano, aulaNasMesmasHoras, aulaQueRecebeAtividade } from '../backend';
 import React, { useState, useEffect } from 'react';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
 import {
@@ -945,15 +945,18 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   );
 }
 
-/** Regra (Rosa, out/2026) — «Quem vai?» decide como conta:
+/** Regra (Rosa, 6/out/2026) — «Quem vai?» e a hora decidem como conta:
  *  · só alguns alunos → ATIVIDADE EXTRA (bónus; competências no perfil);
- *  · a turma toda, dentro do ano letivo → PLANO DE AULA com um evento lá
- *    dentro (avalia-se e conta como uma aula);
- *  · a turma toda, fora do ano letivo (sem UC a decorrer, como nas férias)
- *    → ATIVIDADE EXTRA, que conta como bónus no plano de aula seguinte da UC.
+ *  · a turma toda, às horas de uma aula da turma → o evento entra nesse PLANO
+ *    DE AULA (conta como a aula, com faltas);
+ *  · a turma toda, fora das horas da aula (depois das aulas, sábado, férias)
+ *    → ATIVIDADE OBRIGATÓRIA, que conta como MAIS UMA AULA, associada à aula
+ *    desse dia ou à seguinte da mesma UC (sem bónus nem faltas).
  *  «Onde é» (na escola ou fora) é só o sítio: não muda a avaliação. */
+const aulaAsMesmasHoras = (d: any, turmaId: string) =>
+  aulaNasMesmasHoras({ id: '', turmaId, data: String(d.data || '').slice(0, 10), horaInicio: d.horaInicio, horaFim: d.horaFim });
 function ehAtividadeExtra(d: { tipoAtividade: string; modoParticipacao?: string; data: string }, turmaId: string): boolean {
-  return !!tipoEventoDe(d.tipoAtividade) && (d.modoParticipacao === 'inscricao' || modulosAtivos(turmaId, d.data).length === 0);
+  return !!tipoEventoDe(d.tipoAtividade) && (d.modoParticipacao === 'inscricao' || !aulaAsMesmasHoras(d, turmaId));
 }
 
 export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial, tipoInicial, planoExistente, onEliminado }: {
@@ -1111,6 +1114,18 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
   function guardar(forcar = false, continuar = false) {
     // Um clique, um plano. Sem isto, cliques repetidos criavam cópias.
     if (aCriar.current) return;
+    // A turma toda, às horas de uma aula que já existe (Rosa, 6/out/2026): o
+    // evento entra nesse plano de aula; não se cria um segundo plano por cima.
+    if (!planoExistente && tipoEventoDe(dados.tipoAtividade) && dados.modoParticipacao !== 'inscricao') {
+      const a: any = aulaAsMesmasHoras(dados, turmaId);
+      if (a) {
+        const comEvento = { ...a, eventoNaAula: tipoEventoDe(dados.tipoAtividade), atualizadoEm: new Date().toISOString() };
+        try { addOrUpdatePlanoAula(comEvento); } catch (e) { console.error(e); }
+        try { onGuardado?.(); } catch (e) { console.error(e); }
+        onConcluido(comEvento);
+        return;
+      }
+    }
     // Aviso de plano duplicado: mesma turma, mesmo dia, horas sobrepostas.
     // Não bloqueia — pode haver exceções — mas obriga a confirmar.
     if (!forcar) {
@@ -1317,7 +1332,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           Turma: {turmaId}
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
-          {ehAtividadeExtra(dados, turmaId) ? 'Só os alunos escolhidos desta turma fazem esta atividade; os outros só a podem ver.'
+          {ehAtividadeExtra(dados, turmaId) && dados.modoParticipacao !== 'inscricao' ? 'A turma toda faz esta atividade (obrigatória). Conta como mais uma aula.'
+            : ehAtividadeExtra(dados, turmaId) ? 'Só os alunos escolhidos desta turma fazem esta atividade; os outros só a podem ver.'
             : 'Só os alunos desta turma veem este plano. Se não for esta a turma, altere-a no menu antes de criar o plano.'}
         </div>
       </div>
@@ -1548,17 +1564,33 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           }}>
             {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Atividade extra (visita, feira, outra)' : t}</option>)}
           </select>
-          {tipoEventoDe(dados.tipoAtividade) && !ehAtividadeExtra(dados, turmaId) && (
-            <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
-              📘 A turma toda, dentro do ano letivo: é um <b>plano de aula</b> com um evento lá dentro. Avalia-se e conta para a nota como uma aula.
-            </div>
-          )}
+          {tipoEventoDe(dados.tipoAtividade) && !ehAtividadeExtra(dados, turmaId) && (() => {
+            const a: any = aulaAsMesmasHoras(dados, turmaId);
+            return (
+              <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
+                📘 A turma toda, às horas da aula{a ? ` de ${String(a.data).slice(8, 10)}/${String(a.data).slice(5, 7)} (${a.horaInicio}–${a.horaFim})` : ''}: o evento faz parte
+                desse <b>plano de aula</b> (não se cria outro). Avalia-se e conta para a nota como a aula, com faltas.
+              </div>
+            );
+          })()}
+          {tipoEventoDe(dados.tipoAtividade) && ehAtividadeExtra(dados, turmaId) && dados.modoParticipacao !== 'inscricao' && tipoEventoDe(dados.tipoAtividade) !== 'concurso' && (() => {
+            const aula: any = aulaQueRecebeAtividade({ turmaId, data: dados.data, ucId: dados.ucId, professor: nomeProfessor });
+            const dia = (iso: string) => `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}`;
+            return (
+              <div style={{ fontSize: 13.5, color: '#2F5D8A', background: '#eef3fa', border: '1.5px solid #2F5D8A', borderRadius: 10, padding: '8px 12px', marginTop: 6, lineHeight: 1.5 }}>
+                📘 <b>Atividade obrigatória fora das horas da aula: conta como mais uma aula.</b> Não se cria um plano de aula neste dia.
+                {aula ? <> A nota fica associada à <b>aula de {dia(aula.data)}</b> ({aula.ucId}, «{aula.titulo || 'aula'}»).</>
+                  : <> Ainda não há aula da {dados.ucId || 'UC'} depois de {dados.data ? dia(dados.data) : 'esta data'} no calendário: fica associada à primeira que criar.</>}
+                {' '}Tem nota própria: se o aluno faltar a essa aula, a atividade conta na mesma. Quem faltar à atividade tem 0. Não dá bónus nem faltas.
+              </div>
+            );
+          })()}
           {ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6, lineHeight: 1.5 }}>
-              <b>Atividade extra</b>{dados.modoParticipacao !== 'inscricao' ? ' (fora do ano letivo: conta como bónus no plano de aula seguinte da UC)' : ''}.{' '}
+              <b>{dados.modoParticipacao !== 'inscricao' && tipoEventoDe(dados.tipoAtividade) !== 'concurso' ? 'Atividade obrigatória' : 'Atividade extra'}</b>.{' '}
               {tipoEventoDe(dados.tipoAtividade) === 'concurso'
                 ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá até 1 valor, por pontos: 0,2 pela candidatura, 0,2 pela participação, 0,2 por cada fase e o resto pela vitória. Só alunos com 10 ou mais.'
-                : '🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral. Dá +0,5 com tudo em "Muito bom" e farda.'}
+                : `🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral.${dados.modoParticipacao === 'inscricao' ? ' Dá +0,5 com tudo em "Muito bom" e farda.' : ''}`}
               {' '}Podes mudar as atitudes no plano.
             </div>
           )}
@@ -1575,6 +1607,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           {/* As faltas e os atrasos contam? Antes só se perguntava nos eventos;
               numa aula que já passou aparecia uma janela escondida ao guardar
               (Rosa, out/2026). */}
+          {/* Atividade obrigatória fora das horas da aula: não há horas de falta (é fora do horário). */}
+          {!(ehAtividadeExtra(dados, turmaId) && dados.modoParticipacao !== 'inscricao') && (<>
           <div style={{ fontSize: 13, fontWeight: 700, margin: '12px 0 6px' }}>As faltas e os atrasos contam?</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {([[true, 'Sim', 'Contam como numa aula normal: entram nas horas de falta da UC.'],
@@ -1590,6 +1624,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               </button>
             ))}
           </div>
+          </>)}
           {dados.data && dados.data < new Date().toISOString().slice(0, 10) && !ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6 }}>
               Esta aula já passou. Se a está a criar apenas para os alunos se autoavaliarem, escolha «Não».
@@ -1599,11 +1634,11 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem vai?</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {([['turma', 'A turma toda', 'Obrigatório para todos. Dentro do ano letivo, é um plano de aula e conta como aula.'],
+                {([['turma', 'A turma toda', 'Obrigatório para todos. Às horas da aula, faz parte do plano de aula; fora delas (depois das aulas, sábado), conta como mais uma aula.'],
                    ['inscricao', 'Só alguns alunos', 'Atividade extra: inscrevem-se (ou escolhes tu) e dá bónus. As técnicas ficam no perfil.']] as const).map(([v, t, d]) => (
                   <button key={v} type="button" onClick={() => setDados(p => ({ ...p, modoParticipacao: v,
                       // A turma toda, dentro do ano letivo, é uma aula: as faltas contam.
-                      faltasContam: v === 'turma' && modulosAtivos(turmaId, p.data).length > 0 }))}
+                      faltasContam: v === 'turma' && !!aulaAsMesmasHoras(p, turmaId) }))}
                     style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                       border: `2px solid ${dados.modoParticipacao === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
                       background: dados.modoParticipacao === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>

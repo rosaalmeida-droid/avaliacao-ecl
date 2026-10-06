@@ -9,9 +9,10 @@
 import React from 'react';
 import type { PlanoAula } from '../types';
 import {
-  eventosAgregadosAAula, atividadeContaComoAula, notaDaAulaValidada, validacaoDaAula, participantesDoEvento, participacaoContaParaBonus, getAlunos, getSelecoes, getValidacoes,
+  eventosAgregadosAAula, atividadeContaComoAula, aulaQueRecebeAtividade, modoParticipacao, notaDaAulaValidada, validacaoDaAula, participantesDoEvento, participacaoContaParaBonus, getAlunos, getSelecoes, getValidacoes,
 } from '../backend';
 import { BONUS_EVENTOS } from '../eventosAvaliacao';
+import { posicaoNaUC } from '../rotuloPlano';
 
 const fmt = (n: number) => n.toFixed(2).replace('.', ',').replace(/0$/, '').replace(/,$/, '');
 const dataPT = (iso: string) => iso ? iso.slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '';
@@ -81,4 +82,56 @@ export function EventosNaAula({ plano, onAbrirEvento }: { plano: PlanoAula; onAb
       })}
     </>
   );
+}
+
+// ── A ligação da atividade à aula (Rosa, 6/out/2026) ──────────────
+// «Não se percebe se a atividade de sábado está associada à aula seguinte.»
+// Na própria atividade diz-se, preto no branco, como conta e a que aula fica
+// ligada, com um botão para abrir essa aula.
+const DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const diaComSemana = (iso: string) => {
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00');
+  return isNaN(d.getTime()) ? dataPT(iso) : `${DIAS_SEMANA[d.getDay()]}, ${dataPT(iso)}`;
+};
+export function LigacaoDaAtividade({ plano, onAbrirAula }: { plano: PlanoAula; onAbrirAula: (aula: PlanoAula) => void }) {
+  const p: any = plano;
+  if (!p?.tipoEvento) return null;
+  const caixa = (cor: string, fundo: string, filhos: React.ReactNode) => (
+    <div style={{ background: fundo, border: `2px solid ${cor}`, borderRadius: 14, padding: '14px 16px', margin: '0 0 14px', fontSize: 14.5, lineHeight: 1.55 }}>{filhos}</div>
+  );
+  if (!atividadeContaComoAula(p)) {
+    return caixa('#6B3FA0', '#f6f1fb', <>
+      <div style={{ fontWeight: 800, color: '#6B3FA0', fontSize: 15.5 }}>
+        {p.tipoEvento === 'concurso' ? '🏆 Concurso: dá bónus' : modoParticipacao(p) === 'inscricao' ? '🏅 Atividade por convite: dá bónus' : '🏅 Atividade: dá bónus'}
+      </div>
+      <div>Não conta como aula nem dá faltas. Quem participa recebe bónus na nota da {p.ucId || 'UC'}.</div>
+    </>);
+  }
+  const aula: any = aulaQueRecebeAtividade(p);
+  const outraUC = aula && p.ucId && aula.ucId !== p.ucId;
+  return caixa('#2F5D8A', '#eef3fa', <>
+    <div style={{ fontWeight: 800, color: '#2F5D8A', fontSize: 15.5 }}>📘 Esta atividade conta como mais uma aula</div>
+    <div style={{ marginTop: 4 }}>
+      É obrigatória para a turma toda e é fora das horas da aula ({diaComSemana(p.data)}). Pela regra da escola, não dá bónus:
+      a avaliação conta como mais uma aula, na aula desse dia ou na seguinte da mesma UC. Quem não se autoavaliar conta 0.
+    </div>
+    {aula ? (
+      <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid rgba(47,93,138,0.25)' }}>
+        <div><b>Fica associada à aula de {diaComSemana(aula.data)}</b> — {aula.ucId}{posicaoNaUC(aula) ? ` · Plano n.º ${posicaoNaUC(aula)}` : ''} · «{aula.titulo || 'Aula'}».</div>
+        {outraUC && <div style={{ marginTop: 4, color: '#8a5a12' }}>A {p.ucId} já tinha acabado: fica na aula seguinte da mesma disciplina.</div>}
+        <div style={{ marginTop: 4, color: 'rgba(26,23,20,0.65)' }}>
+          A atividade tem nota própria: entra na {aula.ucId} e na pauta, na data dessa aula. Se o aluno faltar a essa aula, a atividade conta na mesma
+          (e a aula conta como falta). Quem faltou à atividade tem 0 nela.
+        </div>
+        <button onClick={() => onAbrirAula(aula)} style={{ marginTop: 8, minHeight: 40, padding: '8px 14px', borderRadius: 10, border: 'none',
+          background: '#2F5D8A', color: '#fff', fontWeight: 700, fontSize: 14.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Abrir a aula de {dataPT(aula.data)} →
+        </button>
+      </div>
+    ) : (
+      <div style={{ marginTop: 10, background: '#fff8ef', borderRadius: 10, padding: '10px 12px', border: '1px solid #e0b070', color: '#8a5a12' }}>
+        Ainda não há nenhuma aula da {p.ucId || 'UC'} depois de {dataPT(p.data)} no calendário. Fica associada automaticamente à primeira que criar.
+      </div>
+    )}
+  </>);
 }

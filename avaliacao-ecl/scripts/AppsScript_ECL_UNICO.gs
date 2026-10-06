@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.5';
+var VERSAO = 'ECL único v26.7';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -131,6 +131,7 @@ var FOLHAS = {
   NOTAS_APP:          { chave: ['id'], colunas: ['id', 'turmaId', 'alunoId', 'nomeAluno', 'ucId', 'media', 'bonus', 'final', 'faltas', 'porAula', 'atualizadoEm'] },
   // (v25.3) O email da escola de cada aluno, pedido na entrada da aplicação,
   // para os avisos de autoavaliação em falta (Rosa, out/2026).
+  EMAILS_PROFESSORES: { chave: ['nome'], colunas: ['nome', 'email', 'atualizadoEm'] },
   EMAILS_ALUNOS:      { chave: ['alunoId'], colunas: ['alunoId', 'turmaId', 'numero', 'nome', 'email', 'atualizadoEm'] },
   // (v25.3) Os avisos por email já enviados (não se repetem).
   AVISOS_EMAIL:       { chave: ['id'], colunas: ['id', 'alunoId', 'planoAulaId', 'email', 'enviadoEm'] },
@@ -1852,7 +1853,7 @@ function guardarPauta(d) {
     try {
       MailApp.sendEmail({
         to: d.email,
-        subject: 'Pauta ' + (d.ucId || '') + ' — ' + (d.turmaId || ''),
+        subject: '[Avaliação ECL] Pauta ' + (d.ucId || '') + ' — ' + (d.turmaId || ''),
         htmlBody:
           '<p>Pauta de avaliação fechada em ' + new Date().toLocaleDateString('pt-PT') + '.</p>' +
           '<p><b>' + (d.ucId || '') + '</b> — ' + (d.ucNome || '') + '<br>' +
@@ -1908,6 +1909,8 @@ function instalarTarefas() {
   // turma (ou uma volta de meia em meia hora); sem novidades, acaba logo.
   if (!tem('atualizarFolhasDasTurmas')) ScriptApp.newTrigger('atualizarFolhasDasTurmas').timeBased().everyMinutes(1).create();
   if (!tem('arrumacaoDaNoite')) ScriptApp.newTrigger('arrumacaoDaNoite').timeBased().atHour(2).everyDays(1).create();
+  // (v26.6) O fecho das aulas por email ao professor, às 18h (com os avisos aos alunos).
+  if (!tem('avisarAutoavaliacoesEmFalta')) ScriptApp.newTrigger('avisarAutoavaliacoesEmFalta').timeBased().everyDays(1).atHour(18).inTimezone('Europe/Lisbon').create();
   criarCopiaAutomatica();
   atualizarFolhasDasTurmas();
   Logger.log('Tarefas: por arrumar logo a seguir a cada envio (e de 5 em 5 min), separadores das turmas de 10 em 10 min, arrumação às 2h, cópia às 3h.');
@@ -2488,11 +2491,15 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // (v26.1) O email da escola: serve para os avisos das autoavaliações em
   // falta (todos os dias às 18h). Quem não o deu não recebe avisos.
   var emailDe = d.emailDe || {};
+  // (v26.6) O mesmo email em vários alunos é o de um professor (o 1.º ano ainda
+  // não sabe o seu): assinala-se, e os avisos não vão para lá.
+  var usoEmail = {}; alunos.forEach(function (a) { var e = String(emailDe[a.id] || '').toLowerCase(); if (e) usoEmail[e] = (usoEmail[e] || 0) + 1; });
+  var emailParaLer = function (a) { var e = emailDe[a.id]; if (!e) return 'Ainda não deu'; return usoEmail[String(e).toLowerCase()] > 1 ? e + ' (partilhado: falta o email do aluno)' : e; };
   var semEmail = alunos.filter(function (a) { return !emailDe[a.id]; }).length;
   junta([(alunos.length - semEmail) + ' de ' + alunos.length + ' alunos já deram o email da escola.'
     + (semEmail ? ' ' + (semEmail === 1 ? 'O aluno que ainda não o deu não recebe' : 'Os ' + semEmail + ' que ainda não o deram não recebem') + ' os avisos das autoavaliações em falta: ' + (semEmail === 1 ? 'é-lhe pedido' : 'é-lhes pedido') + ' quando entrar na aplicação.' : '')]);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
-  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média simples das aulas validadas (0-20; sem resposta = 0; a nota da UC, com faltas e pesos, está na folha Notas)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
   alunos.forEach(function (a) {
     // (v25.9) A média das aulas conta 0 nas aulas em que o aluno esteve e não
     // se autoavaliou, como na aplicação. Antes era a média só das validadas,
@@ -2509,7 +2516,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     comoAula.forEach(function (pl) { var k = chave(a.id, pl.id); if (auto[k]) aa++; if (nota[k] !== undefined) { va++; soma += nota[k]; } else if (!auto[k]) semResposta++; });
     var nMedia = va + semResposta;
     junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não',
-      emailDe[a.id] || 'Ainda não deu']);
+      emailParaLer(a)]);
   });
   vazia();
 
@@ -4540,9 +4547,97 @@ function instalarAvisosPorEmail() {
 }
 
 function avisarAutoavaliacoesEmFalta() {
+  try { avisarProfessoresFechoDasAulas_(); } catch (e) { Logger.log('Fecho das aulas por email: ' + e); }
+  try { etiquetarEmailsDaAplicacao_(); } catch (e) { Logger.log('Etiqueta do Gmail: ' + e); }
+  avisarAlunos_();
+}
+
+/** (v26.6) Os emails da aplicação ficam juntos no Gmail, na etiqueta «Avaliação ECL». */
+function etiquetarEmailsDaAplicacao_() {
+  var nome = 'Avaliação ECL';
+  var l = GmailApp.getUserLabelByName(nome) || GmailApp.createLabel(nome);
+  GmailApp.search('subject:"[Avaliação ECL]" -label:"' + nome + '"', 0, 100).forEach(function (t) { t.addLabel(l); });
+}
+
+/**
+ * (v26.6) Fecho das aulas por email (Rosa, 6/out/2026): o mesmo que a janela da
+ * aplicação — as autoavaliações por validar e as presenças por confirmar das
+ * aulas dos últimos 7 dias. Um email por professor, só quando há alguma coisa.
+ */
+function avisarProfessoresFechoDasAulas_() {
+  var hoje = hojeLisboa(0), desde = hojeLisboa(-7);
+  var dono = '';
+  try { dono = Session.getEffectiveUser().getEmail(); } catch (e) {}
+  var emailDe = {};
+  ler('EMAILS_PROFESSORES', {}).forEach(function (x) { if (x.nome && x.email) emailDe[String(x.nome).trim().toLowerCase()] = String(x.email).trim(); });
+  if (!Object.keys(emailDe).length && dono) {
+    guardar('EMAILS_PROFESSORES', { nome: 'Rosa Almeida', email: dono, atualizadoEm: new Date().toISOString() });
+    emailDe['rosa almeida'] = dono;
+  }
+  var sessoes = {}; ler('SESSOES', {}).forEach(function (x) { if (x.abertaEm) sessoes[x.planoAulaId] = x; });
+  var agoraMin = (function () { var h = Utilities.formatDate(new Date(), 'Europe/Lisbon', 'HH:mm').split(':'); return Number(h[0]) * 60 + Number(h[1]); })();
+  var min = function (h) { var m = String(h || '').match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : NaN; };
+  var planos = ler('PLANOS', {}).filter(function (p) {
+    var dia = String(p.data || '').slice(0, 10), s = sessoes[p.id];
+    if (p.eliminado || (p.estado !== 'publicado' && p.estado !== 'realizada') || dia < desde || dia > hoje || !s) return false;
+    return dia < hoje || !!s.fechadaEm || (!isNaN(min(p.horaFim)) && agoraMin >= min(p.horaFim));
+  });
+  if (!planos.length) return;
+  var teste = function (a) { return !a || Number(a.numero) === 99 || Number(a.numero) === 88 || /\bteste\b/i.test(String(a.nome || '')); };
+  var alunos = ler('ALUNOS', {}).filter(function (a) { return a.ativo !== false && a.ativo !== 'false' && !a.removidoEm && !teste(a); });
+  var pres = {}; ler('PRESENCAS', {}).forEach(function (x) { pres[x.alunoId + '|' + x.planoAulaId] = x; });
+  var sel = {}; ler('SELECOES', {}).forEach(function (x) { var k = x.alunoId + '|' + x.planoAulaId; if (!sel[k] || String(x.criadaEm) > String(sel[k].criadaEm)) sel[k] = x; });
+  var val = {}; ler('VALIDACOES', {}).forEach(function (x) { var k = x.alunoId + '|' + x.planoAulaId; if (!val[k] || String(x.validadoEm) > String(val[k].validadoEm)) val[k] = x; });
+  var porProf = {};
+  planos.forEach(function (p) {
+    var daTurma = alunos.filter(function (a) { return a.turmaId === p.turmaId; });
+    var porValidar = daTurma.filter(function (a) { var k = a.id + '|' + p.id; return sel[k] && !(val[k] && String(val[k].validadoEm) >= String(sel[k].criadaEm)); }).length;
+    var casos = [];
+    var s = sessoes[p.id];
+    var tardia = Utilities.formatDate(new Date(s.abertaEm), 'Europe/Lisbon', 'yyyy-MM-dd') > String(p.data).slice(0, 10);
+    if (!p.tipoEvento && p.contaAssiduidade !== false && p.contaAssiduidade !== 'false' && !tardia) {
+      daTurma.forEach(function (a) {
+        var k = a.id + '|' + p.id, x = pres[k];
+        if (x && x.decisaoProfessor) return;
+        var nome = (a.numero ? a.numero + '. ' : '') + (a.nome || '');
+        if (!x || x.presente === false || x.presente === 'false') casos.push(nome + ' — não entrou (falta à aula toda?)');
+        else if (x.atrasado === true || x.atrasado === 'true') casos.push(nome + ' — entrou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
+        else if (!sel[k]) casos.push(nome + ' — entrou e não se autoavaliou: esteve a aula toda?');
+      });
+    }
+    if (!porValidar && !casos.length) return;
+    var prof = String(p.professor || '').trim().toLowerCase() || 'rosa almeida';
+    (porProf[prof] = porProf[prof] || []).push({ p: p, porValidar: porValidar, casos: casos });
+  });
+  var hojeTxt = Utilities.formatDate(new Date(), 'Europe/Lisbon', 'yyyy-MM-dd');
+  var props = PropertiesService.getScriptProperties();
+  Object.keys(porProf).forEach(function (prof) {
+    var para = emailDe[prof] || (prof === 'rosa almeida' ? dono : '');
+    if (!para || MailApp.getRemainingDailyQuota() < 1) return;
+    if (props.getProperty('FECHO_EMAIL_' + prof) === hojeTxt) return;     // um por dia
+    var itens = porProf[prof];
+    var n = itens.reduce(function (t, i) { return t + i.porValidar + i.casos.length; }, 0);
+    var corpo = 'Olá.\n\nNas aulas destes últimos dias ficou isto por fazer (faça-o enquanto se lembra do que aconteceu):\n\n'
+      + itens.map(function (i) {
+          return '■ ' + diaPT(i.p.data) + ' · ' + i.p.turmaId + ' · ' + (i.p.titulo || 'aula') + (i.p.ucId ? ' (' + i.p.ucId + ')' : '') + '\n'
+            + (i.porValidar ? '   · ' + i.porValidar + (i.porValidar === 1 ? ' autoavaliação por validar' : ' autoavaliações por validar') + '\n' : '')
+            + i.casos.map(function (c) { return '   · ' + c + '\n'; }).join('');
+        }).join('\n')
+      + '\nAbra a aplicação (' + URL_APLICACAO + '): a janela «Fecho das aulas» abre-se sozinha, e cada caso resolve-se com um toque.\n\nAvaliação ECL';
+    try {
+      MailApp.sendEmail({ to: para, subject: '[Avaliação ECL] Fecho das aulas: ' + n + (n === 1 ? ' coisa' : ' coisas') + ' por fazer', body: corpo, name: 'Avaliação ECL' });
+      props.setProperty('FECHO_EMAIL_' + prof, hojeTxt);
+    } catch (e) { Logger.log('Fecho das aulas para ' + prof + ': ' + e); }
+  });
+}
+
+function avisarAlunos_() {
   var hoje = hojeLisboa(0), desde = hojeLisboa(-7);
   var emails = {};
   ler('EMAILS_ALUNOS', {}).forEach(function (e) { if (/@eclisboa\.net$/i.test(String(e.email || '').trim())) emails[e.alunoId] = String(e.email).trim(); });
+  // (v26.6) Um email usado por vários alunos é o de um professor: não recebe os avisos dos alunos.
+  var usos = {}; Object.keys(emails).forEach(function (k) { var e = emails[k].toLowerCase(); usos[e] = (usos[e] || 0) + 1; });
+  Object.keys(emails).forEach(function (k) { if (usos[emails[k].toLowerCase()] > 1 || /^rosa\.almeida@/i.test(emails[k])) delete emails[k]; });
   var jaAvisados = {};
   ler('AVISOS_EMAIL', {}).forEach(function (a) { jaAvisados[a.alunoId + '|' + a.planoAulaId] = true; });
   var abertaEm = {}; ler('SESSOES', {}).forEach(function (s) { if (s.abertaEm) abertaEm[s.planoAulaId] = s.abertaEm; });

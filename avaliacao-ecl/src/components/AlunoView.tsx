@@ -10,6 +10,7 @@ import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
+import { DesafioAltaPerformance } from './AltaPerformance';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano, rotuloDoPlano, posicaoNaUC } from '../rotuloPlano';
 import { contasDaNotaDoAluno } from '../notaDoAluno';
@@ -35,7 +36,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -635,13 +636,14 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
 
 /** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
 export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
-  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id));
+  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id) || emailAdiadoHaPouco(props.aluno.id));
   if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
   return <AlunoViewInterno {...props} />;
 }
 
 function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const [mudarEmail, setMudarEmail] = useState(false);
   /** Atividade aberta só para ver (o aluno não esteve nela). */
   const [planoConsulta, setPlanoConsulta] = useState<PlanoAula | null>(null);
   // Cinco separadores, como a especificação: Início, Aula, Percurso,
@@ -1472,6 +1474,18 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
                   <PerfilProfissionalAluno aluno={aluno} semTitulo />
                 </div>
+                {/* O email da escola pode mudar-se (o 1.º ano ainda não o sabe — Rosa, 6/out/2026). */}
+                <div style={{ background:'#fff', borderRadius:16, padding:'12px 16px', marginTop:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                  <span style={{ flex:1, minWidth:180, fontSize:14.5 }}>O teu email da escola: <b>{emailDoAluno(aluno.id) || 'ainda não puseste'}</b></span>
+                  <button onClick={() => setMudarEmail(true)} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #6B3FA0', background:'#fff', color:'#6B3FA0', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit' }}>
+                    {emailDoAluno(aluno.id) ? 'Mudar o email' : 'Pôr o email'}
+                  </button>
+                </div>
+                {mudarEmail && (
+                  <div style={{ position:'fixed', inset:0, zIndex:9000, overflowY:'auto' }}>
+                    <PedirEmailEscola aluno={aluno} onFeito={() => setMudarEmail(false)} onCancelar={() => setMudarEmail(false)} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -3315,6 +3329,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
    *  Abre logo quando o aluno vem do passo anterior no ecrã cheio. */
   const [aberto, setAberto] = useState(!!abrirLogo);
   const topoRef = React.useRef<HTMLDivElement>(null);
+  // Esteve só parte da aula (Rosa, 6/out/2026): responde só ao que fez.
+  const soParte = partesDaAulaDoAluno(aluno.id, plano.id);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
   const aSubmeter = React.useRef(false);
@@ -3537,6 +3553,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               return 'O professor vai confirmar o teu registo.';
             })()}
           </div>
+        {/* Alta performance (extra, Rosa 6/out/2026): o aluno escolhe se responde. */}
+        <DesafioAltaPerformance aluno={aluno} plano={plano} />
         </div>
 
         {/* Em grupo: avaliar os colegas (só o professor vê; não conta para nota). */}
@@ -4094,10 +4112,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         const frases = frasesVisiveis(c);
         // Nas aulas teóricas não há «não tive oportunidade» nos conhecimentos:
         // os conteúdos foram dados à turma toda (Rosa, set/2026).
-        const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico';
+        const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico' && !soParte;
         const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
           <div>
+            {soParte && (
+              <div style={{ background:'#fff8ef', border:'1.5px solid #e0b070', borderRadius:10, padding:'8px 12px', marginBottom:10, fontSize:13.5, lineHeight:1.5, color:'#8a5a12' }}>
+                Estiveste só numa parte da aula ({soParte.esteve.join(', ') || 'nenhum tempo'}). Responde só ao que fizeste.
+                No que não fizeste por não estares, escolhe «Não pude fazer: não estava nessa parte da aula». O professor confirma.
+              </div>
+            )}
             {c.contexto && (
               <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
                 {c.contexto}
@@ -4137,7 +4161,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
-              {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
+              {([['nop', soParte ? 'Não pude fazer: não estava nessa parte da aula' : simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
                  ['nf', ehCriterioTrabalho(c.id) ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),

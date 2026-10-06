@@ -3,7 +3,8 @@ import { janelaConfirmar } from './janelaConfirmar';
 import { confirmarAberturaAntecipada, anularAberturaComConfirmacao } from './abrirComCuidado';
 import { BotaoWhatsApp, mensagemAberturaAula, mensagemInscricoes } from './AvisarWhatsApp';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
-import { EventosNaAula } from './EventosNaAula';
+import { EventosNaAula, LigacaoDaAtividade } from './EventosNaAula';
+import { AltaPerformanceNoPlano } from './AltaPerformance';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { BotaoPublicar } from './BotaoPublicar';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
@@ -2302,6 +2303,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* Numa atividade extra não se mostra o que é da aula da turma (Rosa, out/2026). */}
       {!eventoForaDoHorario(plano) && <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} compacto />}
       {!eventoForaDoHorario(plano) && <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />}
+      {(plano as any).tipoEvento && <LigacaoDaAtividade plano={plano} onAbrirAula={(a) => onPlanoActualizado(a as any)} />}
+      {!(plano as any).tipoEvento && <AltaPerformanceNoPlano plano={plano} onPlanoActualizado={onPlanoActualizado} />}
       {/* O plano em duas colunas (Rosa, out/2026): à esquerda o que o
           professor prepara, campo a campo, cada um abre e fecha; à direita
           o que acontece na aula — publicar, abrir, enviar, quem entrou,

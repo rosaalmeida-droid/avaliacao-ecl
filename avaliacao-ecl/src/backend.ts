@@ -3148,10 +3148,12 @@ const PREFIXO_NOTA = 'UCNOTA|';
 const PREFIXO_COLAB = 'COLAB|';
 /** O aluno carregou em «Avisar o professor»: o pedido e o relatório do telemóvel. */
 const PREFIXO_AJUDA = 'AJUDA|';
+/** As respostas às perguntas de alta performance (extra) de uma aula. */
+const PREFIXO_ALTAPERF = 'ALTAPERF|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
   return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB)
-    || p.startsWith(PREFIXO_AJUDA);
+    || p.startsWith(PREFIXO_AJUDA) || p.startsWith(PREFIXO_ALTAPERF);
 };
 
 /**
@@ -5425,6 +5427,11 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
         const n = notaDaAulaValidada(validacaoDaAula(a.id, p.id, validacoes));
         if (n !== null) porAula[p.id] = Math.round(n * 10) / 10;
       });
+      // A atividade obrigatória fora das horas da aula conta como mais uma aula
+      // (Rosa, 6/out/2026): vai com a sua nota, como na aplicação (falta = 0).
+      for (const l of aulasDaNotaUC(a.id, turmaId, uc)) {
+        if (getPlanosAula().some((x: any) => x.id === l.planoId && x.tipoEvento)) porAula[l.planoId] = Math.round(l.nota * 10) / 10;
+      }
       if (c.final === null && !Object.keys(porAula).length) continue;
       linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
         media: c.base === null ? '' : Math.round(c.base * 10) / 10,
@@ -5858,6 +5865,19 @@ export const LABEL_DECISAO: Record<DecisaoFalta, string> = {
 };
 
 /** As horas de um plano, uma a uma ("13:00"), sem a hora de almoço. */
+/** O aluno esteve só parte da aula (o professor marcou «Só algumas horas»):
+ *  os tempos em que esteve e os em que faltou (Rosa, 6/out/2026). */
+export function partesDaAulaDoAluno(alunoId: string, planoAulaId: string): { esteve: string[]; faltou: string[]; horasEsteve: number; horasAula: number } | null {
+  const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  if (r?.decisaoProfessor !== 'parcial') return null;
+  const p = getPlanosAula().find(x => x.id === planoAulaId);
+  if (!p) return null;
+  const em = new Set<string>(r.horasPresentes || []);
+  const blocos = blocosDeHoraDoPlano(p);
+  return { esteve: blocos.filter(b => em.has(b.inicio)).map(b => `${b.inicio}–${b.fim}`),
+    faltou: blocos.filter(b => !em.has(b.inicio)).map(b => `${b.inicio}–${b.fim}`),
+    horasEsteve: Math.round(horasDosBlocos(p, r.horasPresentes || []) * 100) / 100, horasAula: Math.round(horasDoPlano(p) * 100) / 100 };
+}
 export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string }[] {
   const min = (h?: string) => {
     if (!h) return NaN;
@@ -10266,6 +10286,18 @@ const chaveEmail = (alunoId: string) => 'ecl_email_aluno_' + alunoId;
 export function emailDoAluno(alunoId: string): string {
   try { return localStorage.getItem(chaveEmail(alunoId)) || ''; } catch { return ''; }
 }
+/** Os alunos do 1.º ano ainda não sabem o email da escola (Rosa, 6/out/2026):
+ *  podem adiar, e a aplicação volta a pedir passados 7 dias. */
+const chaveAdiado = (alunoId: string) => 'ecl_email_aluno_adiado_' + alunoId;
+export function adiarEmailDoAluno(alunoId: string): void {
+  try { localStorage.setItem(chaveAdiado(alunoId), new Date().toISOString()); } catch { /* volta a pedir */ }
+}
+export function emailAdiadoHaPouco(alunoId: string): boolean {
+  try {
+    const em = localStorage.getItem(chaveAdiado(alunoId));
+    return !!em && Date.now() - new Date(em).getTime() < 7 * 24 * 3600 * 1000;
+  } catch { return false; }
+}
 
 export function registarEmailDoAluno(aluno: Aluno, email: string): boolean {
   const e = email.trim().toLowerCase();
@@ -10443,4 +10475,63 @@ export function marcarPassadoAESchooling(planoIds: string[], passado = true): vo
   const em = new Date().toISOString();
   getPlanosAula().filter(p => planoIds.includes(p.id))
     .forEach(p => addOrUpdatePlanoAula({ ...(p as any), eschoolingEm: passado ? em : undefined, atualizadoEm: em }));
+}
+
+// ============================================================
+// Fecho das aulas (Rosa, 6/out/2026)
+// ============================================================
+// «O professor não pode registar a meio de uma aula prática que um aluno saiu
+// mais cedo.» No fim do dia (e em cada vez que entra na aplicação), o professor
+// vê numa janela, aula a aula: as autoavaliações por validar e as presenças
+// por confirmar. Os casos suspeitos vêm à frente: entrou e não se autoavaliou,
+// ou entregou a autoavaliação muito antes do fim (pode ter saído mais cedo).
+export interface CasoPresenca { alunoId: string; nome: string; numero: number;
+  motivo: 'sem_autoavaliacao' | 'entregou_cedo' | 'atrasado' | 'nao_entrou'; detalhe: string }
+export interface FechoDaAula { plano: PlanoAula; porValidar: number; casos: CasoPresenca[];
+  /** Respostas ao desafio de alta performance ainda sem avaliação do professor. */
+  desafios: number }
+export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
+  const sels = selecoesQueContam(getSelecoes());
+  // Também as respostas dadas antes de o plano mudar: quem respondeu esteve na aula.
+  const respondeu = new Set(selecoesDoProfessor().map(x => `${x.alunoId}|${x.planoAulaId}`));
+  const vals = getValidacoes();
+  const pres = getPresencas();
+  const alunosTodos = getAlunos();
+  const hm = (iso: string) => { try { const d = new Date(iso); return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' }); } catch { return ''; } };
+  const minutos = (h?: string) => { const m = String(h || '').match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : NaN; };
+  return getPlanosAula()
+    .filter(p => (p.estado === 'publicado' || p.estado === 'realizada') && !(p as any).eliminado
+      && String(p.data || '').slice(0, 10) >= desde && planoDoProfessor(p, nomeProfessor) && aulaJaAconteceu(p, hoje))
+    .map(p => {
+      const alunos = alunosTodos.filter(a => a.turmaId === p.turmaId && a.ativo !== false && !alunoDeTeste(a))
+        .filter(a => !eventoForaDoHorario(p) || participantesDoEvento(p).includes(a.id));
+      const porValidar = sels.filter(s => s.planoAulaId === p.id && !alunoDeTeste(s.alunoId) && !selecaoJaValidada(s, vals as any)).length;
+      const desafios = load<SelecaoAluno>(KEYS.selecoes).filter(s => s.planoAulaId === PREFIXO_ALTAPERF + p.id && !alunoDeTeste(s.alunoId)
+        && !vals.some((v: any) => v.alunoId === s.alunoId && v.planoAulaId === p.id && v.altaPerformance)).length;
+      const casos: CasoPresenca[] = [];
+      const aberta = getSessaoAula(p.id)?.abertaEm;
+      // As presenças só nas aulas abertas no próprio dia (aberta depois, só conta o que o professor decide).
+      if (aberta && !aberturaTardia(p.id) && (p as any).contaAssiduidade !== false && !(p as any).tipoEvento) {
+        const fim = minutos(p.horaFim);
+        for (const a of alunos) {
+          const r: any = pres.find(x => x.alunoId === a.id && x.planoAulaId === p.id);
+          if (r?.decisaoProfessor) continue;               // o professor já decidiu
+          const quem = { alunoId: a.id, nome: a.nome || `Aluno ${a.numero}`, numero: a.numero };
+          if (!r || r.presente === false) { casos.push({ ...quem, motivo: 'nao_entrou', detalhe: 'Não entrou na aplicação: fica com falta à aula toda.' }); continue; }
+          if (r.atrasado) { casos.push({ ...quem, motivo: 'atrasado', detalhe: `Entrou atrasado${r.atrasadoMins ? ` (${r.atrasadoMins} min)` : ''}.` }); continue; }
+          const s: any = sels.find(x => x.alunoId === a.id && x.planoAulaId === p.id);
+          if (!s && !respondeu.has(`${a.id}|${p.id}`)) { casos.push({ ...quem, motivo: 'sem_autoavaliacao', detalhe: 'Entrou e não se autoavaliou. Esteve a aula toda?' }); continue; }
+          if (!s) continue;
+          const entregou = s.criadaEm ? new Date(s.criadaEm) : null;
+          const diaEntrega = entregou ? entregou.toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' }) : '';
+          if (entregou && diaEntrega === String(p.data).slice(0, 10) && !isNaN(fim) && minutos(hm(s.criadaEm)) < fim - 60)
+            casos.push({ ...quem, motivo: 'entregou_cedo', detalhe: `Entregou a autoavaliação às ${hm(s.criadaEm)}, antes do fim (${p.horaFim}). Esteve a aula toda?` });
+        }
+      }
+      return { plano: p, porValidar, casos, desafios };
+    })
+    .filter(f => f.porValidar > 0 || f.casos.length > 0 || f.desafios > 0)
+    .sort((a, b) => String(b.plano.data).localeCompare(String(a.plano.data)));
 }
