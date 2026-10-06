@@ -9276,9 +9276,24 @@ export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', pl
 /** Colegas que, na mesma aula e à mesma pergunta, disseram que a situação
  *  aconteceu (reparou, fez alguma coisa). Serve para avisar o professor
  *  quando um aluno responde «Hoje não aconteceu». */
+/** Com quem se compara a resposta do aluno na validação (Rosa, 6/out/2026):
+ *  «trabalho feito em grupo, sim; se for algo geral que envolve a turma toda,
+ *  não». Num trabalho de grupo só contam os colegas do grupo; numa aula de
+ *  turma toda, todos. Devolve null quando é a turma toda. */
+export function colegasDeComparacao(alunoId: string, planoAulaId: string): Set<string> | null {
+  // Só quando o trabalho dessa aula foi feito em grupo (os grupos estão ligados
+  // no plano). Numa aula de turma toda, comparam-se todos os colegas.
+  const p: any = getPlanosAula().find(x => x.id === planoAulaId);
+  if (!p?.gruposAlunos?.ativo) return null;
+  const g = grupoDoAluno(planoAulaId, alunoId);
+  if (!g) return null;
+  return new Set(g.membros.map(m => m.alunoId).filter(id => id !== alunoId));
+}
+
 export function colegasQueViram(chave: 'co' | 'cr', alunoId: string, planoAulaId: string, perguntaId: string): number {
+  const doGrupo = colegasDeComparacao(alunoId, planoAulaId);
   return load<any>(KEYS.selecoes).filter((x: any) =>
-    x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId && x.alunoId !== alunoId)
+    x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId && x.alunoId !== alunoId && (!doGrupo || doGrupo.has(x.alunoId)))
     .filter((x: any) => {
       const t = x.autoavaliacoes?.[0]; const r = (t?.professor || t?.aluno) as Triagem5C | undefined;
       const resposta = r?.[chave];
