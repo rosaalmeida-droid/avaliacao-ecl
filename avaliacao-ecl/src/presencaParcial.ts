@@ -15,25 +15,26 @@ import { getPresencas, getPlanosAula, getSelecoes, partesDaAulaDoAluno, blocosDe
 export interface OpcaoPresenca { t: string; certa: boolean; porque?: string }
 export interface PerguntaPresenca { id: string; pergunta: (esteve: string, total: string) => string; opcoes: OpcaoPresenca[] }
 
+// As perguntas são as da Rosa (6/out/2026): diretas, «percebes que…».
 export const PERGUNTAS_PRESENCA: PerguntaPresenca[] = [
-  { id: 'quem', pergunta: () => 'Enquanto não estavas, quem fez a tua parte do trabalho?', opcoes: [
-    { t: 'Ninguém precisou: não fiz falta.', certa: false,
-      porque: 'Numa cozinha, cada pessoa tem uma parte do trabalho. Quando faltas, essa parte não desaparece: ou alguém a faz por ti, ou fica por fazer e atrasa o serviço.' },
-    { t: 'Os colegas do grupo fizeram-na por mim.', certa: true },
-    { t: 'Ficou por fazer, e o grupo atrasou-se.', certa: true },
+  { id: 'afeta', pergunta: () => 'Percebes que o teu comportamento, quando faltas ou chegas tarde, afeta o teu grupo, a turma, a organização das aulas e a organização dos eventos?', opcoes: [
+    { t: 'Sim, percebo.', certa: true },
+    { t: 'Não. Só me afeta a mim.', certa: false,
+      porque: 'Não é só a ti. O grupo divide o trabalho a contar contigo, o professor organiza a aula e os eventos a contar com quem lá está. Quando faltas, todos têm de mudar o que estava combinado.' },
+    { t: 'Não sei.', certa: false,
+      porque: 'Pensa no teu grupo hoje: alguém teve de fazer a tua parte, ou ela ficou por fazer. É assim que a tua falta afeta os outros.' },
   ] },
-  { id: 'grupo', pergunta: () => 'O que achas que o teu grupo sentiu?', opcoes: [
-    { t: 'Nada. Não fez diferença.', certa: false,
-      porque: 'Fez diferença. Os teus colegas contavam contigo para dividir o trabalho e tiveram de fazer mais, ou de mudar o que tinham combinado.' },
-    { t: 'Ficaram com mais trabalho.', certa: true },
-    { t: 'Ficaram sem saber se podiam contar comigo.', certa: true },
+  { id: 'confianca', pergunta: () => 'Percebes que a confiança também se perde quando um aluno falta ou chega tarde?', opcoes: [
+    { t: 'Sim, percebo.', certa: true },
+    { t: 'Não. Se eu fizer bem o meu trabalho, confiam em mim.', certa: false,
+      porque: 'Fazer bem é importante, mas não chega. Numa cozinha, confia-se em quem está lá à hora e o turno todo. Quem falta deixa os outros sem saber se podem contar com ele.' },
+    { t: 'Não. Uma falta não muda nada.', certa: false,
+      porque: 'Muda. Cada falta faz o grupo e o professor contarem menos contigo da próxima vez. A confiança ganha-se devagar e perde-se depressa.' },
   ] },
-  { id: 'confianca', pergunta: (esteve, total) => `Numa cozinha a sério, o chefe confiava num cozinheiro que só está ${esteve} das ${total} horas do turno?`, opcoes: [
-    { t: 'Sim, desde que faça bem o que faz.', certa: false,
-      porque: 'Fazer bem é importante, mas não chega. Numa brigada, o chefe precisa de saber que cada pessoa está lá à hora e o turno todo. Sem isso, não consegue organizar o serviço, por melhor que a pessoa cozinhe.' },
-    { t: 'Talvez, se avisasse antes.', certa: false,
-      porque: 'Avisar ajuda, mas o chefe continua sem essa pessoa no turno. A confiança ganha-se estando lá, à hora, de forma regular.' },
-    { t: 'Não. Primeiro eu tinha de mostrar que se pode contar comigo.', certa: true },
+  { id: 'avaliacao', pergunta: () => 'Consideras que os alunos que estão menos presentes nas aulas devem ter uma avaliação mais baixa do que os alunos que estão presentes?', opcoes: [
+    { t: 'Sim. Quem está presente faz mais e mostra mais.', certa: true },
+    { t: 'Não. Deve ser igual para todos.', certa: false,
+      porque: 'A avaliação é sobre o que fazes nas aulas. Quem não está não faz nem mostra o que sabe, e deixa o trabalho para os colegas. Não seria justo para quem esteve a aula toda ter a mesma nota.' },
   ] },
 ];
 
