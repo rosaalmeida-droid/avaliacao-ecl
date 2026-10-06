@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -592,6 +592,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
     // Sem farda: as técnicas ficam no percurso com a nota dada, mas contam 0 na nota da aula.
     if (semFarda) (validacao as any).semFarda = true;
+    // Farda incompleta à entrada, mas o professor deixou contar as técnicas:
+    // tolerância. O aluno recebe o aviso de que é a última vez (Rosa, 6/out/2026).
+    else if (fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5) (validacao as any).fardaPerdoada = true;
     if (faltouVerdade) (validacao as any).faltouVerdade = true;
     if (Object.keys(apNotas).length) (validacao as any).altaPerformance = { notas: apNotas, entraNaAvaliacao: apEntra, media: mediaAP(apNotas) };
     // Guardar a decomposição por categoria para o professor perceber sempre
@@ -782,13 +785,24 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12,
           background: semFarda ? '#fdf0ef' : '#f5f7f2', border: `1.5px solid ${semFarda ? '#c0392b' : 'rgba(26,23,20,0.12)'}` }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: semFarda ? '#8e2418' : 'rgba(26,23,20,0.7)' }}>
-            {semFarda ? 'Sem farda completa: as técnicas contam 0 nesta aula' : 'Farda completa'}
+            {semFarda ? 'Sem farda completa: as técnicas contam 0 nesta aula'
+              : fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5 ? 'Tolerância: a farda estava incompleta, mas as técnicas contam' : 'Farda completa'}
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
             {semFarda
               ? 'Avalie tudo normalmente: as técnicas ficam registadas no percurso do aluno. As atitudes contam, incluindo «Cuidado com a apresentação pessoal» e a forma como o aluno ajudou na aula. Não conta como falta.'
-              : 'O aluno declarou a farda completa à entrada.'}
+              : fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5
+                ? 'O aluno vai ver, na nota da aula e no perfil, que esta é a última vez: na próxima, sem farda completa, as técnicas não contam. E vê quanto teria se a falta de farda contasse.'
+                : 'O aluno declarou a farda completa à entrada.'}
           </div>
+          {(() => {
+            // Já teve tolerância noutra aula? O professor tem de saber (Rosa, 6/out/2026).
+            const antes = toleranciasDaFarda(selecao.alunoId).filter(t => t.planoAulaId !== selecao.planoAulaId);
+            return antes.length ? (
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#8e2418', marginTop: 6 }}>
+                ⚠ Este aluno já teve tolerância da farda em {antes.map(t => t.data.split('-').reverse().slice(0, 2).join('/')).join(', ')}.
+              </div>) : null;
+          })()}
           {(() => {
             const r = (fardaDaEntrada as any)?.reflexaoFarda;
             if (!r) return null;
