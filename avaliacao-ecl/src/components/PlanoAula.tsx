@@ -1636,6 +1636,11 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <button className="btn btn-primary" disabled={!triagemDoPlano(alvo)} onClick={() => setPasso(5)}
               style={{ flex: 2, fontSize: 15, padding: '13px', opacity: triagemDoPlano(alvo) ? 1 : 0.5 }}>Seguinte →</button>
           </div>
+          {/* O plano já ficou gravado no passo 3: pode sair e acabar depois (Rosa, out/2026). */}
+          <button type="button" onClick={onVoltar} style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid rgba(26,23,20,0.18)',
+            background: '#fff', color: 'rgba(26,23,20,0.7)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Guardar o que já está e acabar depois
+          </button>
         </>)}
         {passo === 5 && alvo && (<>
           {ehAulaMista(alvo) && !(alvo as any).tipoEvento ? <DuasPartesDaAulaMista plano={alvo} onPlanoActualizado={aoMudarPlano} /> : (<>
@@ -1653,6 +1658,11 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <button className="btn btn-secondary" onClick={() => setPasso(4)} style={{ flex: 1 }}>← Anterior</button>
             <button className="btn btn-primary" onClick={() => setPasso(6)} style={{ flex: 2, fontSize: 15, padding: '13px' }}>Seguinte →</button>
           </div>
+          {/* O plano já ficou gravado no passo 3: pode sair e acabar depois (Rosa, out/2026). */}
+          <button type="button" onClick={onVoltar} style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid rgba(26,23,20,0.18)',
+            background: '#fff', color: 'rgba(26,23,20,0.7)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Guardar o que já está e acabar depois
+          </button>
         </>)}
         {passo === 6 && (<>
         <div style={{ background: '#fbf8f3', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
