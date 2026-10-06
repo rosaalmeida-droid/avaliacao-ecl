@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -13,6 +13,7 @@ import { getLibrary } from '../libraryService';
 import { capituloDoCampo } from '../bancoManuais';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
+import { janelaConfirmar } from './janelaConfirmar';
 import { ColegasNaValidacao } from './ColegasNaValidacao';
 
 // Escala 1-4 alinhada com a autoavaliação do aluno
@@ -346,6 +347,39 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
    *  (auditoria 5/out/2026, ponto 38: abria logo em modo de alteração). */
   const [aAlterarVal, setAAlterarVal] = useState(false);
   const soVer = !!validacaoExistente && !aAlterarVal;
+  const [, redesenharFalta] = useState(0);
+  const faltaMarcada = temFaltaMarcada(selecao.alunoId, selecao.planoAulaId || '');
+  /** Marcar falta a este aluno nesta aula, em vez de lhe dar 0 em tudo (Rosa, 6/out/2026). */
+  async function marcarFalta(): Promise<boolean> {
+    const nome = nomeDoAluno(selecao.alunoId);
+    const ok = await janelaConfirmar({ titulo: `Marcar falta a ${nome} nesta aula?`,
+      texto: 'Com falta, a resposta do aluno não conta para a nota e ele deixa de se poder autoavaliar nesta aula. Pode tirar a falta depois, nas presenças da aula.',
+      sim: 'Marcar falta', nao: 'Cancelar', perigo: true });
+    if (!ok) return false;
+    decidirFalta(selecao.alunoId, selecao.planoAulaId || '', 'falta_presenca', 'professor', 'Marcada na validação');
+    redesenharFalta(n => n + 1);
+    return true;
+  }
+  /** Antes de guardar: tudo a 0, ou o comentário diz que faltou? Talvez seja falta, ou o aluno errado. */
+  async function antesDeGuardar() {
+    const tudoZero = autoavaliacoes.length > 0 && autoavaliacoes.every(a => Number(notasProf[a.competenciaId]) === 1);
+    const dizQueFaltou = /n[ãa]o (esteve|estava|veio|compareceu)|faltou|ausente/i.test(comentario);
+    if ((tudoZero || dizQueFaltou) && !faltaMarcada) {
+      const nome = nomeDoAluno(selecao.alunoId);
+      const entrou = esteveNaAula(selecao.alunoId, selecao.planoAulaId || '');
+      const falta = await janelaConfirmar({
+        titulo: tudoZero ? `Deu 0 em tudo a ${nome}. O aluno faltou?` : `O comentário diz que ${nome} não esteve. O aluno faltou?`,
+        texto: (entrou ? `Atenção: ${nome} tem entrada registada nesta aula. Confirme que é o aluno certo. ` : '')
+          + 'Se faltou, marque falta: a resposta deixa de contar e não é preciso dar 0. Se esteve e quer mesmo esta nota, continue.',
+        sim: 'Faltou: marcar falta', nao: 'Esteve: continuar a validar', perigo: true });
+      if (falta) {
+        decidirFalta(selecao.alunoId, selecao.planoAulaId || '', 'falta_presenca', 'professor', 'Marcada na validação');
+        redesenharFalta(n => n + 1);
+        return;
+      }
+    }
+    setAConfirmar(true);
+  }
   // Ao passar ao aluno seguinte, começa-se do topo.
   const topoRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start' }); }, []);
@@ -690,9 +724,19 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       <fieldset disabled={soVer} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, color: 'var(--cream)' }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>{planoTitulo}</div>
+        {/* O aluno em grande (Rosa, 6/out/2026: duas alunas seguidas confundiram-se). */}
+        <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.25 }}>
+          {(() => { const a = getAlunos().find(x => x.id === selecao.alunoId); return a?.numero ? `N.º ${a.numero} · ` : ''; })()}{nomeDoAluno(selecao.alunoId)}
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 15, marginTop: 4 }}>{planoTitulo}</div>
+        {!faltaMarcada && (
+          <button onClick={() => { void marcarFalta(); }} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 9, border: '1px solid #f0b4a8',
+            background: 'transparent', color: '#f8d7d1', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Este aluno faltou? Marcar falta
+          </button>
+        )}
         <div style={{ fontSize: 13, opacity: 0.6, marginTop: 3 }}>
-          {ucId && `${ucId} · `}{nomeDoAluno(selecao.alunoId)}
+          {ucId && `${ucId}`}
           {fichasNomes.length > 0 && ` · ${fichasNomes.join(', ')}`}
         </div>
         {temaDoAluno(selecao) && (
@@ -1220,7 +1264,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             style={{ minHeight: 80 }}
           />
         </Field>
-        <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
+        <button className="btn btn-primary" onClick={() => { void antesDeGuardar(); }}
           disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
           {guardado ? '✓ Guardar outra vez' : '✓ Validar e guardar avaliação'}
@@ -1237,6 +1281,18 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           professor tem de ver o que está a entregar, e onde discordou
           da proposta dele. */}
       </fieldset>
+      {/* Validação guardada: os botões estão trancados. A barra fica sempre à vista,
+          em vez de só lá em cima (Rosa, 6/out/2026: «nunca tinha descoberto»). */}
+      {soVer && (
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 5, background: '#fff8ef', border: '1.5px solid var(--copper)', borderRadius: 12,
+          padding: '10px 14px', marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', boxShadow: '0 -4px 14px rgba(0,0,0,0.08)' }}>
+          <span style={{ flex: 1, minWidth: 200, fontSize: 14, color: 'rgba(26,23,20,0.75)' }}>
+            Esta validação está guardada e trancada. Para mudar alguma nota:
+          </span>
+          <button onClick={() => setAAlterarVal(true)} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--copper)',
+            color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar a validação</button>
+        </div>
+      )}
       {aConfirmar && (() => {
         const alterou = autoavaliacoes.filter(auto => !auto.doProfessor).filter(auto => {
           const nAluno = (auto as any).nota || 0;
