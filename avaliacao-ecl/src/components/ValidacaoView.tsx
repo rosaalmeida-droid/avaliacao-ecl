@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -740,6 +740,16 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Esteve só {String(pa.horasEsteve).replace('.', ',')} de {String(pa.horasAula).replace('.', ',')} horas ({pa.esteve.join(', ') || 'nenhum tempo'}).
             Confirme que só avalia o que ele fez nesse tempo.
           </div>) : null; })()}
+        {/* A prova de que passou pela ficha: passos marcados e a hora (Rosa, 6/out/2026). */}
+        {((selecao as any).evidenciaFicha || []).map((ev: any) => {
+          const l = lerEvidenciaFicha(ev);
+          return (
+            <div key={ev.fichaId} style={{ marginTop: 6, fontSize: 14, lineHeight: 1.45 }}>
+              <span style={{ color: ev.marcados < ev.total ? '#f0b470' : '#b9dfb0', fontWeight: 700 }}>🧾 {l.texto}</span>
+              {l.aviso && <div style={{ color: '#f8d7d1', fontWeight: 800 }}>⚠ {l.aviso}</div>}
+            </div>
+          );
+        })}
         {!faltaMarcada && (
           <button onClick={() => { void marcarFalta(); }} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 9, border: '1px solid #f0b4a8',
             background: 'transparent', color: '#f8d7d1', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

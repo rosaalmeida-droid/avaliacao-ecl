@@ -1,16 +1,15 @@
 // ============================================================
 // Grupos — o lado do aluno
 // ============================================================
-// Ao entrar na aula, o aluno forma o grupo: cria um ou junta-se a um que
-// já exista. O professor valida (ou muda) e dá uma ficha a cada grupo.
-// No fim da autoavaliação, o aluno avalia os colegas do grupo — só o
-// professor vê, e não conta para nota nenhuma.
+// O professor faz os grupos no plano (Rosa, 6/out/2026): o aluno já não
+// cria nem escolhe grupo. Vê o seu grupo na comanda, por cima da aula
+// (AulaDoAluno.tsx), desde que abre a aplicação. No fim da autoavaliação,
+// avalia os colegas do grupo — só o professor vê, e não conta para nota.
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { Aluno, PlanoAula } from '../types';
 import {
-  gruposDaAula, grupoDoAluno, entrarNoGrupo, sincronizarGrupos, guardarAvaliacaoPar, getAvaliacoesPares,
-  getAlunos, getFichasProducao, lerAula, aulaRapidaDisponivel, podemAvaliarSe,
+  grupoDoAluno, guardarAvaliacaoPar, getAvaliacoesPares, getAlunos, podemAvaliarSe,
 } from '../backend';
 
 const V = '#6B3FA0';
@@ -24,87 +23,6 @@ export function configGrupos(plano: PlanoAula): { ativo: boolean; tamanho: numbe
 }
 
 const nomeDe = (id: string) => { const a = getAlunos().find(x => x.id === id); return a?.nome || `Aluno nº ${a?.numero ?? '?'}`; };
-const primeiroNome = (n: string) => String(n || '').trim().split(/\s+/)[0] || 'aluno';
-
-export function PassoGrupo({ aluno, plano, onConcluido }: { aluno: Aluno; plano: PlanoAula; onConcluido: () => void }) {
-  const [, redesenhar] = useState(0);
-  const [aMudar, setAMudar] = useState(false);
-  const { tamanho } = configGrupos(plano);
-
-  useEffect(() => {
-    let vivo = true;
-    // Script v19: a aula rápida já traz os grupos; senão, pede os grupos.
-    const ver = () => (aulaRapidaDisponivel() ? lerAula(aluno.turmaId).then(ok => { if (!ok) return sincronizarGrupos(aluno.turmaId); }) : sincronizarGrupos(aluno.turmaId))
-      .catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
-    ver();
-    const t = setInterval(ver, 3000);
-    return () => { vivo = false; clearInterval(t); };
-  }, [aluno.turmaId, plano.id]);
-
-  const grupos = gruposDaAula(plano.id);
-  const meu = grupoDoAluno(plano.id, aluno.id);
-
-  function entrar(grupoId: string, grupoNome: string) {
-    entrarNoGrupo({ planoAulaId: plano.id, turmaId: plano.turmaId || aluno.turmaId, alunoId: aluno.id,
-      nomeAluno: aluno.nome, grupoId, grupoNome, definidoPor: 'aluno' });
-    setAMudar(false);
-    redesenhar(n => n + 1);
-  }
-
-  if (meu && !aMudar) {
-    const colegas = meu.membros.filter(m => m.alunoId !== aluno.id);
-    const ficha = meu.fichaId ? getFichasProducao().find(f => f.id === meu.fichaId) : undefined;
-    return (
-      <div style={cartao}>
-        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#999' }}>O teu grupo</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: V, margin: '4px 0 8px' }}>{meu.nome}</div>
-        <div style={{ fontSize: 15, color: '#444', lineHeight: 1.6 }}>
-          {colegas.length ? <>Com: <b>{colegas.map(c => c.nomeAluno || nomeDe(c.alunoId)).join(', ')}</b></> : 'Ainda estás sozinho/a neste grupo.'}
-        </div>
-        {ficha && <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#f3eef8', fontSize: 15 }}>🧾 A ficha do teu grupo: <b>{ficha.nomePrato}</b></div>}
-        <div style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: meu.validado ? '#3E7A31' : '#B5651D' }}>
-          {meu.validado ? '✓ O professor validou os grupos' : '⏳ O professor ainda vai validar os grupos (pode mudar-te de grupo).'}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: meu.validado ? '1fr' : '1fr 1fr', gap: 8, marginTop: 14 }}>
-          {!meu.validado && <button onClick={() => setAMudar(true)} style={botao()}>Mudar de grupo</button>}
-          <button onClick={onConcluido} style={botao(V)}>Continuar →</button>
-        </div>
-      </div>
-    );
-  }
-
-  const podeCriar = true;
-  return (
-    <div style={cartao}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: '#222' }}>Hoje trabalhas em grupo</div>
-      <div style={{ fontSize: 14.5, color: '#666', margin: '4px 0 14px', lineHeight: 1.5 }}>
-        Junta-te a um grupo ou cria um novo. Grupos até {tamanho} pessoas. O professor depois valida.
-      </div>
-      {grupos.length === 0 && <div style={{ fontSize: 14.5, color: '#888', marginBottom: 12 }}>Ainda não há grupos. Cria o primeiro.</div>}
-      {grupos.map(g => {
-        const cheio = g.membros.length >= tamanho;
-        const souDeste = g.membros.some(m => m.alunoId === aluno.id);
-        return (
-          <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: '1px solid #eee' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{g.nome} <span style={{ fontSize: 13, color: '#888', fontWeight: 600 }}>({g.membros.length}/{tamanho})</span></div>
-              <div style={{ fontSize: 13.5, color: '#666' }}>{g.membros.map(m => m.nomeAluno || nomeDe(m.alunoId)).join(', ')}</div>
-            </div>
-            {souDeste ? <span style={{ fontSize: 13.5, color: V, fontWeight: 700 }}>És deste</span>
-              : <button disabled={cheio || g.validado} onClick={() => entrar(g.id, g.nome)}
-                  style={{ ...botao(), minHeight: 40, padding: '8px 14px', fontSize: 14, opacity: cheio || g.validado ? 0.45 : 1 }}>
-                  {cheio ? 'Cheio' : 'Entrar'}</button>}
-          </div>
-        );
-      })}
-      {podeCriar && (
-        <button onClick={() => entrar(`g_${plano.id}_${aluno.id}_${Date.now()}`, `Grupo de ${primeiroNome(aluno.nome || '')}`)}
-          style={{ ...botao(V), width: '100%', marginTop: 12 }}>+ Criar um grupo novo</button>
-      )}
-      {aMudar && <button onClick={() => setAMudar(false)} style={{ ...botao(), width: '100%', marginTop: 8 }}>Cancelar</button>}
-    </div>
-  );
-}
 
 // ── Avaliar os colegas do grupo ─────────────────────────────────
 const PERGUNTAS: { chave: 'colabora' | 'ouve' | 'flexivel' | 'conflito'; texto: string; opcoes: [string, string, string] }[] = [
@@ -173,4 +91,3 @@ export function AvaliarColegas({ aluno, plano }: { aluno: Aluno; plano: PlanoAul
   );
 }
 
-export default PassoGrupo;

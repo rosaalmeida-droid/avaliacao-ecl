@@ -3062,6 +3062,39 @@ export function getChecklistAlunoFicha(planoId: string, fichaId: string, alunoId
   return getChecklists().find(c => c.planoAulaId === planoId && c.fichaId === fichaId && c.alunoId === alunoId);
 }
 
+// ── A ficha técnica antes da autoavaliação (Rosa, 6/out/2026) ──────────
+// Os alunos iam para a frente sem passar pela ficha. Agora marcam cada
+// passo da preparação à medida que o fazem; a autoavaliação só abre com
+// todos marcados, e o professor vê a hora de cada passo na validação.
+export interface EvidenciaFicha { fichaId: string; nome: string; total: number; marcados: number; horas: string[] }
+export function evidenciaDasFichas(planoId: string, alunoId: string, fichas: FichaProducao[]): EvidenciaFicha[] {
+  return fichas.filter(f => (f.preparacao || []).length > 0).map(f => {
+    const c = getChecklistAlunoFicha(planoId, f.id, alunoId);
+    const marcados = (c?.passosConcluidos || []).filter(i => Number(i) < (f.preparacao || []).length);
+    const horas = marcados.map(i => c?.passosHoras?.[i]).filter(Boolean).sort() as string[];
+    return { fichaId: f.id, nome: f.nomePrato || 'Ficha', total: (f.preparacao || []).length, marcados: marcados.length, horas };
+  });
+}
+/** Quantos passos faltam marcar, em todas as fichas do aluno nesta aula. */
+export function passosDaFicha(planoId: string, alunoId: string, fichas: FichaProducao[]): { feitos: number; total: number } {
+  const ev = evidenciaDasFichas(planoId, alunoId, fichas);
+  return { feitos: ev.reduce((s, e) => s + e.marcados, 0), total: ev.reduce((s, e) => s + e.total, 0) };
+}
+/** Para o professor: a frase da evidência e, se for de desconfiar, o aviso. */
+export function lerEvidenciaFicha(ev: EvidenciaFicha): { texto: string; aviso?: string } {
+  const h = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const base = `${ev.nome}: ${ev.marcados} de ${ev.total} passos marcados`;
+  if (!ev.horas.length) return { texto: base + '.' };
+  const ini = ev.horas[0], fim = ev.horas[ev.horas.length - 1];
+  const seg = Math.round((new Date(fim).getTime() - new Date(ini).getTime()) / 1000);
+  const texto = ev.horas.length > 1 && h(ini) !== h(fim) ? `${base}, das ${h(ini)} às ${h(fim)}.`
+    : ev.horas.length > 1 ? `${base}, todos às ${h(ini)}.` : `${base}, às ${h(ini)}.`;
+  // Três ou mais passos marcados em menos de 2 minutos: marcou tudo de seguida.
+  const aviso = ev.marcados >= 3 && seg < 120
+    ? `Marcou ${ev.marcados} passos em ${seg < 60 ? 'menos de 1 minuto' : 'menos de 2 minutos'}: parece que marcou tudo de seguida, sem os fazer.` : undefined;
+  return { texto, aviso };
+}
+
 export function addOrUpdateChecklistAluno(c: ChecklistAlunoFicha): void {
   const all = getChecklists();
   const idx = all.findIndex(x => x.id === c.id);
@@ -9741,6 +9774,40 @@ export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula 
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
 }
 
+// ── Quem do grupo já entrou e já se avaliou (Rosa, 6/out/2026) ──────────
+// Os colegas veem um visto verde na cara de cada um. Vem na aula rápida
+// (script v26.8); o próprio aluno conta logo, com o que está no aparelho.
+const KEY_ESTADOS_AULA = 'ecl_estados_aula';
+export interface EstadoNaAula { planoAulaId: string; alunoId: string; entrou?: boolean; avaliou?: boolean }
+function juntarEstados(lista: any[]): void {
+  if (!Array.isArray(lista) || !lista.length) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mapa = new Map<string, EstadoNaAula>();
+  // Só os de hoje e dos últimos dias: não cresce sem fim.
+  const limite = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  for (const e of load<EstadoNaAula & { dia?: string }>(KEY_ESTADOS_AULA)) if ((e.dia || hoje) >= limite) mapa.set(e.planoAulaId + '|' + e.alunoId, e);
+  for (const r of lista) {
+    if (!r?.planoAulaId || !r?.alunoId) continue;
+    const k = String(r.planoAulaId) + '|' + String(r.alunoId);
+    const antes = mapa.get(k);
+    mapa.set(k, { planoAulaId: String(r.planoAulaId), alunoId: String(r.alunoId), dia: hoje,
+      entrou: !!(antes?.entrou || r.entrou === true || r.entrou === 'true'),
+      avaliou: !!(antes?.avaliou || r.avaliou === true || r.avaliou === 'true') } as any);
+  }
+  save(KEY_ESTADOS_AULA as any, [...mapa.values()]);
+}
+/** Para cada aluno da aula: já entrou? já se avaliou? */
+export function estadosNaAula(planoAulaId: string): Map<string, { entrou: boolean; avaliou: boolean }> {
+  const out = new Map<string, { entrou: boolean; avaliou: boolean }>();
+  const pega = (id: string) => out.get(id) || (out.set(id, { entrou: false, avaliou: false }), out.get(id)!);
+  for (const e of load<EstadoNaAula>(KEY_ESTADOS_AULA)) if (e.planoAulaId === planoAulaId) {
+    const x = pega(e.alunoId); x.entrou = x.entrou || !!e.entrou; x.avaliou = x.avaliou || !!e.avaliou;
+  }
+  for (const p of getPresencas()) if (p.planoAulaId === planoAulaId && (p as any).presente !== false) pega(p.alunoId).entrou = true;
+  for (const s of getSelecoes()) if (s.planoAulaId === planoAulaId) pega(s.alunoId).avaliou = true;
+  return out;
+}
+
 /** Regra (Rosa, out/2026): no mesmo grupo, o tema é o mesmo. O tema que o
  *  aluno escolhe fica no registo dele no grupo, que chega aos colegas. */
 export function marcarTemaNoGrupo(planoAulaId: string, alunoId: string, tema: number | null): void {
@@ -10040,6 +10107,8 @@ function juntarAula(json: any, turmaId: string): void {
   // Grupos
   juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
   juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  // Quem já entrou e já se avaliou (script v26.8)
+  juntarEstados(json.estados || []);
 }
 
 /** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */

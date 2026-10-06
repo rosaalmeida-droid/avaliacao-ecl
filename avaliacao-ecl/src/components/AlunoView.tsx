@@ -5,7 +5,8 @@ import { ManuaisDoAluno, BotaoManualDaUC } from './BibliotecaManuais';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
-import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
+import { AvaliarColegas, configGrupos } from './GruposAluno';
+import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
 import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -28,7 +29,7 @@ import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTr
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
-  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
+  addOrUpdateSelecao, evidenciaDasFichas, passosDaFicha, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
@@ -801,6 +802,18 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
+  // Num dia de aula, a aplicação abre logo nessa aula (Rosa, 6/out/2026): o
+  // aluno não tem de a procurar no meio do resto. Quem já se avaliou, ou não
+  // está numa atividade só de alguns, fica no Início.
+  const abriuAulaSozinha = React.useRef(false);
+  useEffect(() => {
+    if (abriuAulaSozinha.current || !planoHoje) return;
+    abriuAulaSozinha.current = true;
+    if (getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id)) return;
+    if (eventoForaDoHorario(planoHoje) && !participantesDoEvento(planoHoje).includes(aluno.id)) return;
+    setPlanoAtivo(planoHoje);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planoHoje?.id]);
   // O KitchenFlow, sempre à mão (barra de navegação e Recursos): com a aula de hoje, se houver.
   const abrirKFAluno = () => abrirKitchenFlow(undefined, {
     turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin, tipo: 'aluno',
@@ -1196,7 +1209,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           cima do ecrã do aluno, em vez de o substituir por completo. */}
       {planoAtivo && (
         <ModalFullscreen
-          titulo={planoAtivo.titulo || 'Plano de Aula'}
+          titulo={isHoje(planoAtivo.data) ? 'A aula de hoje' : (planoAtivo.titulo || 'Plano de Aula')}
           subtitulo={aluno.turmaId}
           onFechar={() => setPlanoAtivo(null)}
         >
@@ -1811,7 +1824,6 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   const fichas = fichaDoGrupo && fichasTodas.some((f: any) => f.id === fichaDoGrupo)
     ? fichasTodas.filter((f: any) => f.id === fichaDoGrupo) : fichasTodas;
   const requisicao = getRequisicaoPorPlano(plano.id);
-  const [temGrupo, setTemGrupo] = React.useState(() => !!grupoDoAluno(plano.id, aluno.id));
 
   // O KitchenFlow abre já com o aluno e a aula (é lá que se registam as funções).
   const abrirKF = () => abrirKitchenFlow(undefined, {
@@ -1829,7 +1841,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // KF final, autoavaliação. O KitchenFlow deixou de ser um atalho geral
   // — são dois pontos de controlo dentro do fluxo da aula.
   // Aula atitudinal: sem farda, KitchenFlow, produção nem requisição.
-  const PASSOS = soConsulta ? [
+  const PASSOS_TODOS = soConsulta ? [
     { id:'orientacao', label:'Vi o que se fez',            agora:'Ver a atividade',  cor:V },
     ...(fichas.length ? [{ id:'ficha', label:'Vi a ficha técnica', agora:'Ver a ficha técnica', cor:V }] : []),
     ...(fichas.some((f:any) => f.textoGuia) ? [{ id:'guia', label:'Vi o guião', agora:'Ver o guião', cor:V }] : []),
@@ -1861,10 +1873,15 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
+  // A aula a decorrer (Rosa, 6/out/2026): o grupo está na comanda, por cima,
+  // e o «ver a aula», a ficha, o guião e a requisição abrem-se de dentro de
+  // «Produzir». Ficam só os passos que pedem uma ação ao aluno.
+  const PASSOS = soConsulta ? PASSOS_TODOS
+    : PASSOS_TODOS.filter(p => !['orientacao', 'grupo', 'guia', 'requisicao'].includes(p.id));
+
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
     if (id==='orientacao' && orientacaoConcluida) return 'concluido';
     if (id==='entrada' && entradaConcluida) return 'concluido';
-    if (id==='grupo' && temGrupo && secAberta !== 'grupo') return 'concluido';
     if (id==='funcao_inicio' && funcaoInicioFeita) return 'concluido';
     if (id==='ficha' && fichaConcluida) return 'concluido';
     if (id==='guia' && guiaoConcluido) return 'concluido';
@@ -1899,6 +1916,218 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
     setSecAberta(falta ? falta.id : PASSOS[PASSOS.length - 1].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ══ A AULA A DECORRER (Rosa, 6/out/2026: a ideia B com o grupo da C) ══
+  // Em cima, a comanda do grupo. Por baixo, um ecrã de cor com uma frase
+  // grande e um botão. A aula validada e a atividade só para ver ficam como
+  // estavam, mais abaixo.
+  const mudancaGrupo = useMudancaDeGrupo(plano, aluno, comGrupos);
+  const [verAqui, setVerAqui] = React.useState<null | 'orientacao' | 'ficha' | 'guia' | 'requisicao' | 'funcao_inicio' | 'funcao_fim' | 'feito'>(null);
+  if (!soConsulta) {
+    const teorica = String((plano as any).tipoPlanAula || '') === 'teorico';
+    const temGuiao = fichas.some((f: any) => f.textoGuia);
+    const pratos = fichas.map((f: any) => f.nomePrato).filter(Boolean);
+    const grupoAgora = comGrupos ? grupoDoAluno(plano.id, aluno.id) : undefined;
+    const avaliou = avaliacaoConcluida || jaSubmeteuAutoavaliacao(plano, aluno.id);
+    const vistos: MomentoVistos = secAberta === 'avaliacao' ? 'avaliou'
+      : (secAberta === 'entrada' || secAberta === 'funcao_inicio') ? 'entrou' : null;
+    const acabeiDeProduzir = () => {
+      setFichaConcluida(true); _save('ficha');
+      if (temGuiao) { setGuiaoConcluido(true); _save('guia'); }
+      setVerAqui(null); setSecAberta(antesDaAvaliacao());
+    };
+    const titulosVer: Record<string, string> = { orientacao: 'O que vamos fazer', ficha: 'A ficha técnica', guia: 'O guião',
+      requisicao: 'A requisição', funcao_inicio: 'A tua função: início', funcao_fim: 'A tua função: fim', feito: 'O que já fizeste' };
+    const colegasDe = (g: any) => (g?.membros || []).filter((m: any) => m.alunoId !== aluno.id)
+      .map((m: any) => String(m.nomeAluno || '').split(/\s+/)[0]).filter(Boolean);
+    const juntar = (xs: string[]) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`;
+    const pratoTexto = pratos.length ? juntar(pratos.map(n => n.charAt(0).toLowerCase() + n.slice(1))) : '';
+    const fichaDoGrupoNome = grupoAgora?.fichaId ? (fichas.find((f: any) => f.id === grupoAgora.fichaId) as any)?.nomePrato : undefined;
+    // A ficha tem de ficar feita antes da autoavaliação: todos os passos da
+    // preparação marcados (Rosa, 6/out/2026). Numa aula teórica não se aplica.
+    const passos = teorica ? { feitos: 0, total: 0 } : passosDaFicha(plano.id, aluno.id, fichas);
+    const fichaPorFazer = passos.total > 0 && passos.feitos < passos.total;
+
+    let ecraPasso: React.ReactNode = null;
+    if (mudancaGrupo) {
+      const cs = colegasDe(grupoAgora);
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.aviso} total={totalPassos} feitos={passosConcluidos}
+          titulo={`Mudaste para o ${mudancaGrupo.nome}.`}
+          sub={`O professor mudou-te de grupo.${cs.length ? ` Agora estás com: ${juntar(cs)}.` : ''}`}>
+          <div style={{ marginTop:'auto' }}><BotaoDaAula onClick={mudancaGrupo.ok}>Percebi</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'entrada') {
+      ecraPasso = (
+        <SecaoEntrada aluno={aluno} plano={plano}
+          onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta(depoisDaEntrada()); }}
+          total={totalPassos} feitos={passosConcluidos} comGrupos={comGrupos} temGrupo={!!grupoAgora} />
+      );
+    } else if (secAberta === 'ficha') {
+      const nomeProd = fichaDoGrupoNome ? fichaDoGrupoNome.charAt(0).toLowerCase() + fichaDoGrupoNome.slice(1) : pratoTexto;
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.produzir} total={totalPassos} feitos={passosConcluidos}
+          titulo={teorica ? 'Faz o trabalho da aula.' : nomeProd ? `${grupoAgora ? 'Produzam' : 'Produz'} ${nomeProd}.` : (grupoAgora ? 'Produzam com o grupo.' : 'Produz.')}
+          sub={teorica ? 'Segue o que o professor pediu. Quando acabares, carrega em «Já acabei».'
+            : `Segue a ficha técnica${grupoAgora ? ' com o teu grupo' : ''}. Quando acabares, carrega em «Já acabei».`}>
+          <div style={{ marginTop:'auto', display:'flex', flexDirection:'column', gap:9 }}>
+            {fichas.length > 0 && <BotaoDaAula contorno escuro onClick={() => setVerAqui('ficha')}>🧾 {teorica ? 'Ver o trabalho' : 'Ver a ficha técnica'}</BotaoDaAula>}
+            {temGuiao && <BotaoDaAula contorno escuro onClick={() => setVerAqui('guia')}>Ver o guião</BotaoDaAula>}
+            {requisicao && <BotaoDaAula contorno escuro onClick={() => setVerAqui('requisicao')}>Ver a requisição</BotaoDaAula>}
+            {fichaPorFazer && (
+              <div style={{ fontSize:14.5, lineHeight:1.45, background:'rgba(255,255,255,.14)', borderRadius:12, padding:'10px 12px' }}>
+                Na ficha, marca cada passo da preparação quando estiver feito: <b>{passos.feitos} de {passos.total}</b>.
+                O «Já acabei» acende-se com todos marcados.
+              </div>
+            )}
+            <BotaoDaAula escuro desligado={fichaPorFazer} onClick={acabeiDeProduzir}>Já acabei</BotaoDaAula>
+          </div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'funcao_inicio' || secAberta === 'funcao_fim') {
+      const fim = secAberta === 'funcao_fim';
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.farda} total={totalPassos} feitos={passosConcluidos}
+          titulo={fim ? (minhasFuncoes.length ? 'Acaba a tua função.' : 'Ajudaste os colegas?') : 'Faz a tua função.'}
+          sub={minhasFuncoes.length ? `Hoje és: ${minhasFuncoes.map(f => f.nome).join(' + ')}.` : 'Diz ao professor como ajudaste hoje.'}>
+          <div style={{ marginTop:'auto' }}><BotaoDaAula onClick={() => setVerAqui(secAberta as any)}>Abrir</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'avaliacao' && fichaPorFazer && !avaliou) {
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.produzir} total={totalPassos} feitos={passosConcluidos}
+          titulo="Primeiro, a ficha técnica."
+          sub={`Antes de te avaliares, marca na ficha os passos da preparação que já estão feitos: ${passos.feitos} de ${passos.total}.`}>
+          <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={() => setVerAqui('ficha')}>🧾 Abrir a ficha técnica</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'avaliacao') {
+      const pt = soAtividade ? null : partesDoPlanoParaOAluno(plano, aluno.id);
+      const quais = pt && !(pt.tecnicas && pt.conhecimentos && pt.atitudes)
+        ? [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ') : '';
+      ecraPasso = (
+        <EcraDeCor cor={avaliou ? CORES_AULA.fim : CORES_AULA.avaliar} total={totalPassos} feitos={passosConcluidos}
+          titulo={avaliou ? 'Aula feita. Bom trabalho!' : 'Como correu a tua aula?'}
+          sub={avaliou ? 'A tua autoavaliação foi enviada. O professor vai validá-la.'
+            : soAtividade ? undefined : 'Uma pergunta de cada vez. Escolhe o que fizeste, e não a nota que gostavas de ter.'}>
+          {mudouDesdeQueAbriu && !avaliou && (
+            <div style={{ padding:'12px 14px', borderRadius:12, background:'#fff7e6', border:'1.5px solid #b5651d', fontSize:14, color:'#7a4310', fontWeight:600 }}>
+              O professor atualizou esta aula. As perguntas já são as novas.
+            </div>
+          )}
+          {soAtividade ? (
+            <div style={{ padding:'14px 16px', borderRadius:12, background:'#fff', fontSize:15, lineHeight:1.5 }}>
+              <b>Hoje estiveste na atividade «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
+              encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
+            </div>
+          ) : (
+            <>
+              {quais && !avaliou && (
+                <div style={{ padding:'12px 14px', borderRadius:12, background:'#fff', fontSize:14.5, lineHeight:1.5 }}>
+                  Hoje estiveste numa atividade. Nesta aula respondes só {quais}: o resto já se avalia na atividade.
+                </div>
+              )}
+              <div style={{ color:'#1A1A1A' }}>
+                <SecaoAvaliacao key={versao} fichas={fichas} plano={plano} aluno={aluno}
+                  onConcluido={() => setAvaliacaoConcluida(true)} />
+              </div>
+            </>
+          )}
+          {avaliou && <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={onVoltar}>Ir para o Início</BotaoDaAula></div>}
+        </EcraDeCor>
+      );
+    }
+
+    return (
+      <div style={{ background: MESA, minHeight:'100%', display:'flex', flexDirection:'column' }}>
+        <div style={{ maxWidth:640, width:'100%', margin:'0 auto', flex:1, display:'flex', flexDirection:'column' }}>
+          <ComandaDoGrupo plano={planoVivo} aluno={aluno} comGrupos={comGrupos}
+            grande={secAberta === 'entrada' && !entradaConcluida} vistos={vistos}
+            linhaUC={ucAncora(plano.ucId, plano.ucNome)}
+            horas={plano.horaInicio ? `${plano.horaInicio}–${plano.horaFim || ''}` : ''}
+            prato={pratos.join(' · ') || undefined}
+            funcao={minhasFuncoes.map(f => f.nome).join(' + ') || undefined}
+            onVerFuncoes={orgAula ? () => setVerQuadro(true) : undefined} />
+          {ecraPasso}
+          {/* O resto, discreto, por baixo: quem quiser mais informação vai buscá-la aqui. */}
+          <div style={{ background: MESA, padding:'12px 16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+            {/* Pode rever o que já fez, só para ver; nunca saltar para a frente (Rosa, 6/out/2026). */}
+            {passosConcluidos > 0 && !mudancaGrupo && (
+              <button onClick={() => setVerAqui('feito')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
+                fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                ← Ver o que já fizeste
+              </button>
+            )}
+            {fichas.length > 0 && secAberta !== 'ficha' && !teorica && (
+              <button onClick={() => setVerAqui('ficha')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
+                fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                Ver a ficha técnica
+              </button>
+            )}
+            <button onClick={() => setVerAqui('orientacao')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
+              fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+              Ver o que vamos fazer hoje
+            </button>
+            <BotaoManualDaUC turmaId={aluno.turmaId} ucId={(plano as any).ucId} />
+          </div>
+        </div>
+        {verAqui && (
+          <EcraCheio titulo={titulosVer[verAqui]} onSair={() => setVerAqui(null)}>
+            {verAqui === 'feito' && (() => {
+              const pres: any = getPresencas().find(x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
+              const linha = (titulo: string, detalhe: string, abrir?: () => void) => (
+                <div key={titulo} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 0', borderBottom:'1px solid rgba(26,23,20,0.1)' }}>
+                  <span style={{ width:28, height:28, borderRadius:'50%', background:'#2F7A3B', color:'#fff', display:'flex', alignItems:'center',
+                    justifyContent:'center', fontWeight:800, flexShrink:0 }}>✓</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:16, fontWeight:800 }}>{titulo}</div>
+                    {detalhe && <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', lineHeight:1.45 }}>{detalhe}</div>}
+                  </div>
+                  {abrir && <button onClick={abrir} style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #6B3FA0', background:'#fff',
+                    color:'#6B3FA0', fontWeight:700, fontSize:14.5, cursor:'pointer', fontFamily:'inherit' }}>Ver</button>}
+                </div>
+              );
+              const feitos = PASSOS.filter(p => p.id !== 'avaliacao' && estadoPasso(p.id) === 'concluido');
+              return (
+                <div>
+                  <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.65)', marginBottom:6 }}>Só para ver. O que já fizeste fica guardado.</div>
+                  {feitos.map(p => p.id === 'entrada'
+                    ? linha('Entraste na aula', [pres?.horaEntrada ? `Às ${String(pres.horaEntrada).slice(0, 5)}.` : '',
+                        pres && pedeFardaEHigiene(plano) ? (pres.fardamentoOk === false ? `Farda: ${String(pres.observacao || '').replace(/^.*em falta:\s*/, 'faltava ')}.` : 'Farda completa.') : ''].filter(Boolean).join(' '))
+                    : p.id === 'ficha'
+                      ? linha(teorica ? 'Fizeste o trabalho da aula' : 'Produziste', passos.total ? `Marcaste ${passos.feitos} de ${passos.total} passos da ficha.` : '',
+                          fichas.length ? () => setVerAqui('ficha') : undefined)
+                      : linha(p.label, '', p.id === 'funcao_inicio' || p.id === 'funcao_fim' ? () => setVerAqui(p.id as any) : undefined))}
+                </div>
+              );
+            })()}
+            {verAqui === 'orientacao' && <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno} onContinuar={() => setVerAqui(null)} />}
+            {verAqui === 'ficha' && <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
+              onConcluido={() => { if (secAberta === 'ficha') acabeiDeProduzir(); else setVerAqui(null); }} />}
+            {verAqui === 'guia' && <SecaoGuiao fichas={fichas} plano={plano} onConcluido={() => setVerAqui(null)} />}
+            {verAqui === 'requisicao' && <SecaoRequisicao requisicao={requisicao} onConcluido={() => setVerAqui(null)} />}
+            {(verAqui === 'funcao_inicio' || verAqui === 'funcao_fim') && (
+              <PassoMinhaFuncao plano={planoVivo} alunoId={aluno.id} momento={verAqui === 'funcao_inicio' ? 'inicio' : 'fim'}
+                onVerQuadro={() => setVerQuadro(true)} onAbrirKitchenFlow={abrirKF}
+                onConcluido={() => {
+                  setVerAqui(null);
+                  if (secAberta !== verAqui) return;   // estava só a rever
+                  if (verAqui === 'funcao_inicio') { setFuncaoInicioFeita(true); _save('funcao_inicio'); setSecAberta('ficha'); }
+                  else { setFuncaoFimFeita(true); _save('funcao_fim'); setSecAberta('avaliacao'); }
+                }} />
+            )}
+          </EcraCheio>
+        )}
+        {verQuadro && (
+          <EcraCheio titulo={`Plano organizacional · ${plano.titulo || 'aula'}`} onSair={() => setVerQuadro(false)}>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>Quem faz o quê hoje</div>
+            <QuadroOrganizacional plano={planoVivo} alunoId={aluno.id} modo="aluno" />
+          </EcraCheio>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ background:'#f0f4f8', display:'flex', flexDirection:'column' }}>
@@ -2000,12 +2229,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
-                  setSecAberta(comGrupos ? 'grupo' : depoisDaEntrada()); }} />
-            )}
-            {secAberta==='grupo' && (
-              <PassoGrupo aluno={aluno} plano={plano}
-                onConcluido={() => { setTemGrupo(true);
-                  setSecAberta(depoisDaEntrada()); }} />
+                  setSecAberta(depoisDaEntrada()); }}
+                total={totalPassos} feitos={passosConcluidos} comGrupos={comGrupos} temGrupo={!!grupoDoAluno(plano.id, aluno.id)} />
             )}
             {secAberta==='funcao_inicio' && (
               <PassoMinhaFuncao plano={planoVivo} alunoId={aluno.id} momento="inicio"
@@ -2384,8 +2609,10 @@ const ITENS_FARDA = [
  *  estão ao mesmo nível: sem qualquer um deles não há produção. */
 const IMPEDEM = ['farda', 'avental', 'sapatos'];
 
-function SecaoEntrada({ aluno, plano, onConcluido }: {
+function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, temGrupo }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
+  /** Os riscos do progresso e o grupo, para o ecrã de cor (Rosa, 6/out/2026). */
+  total: number; feitos: number; comGrupos: boolean; temGrupo: boolean;
 }) {
   // A aula só abre quando o professor autoriza. Até lá o aluno consulta
   // mas não grava nada — e os dez minutos de tolerância contam da
@@ -2492,27 +2719,26 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   }
 
   // ── Depois da farda: lavar as mãos ──
-  if (lavarMaos) return <LavarMaos simples={(aluno.nivelMedidas || 1) >= 2}
-    onFeito={seg => { registarMaosLavadas(aluno.id, plano.id, seg); onConcluido(); }} />;
+  if (lavarMaos) return (
+    <EcraDeCor cor={CORES_AULA.maos} total={total} feitos={feitos}>
+      <LavarMaos simples={(aluno.nivelMedidas || 1) >= 2}
+        onFeito={seg => { registarMaosLavadas(aluno.id, plano.id, seg); onConcluido(); }} />
+    </EcraDeCor>
+  );
 
   // ── Antes de o professor abrir ──
+  // Uma frase e o botão desligado. O grupo está na comanda, por cima.
   if (!t.aberta) {
+    const semGrupoAinda = comGrupos && !temGrupo;
     return (
-      <div style={{ background:'#fff', borderRadius:16, padding:20,
-        boxShadow:'0 1px 3px rgba(0,0,0,0.06)', textAlign:'center' }}>
-        <div style={{ width:56, height:56, borderRadius:'50%', background:VS, margin:'0 auto 14px',
-          display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={V}
-            strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        </div>
-        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>
-          Espera pelo professor
-        </div>
-        <div style={{ fontSize:15, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.6 }}>
-          A entrada na aula ainda não foi aberta. Podes consultar o plano, a
-          tua ficha e o guião enquanto esperas.
-        </div>
-      </div>
+      <EcraDeCor cor={CORES_AULA.esperar} total={total} feitos={feitos}
+        titulo={semGrupoAinda ? 'Hoje trabalhas em grupo.' : 'Espera pelo professor.'}
+        sub={semGrupoAinda
+          ? <>O professor ainda está a formar os grupos. O teu aparece aqui sozinho. <b>Não precisas de fazer nada.</b></>
+          : comGrupos ? 'Este é o teu grupo de hoje. Quando o professor abrir a entrada, o botão acende-se.'
+          : 'Quando o professor abrir a entrada, o botão acende-se. Isto atualiza-se sozinho.'}>
+        <div style={{ marginTop:'auto' }}><BotaoDaAula desligado>Entrar na aula</BotaoDaAula></div>
+      </EcraDeCor>
     );
   }
 
@@ -2523,88 +2749,42 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
     const hora = String(p?.horaEntrada || '').slice(0, 5);
     return (
-      <div style={{ background:'#eef4eb', border:'1.5px solid var(--sage, #5a7a4e)',
-        borderRadius:14, padding:'16px 18px' }}>
-        <div style={{ fontSize:16, fontWeight:700, color:'#2d4a22' }}>
-          Já entraste nesta aula{hora ? ` — ${hora}` : ''}
-        </div>
-        <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
-          {pedeFardaEHigiene(plano) ? 'A tua entrada e a farda já ficaram registadas.' : 'A tua entrada já ficou registada.'} Não precisas de repetir.
-        </div>
-        <button onClick={onConcluido} style={{
-          marginTop:12, width:'100%', padding:13, borderRadius:11, border:'none',
-          background:'var(--sage, #5a7a4e)', color:'#fff', fontSize:15, fontWeight:700,
-          cursor:'pointer', fontFamily:'inherit',
-        }}>
-          Continuar
-        </button>
-      </div>
+      <EcraDeCor cor={CORES_AULA.entrar} total={total} feitos={feitos}
+        titulo="Já entraste nesta aula."
+        sub={`${hora ? `Entraste às ${hora}. ` : ''}${pedeFardaEHigiene(plano) ? 'A entrada e a farda já ficaram registadas.' : 'A entrada já ficou registada.'}`}>
+        <div style={{ marginTop:'auto' }}><BotaoDaAula cor="#2F7A3B" onClick={onConcluido}>Continuar</BotaoDaAula></div>
+      </EcraDeCor>
     );
   }
 
   if (!entrada) {
     return (
-      <div>
-        <div style={{
-          background: t.foraDeTempo ? '#FDF0E8' : '#E8F3E5',
-          border: `1px solid ${t.foraDeTempo ? '#B5651D' : '#3E7A31'}`,
-          borderRadius:16, padding:18, marginBottom:12,
-        }}>
-          <div style={{ fontSize:17, fontWeight:700, color: t.foraDeTempo ? '#B5651D' : '#3E7A31' }}>
-            {t.foraDeTempo ? 'A tolerância terminou' : 'Entrada aberta'}
-          </div>
-          {!t.foraDeTempo && !t.semAtrasos && (
-            <div style={{ fontSize:38, fontWeight:700, color:'#3E7A31', marginTop:8, lineHeight:1 }}>
-              {t.minutosRestantes} <span style={{ fontSize:16, fontWeight:400 }}>min</span>
-            </div>
-          )}
-          <div style={{ fontSize:14, color: t.foraDeTempo ? '#8A4E15' : 'rgba(26,23,20,0.65)',
-            marginTop:8, lineHeight:1.55 }}>
-            {t.foraDeTempo
-              ? 'Se entrares agora, fica registado um atraso, e o professor decide se conta como falta. Entra na mesma: a presença conta.'
-              : `O professor abriu a aula às ${new Date(sessao!.abertaEm!).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}. Entra antes de terminar a tolerância.`}
-          </div>
+      <EcraDeCor cor={t.foraDeTempo ? CORES_AULA.atraso : CORES_AULA.entrar} total={total} feitos={feitos}
+        titulo={t.foraDeTempo ? 'A tolerância terminou.' : 'Entra na aula.'}
+        sub={t.foraDeTempo
+          ? 'Se entrares agora, fica registado um atraso, e o professor decide se conta como falta. Entra na mesma: a presença conta.'
+          : t.semAtrasos ? `O professor abriu a aula às ${new Date(sessao!.abertaEm!).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}.` : undefined}>
+        {!t.foraDeTempo && !t.semAtrasos && (
+          <div><span style={{ fontFamily:'var(--font-display, Georgia, serif)', fontSize:56, fontWeight:800, lineHeight:1, color:'#2F7A3B' }}>
+            {t.minutosRestantes}</span> <span style={{ fontSize:16 }}>min para entrares a horas</span></div>
+        )}
+        <div style={{ marginTop:'auto' }}>
+          <BotaoDaAula cor={t.foraDeTempo ? '#B5651D' : '#2F7A3B'} onClick={entrar}>{t.foraDeTempo ? 'Entrar na mesma' : 'Entrar'}</BotaoDaAula>
         </div>
-
-        <button onClick={entrar} style={{
-          width:'100%', background:V, color:'#fff', border:'none', borderRadius:14,
-          padding:18, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
-        }}>
-          Entrar na aula
-        </button>
-      </div>
+      </EcraDeCor>
     );
   }
 
   // ── Entrou: confirmar a farda ──
+  // Ecrã branco, uma pergunta. A presença já ficou registada: diz-se numa frase.
   return (
-    <div>
-      <div style={{ background:'#fff', borderRadius:16, padding:'14px 16px', marginBottom:12,
-        boxShadow:'0 1px 3px rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:12 }}>
-        <span style={{ width:38, height:38, borderRadius:'50%', flexShrink:0,
-          background: entrada.foraDeTempo ? '#FDF0E8' : '#E8F3E5',
-          display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke={entrada.foraDeTempo ? '#B5651D' : '#3E7A31'}
-            strokeWidth={2.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-        </span>
-        <div>
-          <div style={{ fontSize:15.5, fontWeight:700, color:'#1A1A1A' }}>
-            Presença registada
-          </div>
-          {/* A aplicação não decide a falta: regista a hora e sinaliza.
-              Quem decide é o professor. */}
-          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', lineHeight:1.5 }}>
-            {entrada.foraDeTempo
-              ? `Entraste ${entrada.minutosAposAbertura} min depois da abertura. O professor vai decidir se conta como falta.`
-              : 'A horas'}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ background:'#fff', borderRadius:16, padding:18,
-        boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>A tua farda</div>
+    <EcraDeCor cor={CORES_AULA.farda} total={total} feitos={feitos}
+      titulo={fardaModo === 'perguntar' ? 'Tens a farda completa?' : undefined}
+      sub={fardaModo === 'perguntar' ? (entrada.foraDeTempo
+        // A aplicação não decide a falta: regista a hora e sinaliza. Quem decide é o professor.
+        ? `Entraste ${entrada.minutosAposAbertura} min depois da abertura. O professor vai decidir se conta como falta.`
+        : '✓ Entraste a horas.') : undefined}>
+      <div>
 
         {fardaModo === 'perguntar' ? (
           <>
@@ -2626,7 +2806,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               style={{ width:'100%', background:V, color:'#fff', border:'none',
                 borderRadius:12, padding:17, fontSize:17.5, fontWeight:600,
                 cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
-              A minha farda está completa
+              Sim, está completa
             </button>
             <button
               // Começa com tudo marcado: o aluno toca só no que lhe falta.
@@ -2640,7 +2820,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               style={{ width:'100%', background:'transparent', border:`2px solid ${V}`,
                 color:V, borderRadius:12, padding:15, fontSize:16, fontWeight:600,
                 cursor:'pointer', fontFamily:'inherit' }}>
-              Tenho algo em falta
+              Falta-me alguma coisa
             </button>
           </>
         ) : (() => {
@@ -2733,7 +2913,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           );
         })()}
       </div>
-    </div>
+    </EcraDeCor>
   );
 }
 
@@ -2841,7 +3021,12 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
     setChecklist(prev => {
       const cur = prev[fichaId]||{ing:new Set<number>(),passo:new Set<number>()};
       const next = { ing: novoIng||cur.ing, passo: novoPasso||cur.passo };
-      addOrUpdateChecklistAluno({
+      // A hora de cada passo marcado: é a prova, para o professor, de que o
+      // aluno passou pela ficha (Rosa, 6/out/2026).
+      const horasAntes = getChecklistAlunoFicha(plano.id, fichaId, aluno.id)?.passosHoras || {};
+      const passosHoras: Record<string, string> = {};
+      next.passo.forEach(i => { passosHoras[String(i)] = horasAntes[String(i)] || new Date().toISOString(); });
+      addOrUpdateChecklistAluno({ passosHoras,
         id:`chk_${plano.id}_${fichaId}_${aluno.id}`, planoAulaId:plano.id, fichaId,
         alunoId:aluno.id, pontualidade:'a_horas', fardamento:true, itensFardamento:[],
         ingredientesConfirmados:Array.from(next.ing).map(String),
@@ -2982,11 +3167,19 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
           )}
         </div>
       ))}
-      <button onClick={onConcluido} style={{ width:'100%', padding:'16px', borderRadius:14,
-        border:'none', background:'#6B3FA0', color:'#fff', fontSize:17, fontWeight:600,
-        cursor:'pointer', marginTop:10, fontFamily:'inherit' }}>
-        Concluí a ficha → Continuar
-      </button>
+      {(() => {
+        // Só com todos os passos da preparação marcados (Rosa, 6/out/2026).
+        const feitos = fichas.reduce((s, f) => s + (f.preparacao || []).filter((_, i) => checklist[f.id]?.passo.has(i)).length, 0);
+        const total = fichas.reduce((s, f) => s + (f.preparacao || []).length, 0);
+        const falta = total > 0 && feitos < total;
+        return (
+          <button onClick={falta ? undefined : onConcluido} disabled={falta} style={{ width:'100%', padding:'16px', borderRadius:14,
+            border:'none', background: falta ? '#cfc9d6' : '#6B3FA0', color: falta ? '#4a4452' : '#fff', fontSize:17, fontWeight:600,
+            cursor: falta ? 'default' : 'pointer', marginTop:10, fontFamily:'inherit' }}>
+            {falta ? `Marca os passos da preparação: ${feitos} de ${total}` : 'Concluí a ficha → Continuar'}
+          </button>
+        );
+      })()}
     </div>
   );
 }
@@ -3483,7 +3676,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora,
       // A versão do plano a que o aluno respondeu: se o professor o mudar
       // depois, sabe-se que esta resposta é da versão anterior.
-      versaoPlano:String((plano as any).atualizadoEm || '')} as any);
+      versaoPlano:String((plano as any).atualizadoEm || ''),
+      // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
+      evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas)} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
       { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}

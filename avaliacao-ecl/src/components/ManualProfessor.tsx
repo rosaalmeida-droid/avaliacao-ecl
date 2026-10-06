@@ -436,6 +436,15 @@ const SECCOES: Seccao[] = [
           em <b>Não era verdade</b>: a farda e a responsabilidade ficam com o nível 1.
         </P>
 
+        <H>A ficha técnica antes da autoavaliação</H>
+        <P>
+          O aluno só chega à autoavaliação depois de marcar, na ficha técnica, todos os passos da
+          preparação. A aplicação guarda a hora de cada passo. Na validação, por baixo do nome do aluno,
+          aparece por exemplo «Creme de legumes: 9 de 9 passos marcados, das 9:12 às 12:40». Se o aluno
+          marcou três ou mais passos em menos de 2 minutos, aparece um aviso: provavelmente marcou tudo
+          de seguida, sem os fazer. Numa aula teórica, ou numa ficha sem passos, não há esta regra.
+        </P>
+
         <H>Para que serve a autoavaliação</H>
         <P>
           Obriga o aluno a ler os critérios antes de ser avaliado. Muitas vezes, a diferença entre
@@ -556,8 +565,9 @@ const SECCOES: Seccao[] = [
 
         <H>Grupos e líder do KitchenFlow</H>
         <P>
-          Os alunos formam os grupos no telemóvel, e o professor pode vê-los, alterá-los e
-          validá-los. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
+          O professor faz os grupos no plano (Grupos): põe cada aluno num grupo e dá uma ficha a
+          cada grupo. Os alunos não criam nem escolhem grupo: veem o seu (colegas e ficha) logo que
+          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
           o professor escolhe o líder e pode substituí-lo se este faltar. Os grupos e o líder
           chegam de imediato aos telemóveis dos alunos.
         </P>

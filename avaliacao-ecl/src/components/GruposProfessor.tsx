@@ -1,7 +1,7 @@
 // ============================================================
 // Grupos — o lado do professor
 // ============================================================
-// Liga «os alunos formam os grupos», vê-os a formar-se, muda alunos de
+// Faz os grupos (Rosa, 6/out/2026: o aluno já não escolhe), muda alunos de
 // grupo, dá uma ficha a cada grupo e valida. Em baixo, o que os colegas
 // disseram uns dos outros — só para o professor, não conta para nota.
 // Serve para apanhar quem cria conflito sem dar nas vistas.
@@ -72,8 +72,8 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
     <div style={{ ...cartao, border: `1.5px solid ${cfg.ativo ? V : 'rgba(26,23,20,0.1)'}` }}>
       <div style={{ fontSize: 16, fontWeight: 800 }}>Trabalho em grupo</div>
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 10px', lineHeight: 1.5 }}>
-        Os alunos formam os grupos ao entrar na aula. Depois o professor valida (ou muda) e dá uma ficha a cada grupo.
-        A autoavaliação continua individual.
+        O professor faz os grupos aqui: toque num aluno sem grupo para o pôr num grupo, e dê uma ficha a cada grupo.
+        Os alunos veem o seu grupo (colegas e ficha) logo que abrem a aplicação, antes de a aula abrir. A autoavaliação continua individual.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button onClick={() => mudarConfig({ ativo: !cfg.ativo })}
