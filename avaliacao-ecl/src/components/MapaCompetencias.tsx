@@ -27,9 +27,9 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
 
       {alunos.map(a => {
         const perfil = getPerfilProfissionalAluno(a.id);
-        const total = perfil.tecnicas.length + perfil.responsabilidades.length + perfil.atitudes.length;
+        const total = perfil.tecnicas.length + perfil.conhecimentos.length + perfil.responsabilidades.length + perfil.atitudes.length;
         // Regra da escola: 2 aulas com sucesso (antes bastava uma).
-        const consolidadas = [...perfil.tecnicas, ...perfil.responsabilidades, ...perfil.atitudes].filter(i => i.consolidada).length;
+        const consolidadas = [...perfil.tecnicas, ...perfil.conhecimentos, ...perfil.responsabilidades, ...perfil.atitudes].filter(i => i.consolidada).length;
         const aberto = alunoAberto === a.id;
         return (
           <div key={a.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -105,6 +105,9 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
 
                 {perfil.tecnicas.length > 0 && (
                   <MiniGrupo titulo="Técnicas" itens={perfil.tecnicas} />
+                )}
+                {perfil.conhecimentos.length > 0 && (
+                  <MiniGrupo titulo="Conhecimentos" itens={perfil.conhecimentos} />
                 )}
                 {perfil.responsabilidades.length > 0 && (
                   <MiniGrupo titulo="Responsabilidades" itens={perfil.responsabilidades} />

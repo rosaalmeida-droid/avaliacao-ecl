@@ -43,7 +43,7 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
   semTitulo?: boolean;
 }) {
   const perfil = getPerfilProfissionalAluno(aluno.id);
-  const totalCompetencias = perfil.tecnicas.length + perfil.responsabilidades.length + perfil.atitudes.length;
+  const totalCompetencias = perfil.tecnicas.length + perfil.conhecimentos.length + perfil.responsabilidades.length + perfil.atitudes.length;
   const [verDetalhe, setVerDetalhe] = useState(false);
 
   // A assiduidade faz parte do perfil: faltar é um comportamento, e
@@ -61,7 +61,7 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
 
   // Categoria de cada competência, para agrupar por família de trabalho.
   const texto = escreverPerfil(
-    [...perfil.tecnicas, ...perfil.responsabilidades, ...perfil.atitudes].map(c => ({
+    [...perfil.tecnicas, ...perfil.conhecimentos, ...perfil.responsabilidades, ...perfil.atitudes].map(c => ({
       nome: c.nome,
       categoria: MICROCOMPETENCIAS.find(m => m.id === c.competenciaId)?.categoria,
       nivel: c.nivel,
@@ -181,6 +181,7 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
       {verDetalhe && (
         <div style={{ marginTop: 14 }}>
           <GrupoCompetencias titulo="Competências Técnicas" icone="🔪" itens={perfil.tecnicas} />
+          <GrupoCompetencias titulo="Conhecimentos" icone="📖" itens={perfil.conhecimentos} />
           <GrupoCompetencias titulo="Responsabilidades" icone="⚠️" itens={perfil.responsabilidades} />
           <GrupoCompetencias titulo="Atitudes e Competências Transversais" icone="🪞" itens={perfil.atitudes} />
         </div>

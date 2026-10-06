@@ -4419,6 +4419,8 @@ export const SUCESSOS_PARA_CONSOLIDAR = 2;
 export interface PerfilProfissionalAluno {
   alunoId: string;
   tecnicas: ItemPerfil[];
+  /** Os conhecimentos (saber), à parte das técnicas (Rosa, 6/out/2026). */
+  conhecimentos: ItemPerfil[];
   responsabilidades: ItemPerfil[];
   atitudes: ItemPerfil[];
   pontosFortes: string[];
@@ -4505,6 +4507,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   });
 
   const tecnicas: ItemPerfil[] = [];
+  const conhecimentos: ItemPerfil[] = [];
   const responsabilidades: ItemPerfil[] = [];
   const atitudes: ItemPerfil[] = [];
 
@@ -4518,13 +4521,14 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
       media: (() => { const ns = historico.filter(r => r.microcompetenciaId === competenciaId && r.validadoPor === 'professor').map(r => Number(r.nota)).filter(n => n > 0);
         return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null; })(),
     };
-    if (grupo === 'tecnica') tecnicas.push(item);
+    if (grupo === 'tecnica' && categoriaDe(competenciaId) === 'KNW') conhecimentos.push(item);
+    else if (grupo === 'tecnica') tecnicas.push(item);
     else if (grupo === 'responsabilidade') responsabilidades.push(item);
     else atitudes.push(item);
   });
 
   // Pontos fortes: nível 3-4. Áreas a desenvolver: nível 0-1.
-  const todos = [...tecnicas, ...responsabilidades, ...atitudes];
+  const todos = [...tecnicas, ...conhecimentos, ...responsabilidades, ...atitudes];
   // Só entram no perfil as competências com verbo de ação. Um resultado
   // esperado ("produtos com cor viva") não serve como ponto forte: o aluno
   // não consegue reconhecer-se nele nem sabe o que treinar.
@@ -4533,7 +4537,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   const pontosFortes = comVerbo.filter(i => i.nivel >= 3 && i.consolidada).map(i => i.nome);
   const areasADesenvolver = comVerbo.filter(i => i.nivel <= 1).map(i => i.nome);
 
-  return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
+  return { alunoId, tecnicas, conhecimentos, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
 }
 
 
@@ -9751,7 +9755,8 @@ export function perfilSocialDoAluno(alunoId: string): PerfilSocial | null {
     aTreinar: l.filter(x => x.nivel > 0 && x.nivel < 3).map(x => x.nome),
     total: l.filter(x => x.nivel > 0).length,
   });
-  const tecnicas = resumo(perfil.tecnicas), atitudes = resumo(perfil.atitudes);
+  // Os conhecimentos saíram das técnicas no perfil; aqui contam juntos, como antes.
+  const tecnicas = resumo([...perfil.tecnicas, ...perfil.conhecimentos]), atitudes = resumo(perfil.atitudes);
   // A participação ativa: atividades e eventos em que esteve (participação confirmada pelo professor).
   const participacoes = turmaId ? getPlanosAula().filter((p: any) => p.turmaId === turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado'
     && p.participantesConfirmadosEm && participantesDoEvento(p).includes(alunoId))
