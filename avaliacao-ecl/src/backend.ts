@@ -743,7 +743,14 @@ function juntarPresencas(dados: any[]): void {
   for (const s of dados) {
     if (!s?.alunoId || !s?.planoAulaId) continue;
     const k = s.alunoId + '|' + s.planoAulaId;
-    const local = porChave.get(k);
+    let local = porChave.get(k);
+    // A farda que o aluno declarou no telemóvel dele chega a este aparelho
+    // (o professor vê-a na validação — Rosa, 6/out/2026).
+    if (local && (s.fardaDeclarada === true || s.fardaDeclarada === 'true') && !local.fardaDeclarada) {
+      local = { ...local, fardaDeclarada: true, fardaEmFalta: Array.isArray(s.fardaEmFalta) ? s.fardaEmFalta : [],
+        fardamentoOk: s.fardamentoOk === true || s.fardamentoOk === 'true', observacao: s.observacao || local.observacao };
+      porChave.set(k, local);
+    }
     if (!local) {
       porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
     } else if (decisaoLocalMaisRecente(local, s)) {
@@ -3710,8 +3717,11 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     fardamentoOk: registo.fardamentoOk ?? true,
     observacao: registo.observacao || '',
     data: registo.data || '',
-    ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '' } : {}),
+    ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '',
+      ...(registo.decididoEm ? { decididoEm: registo.decididoEm } : {}) } : {}),
     ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
+    // A farda declarada pelo aluno chega ao professor (Rosa, 6/out/2026).
+    ...(registo.fardaDeclarada ? { fardaDeclarada: true, fardaEmFalta: registo.fardaEmFalta || [] } : {}),
   });
 }
 
