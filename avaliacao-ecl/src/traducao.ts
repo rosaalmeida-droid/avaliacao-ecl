@@ -40,7 +40,47 @@ function dentroDeNaoTraduzir(n: Node | null): boolean {
   return false;
 }
 
+/** O que o tradutor escreveu em cada nó (para saber se foi o React que o mudou depois). */
+const escritos = new WeakMap<Node, string>();
+
+/**
+ * Uma frase do React chega muitas vezes em vários pedaços de texto seguidos
+ * («0 de 4 competência» + «s» + « trabalhada» + «s»). Traduzidos à parte
+ * davam «worked ons» e «11st year» (Rosa, 6/out/2026). Quando um elemento só
+ * tem pedaços de texto, traduz-se a frase toda: a tradução fica no primeiro
+ * pedaço e os outros ficam vazios.
+ */
+function pedacosDoMesmoTexto(no: Text): Text[] | null {
+  const pai = no.parentElement;
+  if (!pai || pai.childNodes.length < 2) return null;
+  const nos = Array.from(pai.childNodes);
+  return nos.every(n => n.nodeType === Node.TEXT_NODE) ? nos as Text[] : null;
+}
+
+function traduzirGrupo(nos: Text[]): void {
+  if (dentroDeNaoTraduzir(nos[0])) return;
+  // O original de cada pedaço: o que lá está, a não ser que seja o que o tradutor escreveu.
+  const orig = nos.map(n => {
+    const v = n.nodeValue || '';
+    if (escritos.has(n) && escritos.get(n) === v) return originais.get(n) ?? v;
+    originais.set(n, v);
+    return v;
+  });
+  const junto = orig.join('');
+  const s = junto.trim();
+  if (!s || !precisa(s)) return;
+  const en = cache[s];
+  if (!en) { pendentes.add(s); agendar(); return; }
+  nos.forEach((n, i) => {
+    const alvo = i === 0 ? junto.replace(s, en) : '';
+    escritos.set(n, alvo);
+    if (n.nodeValue !== alvo) n.nodeValue = alvo;
+  });
+}
+
 function traduzirTexto(no: Text): void {
+  const grupo = pedacosDoMesmoTexto(no);
+  if (grupo) { traduzirGrupo(grupo); return; }
   const atual = no.nodeValue || '';
   const s = atual.trim();
   if (!s || !precisa(s) || dentroDeNaoTraduzir(no)) return;

@@ -282,8 +282,9 @@ export function EcraAvaliarMe({
           ))}
         </div>
         <div style={{ fontSize: 12.5, color: T.suave, marginTop: 9 }}>
-          {trabalhadas} de {total} {total === 1 ? substantivo : `${substantivo}s`} trabalhada
-          {trabalhadas === 1 ? '' : 's'}
+          {/* Uma frase só (o tradutor para inglês lia os pedaços à parte) e
+              com o género certo: «conhecimentos trabalhados». */}
+          {`${trabalhadas} de ${total} ${total === 1 ? substantivo : `${substantivo}s`} ${substantivo === 'conhecimento' ? 'trabalhado' : 'trabalhada'}${total === 1 ? '' : 's'}`}
         </div>
       </div>
 

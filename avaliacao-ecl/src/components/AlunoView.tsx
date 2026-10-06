@@ -889,22 +889,12 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // mais abaixo, quando o aluno se avalia numa ficha concreta.
   const ucNomeOficial = ucAtual ? getReferencialUC(ucAtual)?.nome : undefined;
 
-  const competenciasDaUC = (() => {
-    const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
-    if (!ref?.realizacoes?.length) return [];
-    return ref.realizacoes.map((r, i) => {
-      const id = `${ucAtual}_R${i + 1}`;
-      const h = getHistoricoAlunoMicro(aluno.id, id);
-      const nivel = Array.isArray(h) && h.length
-        ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
-        : null;
-      return { id, nome: r.replace(/\.$/, ''), nivel, consolidada: jaTeveSucesso(h) };
-    });
-  })();
-
-  // Conhecimentos e atitudes vêm do mesmo referencial. Sem ficha técnica
-  // nem trabalho no plano, aparece tudo — é o que a aplicação assume
-  // estar a ser trabalhado. Com ficha, entra a triagem.
+  // (Rosa, 6/out/2026: «está quase tudo a zero») O saber-fazer e o saber
+  // procuravam notas com o código das realizações e dos conhecimentos do
+  // referencial (UC03576_R1, _C1), que nunca se gravam: as notas ficam com o
+  // código da técnica ou do conhecimento da aula. Estavam a zero para todos.
+  // Agora mostram-se as técnicas e os conhecimentos trabalhados nesta UC, com
+  // o nível de cada um. Sem nada trabalhado, fica a lista da UC por avaliar.
   const nivelDe = (id: string) => {
     const h = getHistoricoAlunoMicro(aluno.id, id);
     return Array.isArray(h) && h.length
@@ -913,15 +903,30 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   };
   // Consolidada só com sucesso em 2 aulas diferentes (regra da escola).
   const consolidadaDe = (id: string) => jaTeveSucesso(getHistoricoAlunoMicro(aluno.id, id));
+  const trabalhadasNaUC = (cat: 'SUB' | 'KNW') => {
+    if (!ucAtual) return [];
+    const ids = [...new Set(getHistoricoAvaliacoes()
+      .filter(r => r.alunoId === aluno.id && r.ucId === ucAtual && Number(r.nota) > 0
+        && r.microcompetenciaId !== 'SUB-OUTRA' && categoriaDaNota(r.microcompetenciaId) === cat)
+      .map(r => r.microcompetenciaId))];
+    return ids.map(id => ({ id, nome: nomeCompetencia(id).replace(/\.$/, ''), nivel: nivelDe(id), consolidada: consolidadaDe(id) }))
+      .sort((x, y) => x.nome.localeCompare(y.nome, 'pt'));
+  };
+  const competenciasDaUC = (() => {
+    const feitas = trabalhadasNaUC('SUB');
+    if (feitas.length) return feitas;
+    const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
+    if (!ref?.realizacoes?.length) return [];
+    return ref.realizacoes.map((r, i) => ({ id: `${ucAtual}_R${i + 1}`, nome: r.replace(/\.$/, ''), nivel: null, consolidada: false }));
+  })();
 
   const conhecimentosDaUC = (() => {
+    const feitos = trabalhadasNaUC('KNW');
+    if (feitos.length) return feitos;
     const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
     const lista = ref?.conhecimentos?.length ? ref.conhecimentos : ref?.criteriosDesempenho;
     if (!lista?.length) return [];
-    return lista.map((c, i) => {
-      const id = `${ucAtual}_C${i + 1}`;
-      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id), consolidada: consolidadaDe(id) };
-    });
+    return lista.map((c, i) => ({ id: `${ucAtual}_C${i + 1}`, nome: c.replace(/\.$/, ''), nivel: null, consolidada: false }));
   })();
 
   // Nas turmas ACP (transição de referencial), as atitudes dos anos
