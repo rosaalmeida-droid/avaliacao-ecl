@@ -9814,6 +9814,18 @@ export function alunoDeTeste(alunoOuId: Aluno | string | undefined): boolean {
   const n = Number(a.numero);
   return n === 99 || n === 88 || n === 9999 || /\bteste\b/i.test(String(a.nome || ''));
 }
+/** Os colegas do grupo que o aluno ainda não avaliou nesta aula. A avaliação
+ *  entre colegas é obrigatória para acabar a aula (Rosa, 6/out/2026: «diz
+ *  muita coisa»). Só numa aula com os grupos ligados. */
+export function colegasPorAvaliar(planoAulaId: string, alunoId: string): string[] {
+  const p: any = getPlanosAula().find(x => x.id === planoAulaId);
+  if (!p?.gruposAlunos?.ativo) return [];
+  const g = grupoDoAluno(planoAulaId, alunoId);
+  if (!g) return [];
+  const feitos = new Set(getAvaliacoesPares(planoAulaId).filter(x => x.avaliadorId === alunoId).map(x => x.avaliadoId));
+  return g.membros.map(m => m.alunoId).filter(id => id !== alunoId && podemAvaliarSe(alunoId, id) && !feitos.has(id));
+}
+
 export function podemAvaliarSe(avaliadorId: string, avaliadoId: string): boolean {
   return avaliadorId !== avaliadoId && alunoDeTeste(avaliadorId) === alunoDeTeste(avaliadoId);
 }

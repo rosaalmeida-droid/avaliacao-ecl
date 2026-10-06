@@ -38,7 +38,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, partesDaAulaDoAluno } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, colegasPorAvaliar, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -818,7 +818,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   useEffect(() => {
     if (abriuAulaSozinha.current || !planoHoje) return;
     abriuAulaSozinha.current = true;
-    if (getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id)) return;
+    // Já se avaliou e já avaliou os colegas: fica no Início.
+    if (getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id)
+      && !colegasPorAvaliar(planoHoje.id, aluno.id).length) return;
     if (eventoForaDoHorario(planoHoje) && !participantesDoEvento(planoHoje).includes(aluno.id)) return;
     setPlanoAtivo(planoHoje);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1973,6 +1975,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // grande e um botão. A aula validada e a atividade só para ver ficam como
   // estavam, mais abaixo.
   const mudancaGrupo = useMudancaDeGrupo(plano, aluno, comGrupos);
+  const [, refazerAula] = React.useState(0);
   const [verAqui, setVerAqui] = React.useState<null | 'orientacao' | 'ficha' | 'guia' | 'requisicao' | 'funcao_inicio' | 'funcao_fim' | 'feito'>(null);
   if (!soConsulta) {
     const teorica = String((plano as any).tipoPlanAula || '') === 'teorico';
@@ -2051,6 +2054,15 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
           titulo="Primeiro, a ficha técnica."
           sub={`Antes de te avaliares, marca na ficha os passos da preparação que já estão feitos: ${passos.feitos} de ${passos.total}.`}>
           <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={() => setVerAqui('ficha')}>🧾 Abrir a ficha técnica</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'avaliacao' && avaliou && colegasPorAvaliar(plano.id, aluno.id).length > 0) {
+      // Obrigatório: avaliar os colegas do grupo antes de acabar a aula (Rosa, 6/out/2026).
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.avaliar} total={totalPassos} feitos={passosConcluidos}
+          titulo="Agora, os teus colegas do grupo."
+          sub="Para acabares a aula, diz como trabalhou cada colega. Só o professor vê, e o colega não sabe o que disseste.">
+          <AvaliarColegas aluno={aluno} plano={plano} onFeito={() => refazerAula(n => n + 1)} />
         </EcraDeCor>
       );
     } else if (secAberta === 'avaliacao') {

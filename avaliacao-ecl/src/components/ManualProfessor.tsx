@@ -567,7 +567,9 @@ const SECCOES: Seccao[] = [
         <P>
           O professor faz os grupos no plano (Grupos): põe cada aluno num grupo e dá uma ficha a
           cada grupo. Os alunos não criam nem escolhem grupo: veem o seu (colegas e ficha) logo que
-          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
+          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou.
+          No fim, a avaliação dos colegas do grupo é obrigatória: o aluno só vê «Aula feita» depois de
+          avaliar todos. Em «Turma e faltas» aparece «falta avaliar N colegas do grupo» a quem ainda não o fez. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
           o professor escolhe o líder e pode substituí-lo se este faltar. Os grupos e o líder
           chegam de imediato aos telemóveis dos alunos.
         </P>

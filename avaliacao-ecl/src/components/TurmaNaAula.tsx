@@ -9,11 +9,11 @@
 // decisões de falta fazem-se daqui, sem sair do ecrã.
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
-  getPlanosAula, getPresencas, blocosDeHoraDoPlano,
+  getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos,
 } from '../backend';
 import { pedeFardaEHigiene } from '../contextoAula';
 
@@ -50,6 +50,15 @@ export function TurmaNaAula({
   // o professor quer marcar (saiu mais cedo).
   const [horasAbertas, setHorasAbertas] = useState<Set<string>>(new Set());
   const [marcarAberto, setMarcarAberto] = useState<Set<string>>(new Set());
+  // A avaliação entre colegas é obrigatória (Rosa, 6/out/2026): o professor vê
+  // quem ainda não a fez. Vão-se buscar as respostas dos colegas de 30 em 30 s.
+  useEffect(() => {
+    let vivo = true;
+    const ver = () => sincronizarGrupos(turmaId, true).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    ver();
+    const t = setInterval(ver, 30000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [turmaId, planoAulaId]);
   const plano = getPlanosAula().find(p => p.id === planoAulaId);
   const blocos = plano ? blocosDeHoraDoPlano(plano) : [];
   const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
@@ -182,6 +191,10 @@ export function TurmaNaAula({
                   : e.autoavaliou
                     ? <Pastilha texto="autoavaliação por validar" cor={C.bordeaux} fundo={C.bordeauxSuave} />
                     : e.entrou && <Pastilha texto="ainda não se autoavaliou" cor={C.suave} fundo="#F5F5F5" />}
+                {e.autoavaliou && colegasPorAvaliar(planoAulaId, e.alunoId).length > 0 && (
+                  <Pastilha texto={`falta avaliar ${colegasPorAvaliar(planoAulaId, e.alunoId).length} colega${colegasPorAvaliar(planoAulaId, e.alunoId).length > 1 ? 's' : ''} do grupo`}
+                    cor={C.cobre} fundo={C.cobreSuave} />
+                )}
               </div>
 
               {/* Validar dali, sem ter de ir ao menu procurar. */}
