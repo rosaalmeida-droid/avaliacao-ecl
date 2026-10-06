@@ -462,17 +462,48 @@ const PERGUNTAS: PerguntaTriagem[] = [
     corpo: (e, mudar) => <textarea value={e.exigencias} onChange={x => mudar({ exigencias: x.target.value })} rows={5} style={campo} placeholder="Opcional" /> },
 ];
 
+/** Três níveis de perguntas ao criar um evento (Rosa, out/2026): básico (só o
+ *  essencial, até 10), intermédio e avançado (todas). O resto responde-se depois. */
+type NivelPerguntas = 'basico' | 'intermedio' | 'avancado';
+const PERGUNTAS_BASICAS = new Set(['nome', 'cliente', 'quando', 'onde', 'pessoas', 'momentos', 'tipo', 'servico', 'necessidades', 'turmas']);
+const PERGUNTAS_INTERMEDIAS = new Set([...PERGUNTAS_BASICAS, 'nivel', 'protocolo', 'orcamento', 'prazo', 'sabe']);
+const NIVEIS_PERGUNTAS: { id: NivelPerguntas; icone: string; nome: string; sub: string }[] = [
+  { id: 'basico', icone: '⚡', nome: 'Básico — só o essencial', sub: '10 perguntas: nome, cliente, data, local, pessoas, o que servem, tipo, serviço, dietas e turmas. O resto responde-se depois.' },
+  { id: 'intermedio', icone: '📋', nome: 'Intermédio', sub: 'O essencial e também o nível gastronómico, o protocolo, o orçamento, o prazo e se o cliente já sabe o menu.' },
+  { id: 'avancado', icone: '🧭', nome: 'Avançado — tudo', sub: 'Todas as perguntas, incluindo o espaço fora da escola, o público, a experiência e as exigências.' },
+];
+
 function Triagem({ inicial, onCancelar, onConcluir }: { inicial: EventoECL; onCancelar: () => void; onConcluir: (e: EventoECL) => void }) {
   const [e, setE] = useState<EventoECL>(inicial);
   const [i, setI] = useState(0);
   const [fim, setFim] = useState(false);
-  const perguntas = PERGUNTAS.filter(p => !p.mostrar || p.mostrar(e));
+  // Num evento novo pergunta-se primeiro o nível; ao rever, mostram-se todas.
+  const [nivelP, setNivelP] = useState<NivelPerguntas | null>(inicial.nome ? 'avancado' : null);
+  const perguntas = PERGUNTAS.filter(p => (!p.mostrar || p.mostrar(e))
+    && (nivelP === 'basico' ? PERGUNTAS_BASICAS.has(p.id) : nivelP === 'intermedio' ? PERGUNTAS_INTERMEDIAS.has(p.id) : true));
   const idx = Math.min(i, perguntas.length - 1);
   const p = perguntas[idx];
   const mudar = (x: Partial<EventoECL>) => setE(v => ({ ...v, ...x }));
   const seguinte = () => (idx + 1 >= perguntas.length ? setFim(true) : setI(idx + 1));
   const avancar = () => setTimeout(() => setI(k => { if (k + 1 >= perguntas.length) { setFim(true); return k; } return k + 1; }), 220);
   const novo = !inicial.nome;
+
+  if (!nivelP) {
+    return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <button onClick={onCancelar} style={{ ...botao(), minHeight: 40, padding: '8px 14px', fontSize: 14 }}>✕ Cancelar</button>
+        </div>
+        <div style={{ fontSize: 25, fontWeight: 800, color: C.tinta, lineHeight: 1.25, padding: '0 2px' }}>Quantas perguntas quer responder agora?</div>
+        <div style={{ fontSize: 15, color: C.texto, margin: '6px 2px 18px', lineHeight: 1.5 }}>
+          Pode começar pelo básico e completar o resto mais tarde, dentro do evento, em «Pedido».
+        </div>
+        {lista(NIVEIS_PERGUNTAS.map(n => (
+          <Opcao key={n.id} icone={n.icone} ativo={false} sub={n.sub} onClick={() => setNivelP(n.id)}>{n.nome}</Opcao>
+        )))}
+      </>
+    );
+  }
 
   if (fim) {
     const cl = classificar(e);
@@ -522,6 +553,9 @@ function Triagem({ inicial, onCancelar, onConcluir }: { inicial: EventoECL; onCa
           : <button onClick={seguinte} style={{ ...botao(), flex: 1, color: C.suave, borderColor: '#E4DDE0' }}>{p.opcional ? 'Saltar' : 'Ainda não sei — seguinte'}</button>}
       </div>
       {!novo && <button onClick={() => setFim(true)} style={{ ...botao(), width: '100%', marginTop: 10 }}>Guardar e voltar ao evento</button>}
+      {/* Gravar o que já está, sem responder a tudo (Rosa, out/2026). */}
+      {novo && <button onClick={() => { if (!e.nome.trim()) mudar({ nome: 'Evento sem nome' }); setFim(true); }}
+        style={{ ...botao(), width: '100%', marginTop: 10 }}>Guardar o que já tenho e completar depois</button>}
     </>
   );
 }
