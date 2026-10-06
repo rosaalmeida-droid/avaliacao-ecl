@@ -9741,6 +9741,40 @@ export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula 
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
 }
 
+// ── Quem do grupo já entrou e já se avaliou (Rosa, 6/out/2026) ──────────
+// Os colegas veem um visto verde na cara de cada um. Vem na aula rápida
+// (script v26.8); o próprio aluno conta logo, com o que está no aparelho.
+const KEY_ESTADOS_AULA = 'ecl_estados_aula';
+export interface EstadoNaAula { planoAulaId: string; alunoId: string; entrou?: boolean; avaliou?: boolean }
+function juntarEstados(lista: any[]): void {
+  if (!Array.isArray(lista) || !lista.length) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mapa = new Map<string, EstadoNaAula>();
+  // Só os de hoje e dos últimos dias: não cresce sem fim.
+  const limite = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  for (const e of load<EstadoNaAula & { dia?: string }>(KEY_ESTADOS_AULA)) if ((e.dia || hoje) >= limite) mapa.set(e.planoAulaId + '|' + e.alunoId, e);
+  for (const r of lista) {
+    if (!r?.planoAulaId || !r?.alunoId) continue;
+    const k = String(r.planoAulaId) + '|' + String(r.alunoId);
+    const antes = mapa.get(k);
+    mapa.set(k, { planoAulaId: String(r.planoAulaId), alunoId: String(r.alunoId), dia: hoje,
+      entrou: !!(antes?.entrou || r.entrou === true || r.entrou === 'true'),
+      avaliou: !!(antes?.avaliou || r.avaliou === true || r.avaliou === 'true') } as any);
+  }
+  save(KEY_ESTADOS_AULA as any, [...mapa.values()]);
+}
+/** Para cada aluno da aula: já entrou? já se avaliou? */
+export function estadosNaAula(planoAulaId: string): Map<string, { entrou: boolean; avaliou: boolean }> {
+  const out = new Map<string, { entrou: boolean; avaliou: boolean }>();
+  const pega = (id: string) => out.get(id) || (out.set(id, { entrou: false, avaliou: false }), out.get(id)!);
+  for (const e of load<EstadoNaAula>(KEY_ESTADOS_AULA)) if (e.planoAulaId === planoAulaId) {
+    const x = pega(e.alunoId); x.entrou = x.entrou || !!e.entrou; x.avaliou = x.avaliou || !!e.avaliou;
+  }
+  for (const p of getPresencas()) if (p.planoAulaId === planoAulaId && (p as any).presente !== false) pega(p.alunoId).entrou = true;
+  for (const s of getSelecoes()) if (s.planoAulaId === planoAulaId) pega(s.alunoId).avaliou = true;
+  return out;
+}
+
 /** Regra (Rosa, out/2026): no mesmo grupo, o tema é o mesmo. O tema que o
  *  aluno escolhe fica no registo dele no grupo, que chega aos colegas. */
 export function marcarTemaNoGrupo(planoAulaId: string, alunoId: string, tema: number | null): void {
@@ -10040,6 +10074,8 @@ function juntarAula(json: any, turmaId: string): void {
   // Grupos
   juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
   juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  // Quem já entrou e já se avaliou (script v26.8)
+  juntarEstados(json.estados || []);
 }
 
 /** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */

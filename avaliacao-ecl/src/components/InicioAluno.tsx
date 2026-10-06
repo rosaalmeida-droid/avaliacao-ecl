@@ -494,8 +494,8 @@ export function InicioAluno({
 // ── Como funciona: o guia do aluno, em frases curtas ──────────
 const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '1. Entrar na aula', texto: [
-    'Primeiro, o professor abre a aula. Só depois disso consegues entrar.',
-    'Carrega em «Iniciar aula». A tua hora de entrada fica registada.',
+    'Num dia de aula, a aplicação abre logo nessa aula. Em cima vês o teu grupo e o prato de hoje.',
+    'Primeiro, o professor abre a entrada. Só depois disso o botão «Entrar» se acende. A tua hora de entrada fica registada.',
     'Tens 10 minutos de tolerância, a contar do momento em que o professor abre a aula.',
   ] },
   { titulo: '2. A farda', texto: [

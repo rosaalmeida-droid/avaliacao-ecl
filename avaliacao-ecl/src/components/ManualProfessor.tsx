@@ -556,8 +556,9 @@ const SECCOES: Seccao[] = [
 
         <H>Grupos e líder do KitchenFlow</H>
         <P>
-          Os alunos formam os grupos no telemóvel, e o professor pode vê-los, alterá-los e
-          validá-los. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
+          O professor faz os grupos no plano (Grupos): põe cada aluno num grupo e dá uma ficha a
+          cada grupo. Os alunos não criam nem escolhem grupo: veem o seu (colegas e ficha) logo que
+          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
           o professor escolhe o líder e pode substituí-lo se este faltar. Os grupos e o líder
           chegam de imediato aos telemóveis dos alunos.
         </P>

@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.7';
+var VERSAO = 'ECL único v26.8';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -142,7 +142,9 @@ var FOLHAS = {
 };
 
 /** Registos especiais que viajam como autoavaliações (v12). */
-var PREFIXOS_ESPECIAIS = ['UCFINAL|', 'TRIAGEM|', 'UCNOTA|'];
+// (v26.8) Também os registos COLAB|, AJUDA| e ALTAPERF|, como na aplicação:
+// não são autoavaliações de aulas e não entram nas folhas de leitura.
+var PREFIXOS_ESPECIAIS = ['UCFINAL|', 'TRIAGEM|', 'UCNOTA|', 'COLAB|', 'AJUDA|', 'ALTAPERF|'];
 /** Inofensiva: mostra no registo o estado do Sheets. É a primeira função
  *  do ficheiro, para ser a que o editor escolhe por omissão. */
 function verEstado() {
@@ -736,6 +738,7 @@ function acrescentar(x) {
   f.appendRow(linhaDe(nome, obj));
   subirContador(obj.turmaId);
   if (x.tipo === 'grupo_membro') guardarMembroNaMemoria(obj);
+  if (x.tipo === 'presenca' || x.tipo === 'selecao') guardarEstadoNaMemoria(obj, x.tipo);
 }
 
 // ── (v20) O QUE É SÓ PARA LER FICA PARA DEPOIS ────────────────
@@ -4331,6 +4334,42 @@ function guardarMembroNaMemoria(m) {
   } catch (e) { Logger.log(e); }
 }
 
+/** (v26.8) Quem do grupo já entrou na aula e já se avaliou: os colegas
+ *  veem um visto verde na cara de cada um. Fica só na memória (6 horas),
+ *  como os grupos: não se lê nenhuma folha. */
+function guardarEstadoNaMemoria(x, tipo) {
+  try {
+    if (!x || !x.planoAulaId || !x.alunoId || ehRegistoEspecial(x)) return;
+    if (tipo === 'presenca' && !(x.presente === true || x.presente === 'true')) return;
+    var c = CacheService.getScriptCache();
+    var chave = 'est_' + x.planoAulaId + '_' + x.alunoId;
+    var est = {};
+    try { est = JSON.parse(c.get(chave) || '{}'); } catch (e) { est = {}; }
+    if (tipo === 'presenca') est.entrou = true; else est.avaliou = true;
+    est.planoAulaId = String(x.planoAulaId); est.alunoId = String(x.alunoId);
+    c.put(chave, JSON.stringify(est), MEMORIA_SEGUNDOS);
+    var idx = [];
+    try { idx = JSON.parse(c.get('estidx_' + x.planoAulaId) || '[]'); } catch (e) { idx = []; }
+    if (idx.indexOf(String(x.alunoId)) < 0) { idx.push(String(x.alunoId)); c.put('estidx_' + x.planoAulaId, JSON.stringify(idx), MEMORIA_SEGUNDOS); }
+  } catch (e) { Logger.log('guardarEstadoNaMemoria: ' + e); }
+}
+
+/** (v26.8) Os estados das aulas de hoje, para a resposta a «get_aula». */
+function estadosDeHoje(planos) {
+  var hoje = hojeLisboa(0), c = CacheService.getScriptCache(), out = [];
+  var deHoje = planos.filter(function (p) { return String(p.data || '').slice(0, 10) === hoje; });
+  if (!deHoje.length) return out;
+  var indices = c.getAll(deHoje.map(function (p) { return 'estidx_' + p.id; }));
+  var chaves = [];
+  deHoje.forEach(function (p) {
+    try { JSON.parse(indices['estidx_' + p.id] || '[]').forEach(function (a) { chaves.push('est_' + p.id + '_' + a); }); } catch (e) {}
+  });
+  if (!chaves.length) return out;
+  var vals = c.getAll(chaves);
+  for (var k in vals) { try { out.push(JSON.parse(vals[k])); } catch (e) {} }
+  return out;
+}
+
 /** A resposta a «get_aula». */
 function respostaAula(turma) {
   if (!turma) return resposta(false, 'Falta a turma');
@@ -4365,6 +4404,7 @@ function respostaAula(turma) {
   }
   var o = { ok: true, planos: aula.planos, fichas: aula.fichas, sessoes: aula.sessoes,
     grupos: { membros: membros, info: aula.info }, geradoEm: aula.geradoEm };
+  try { o.estados = estadosDeHoje(aula.planos); } catch (e) {}
   // O número de alterações da turma vem junto: o telemóvel deixa de ter
   // de perguntar à parte.
   try { o.contador = String(lerContador(turma) || ''); } catch (e) {}

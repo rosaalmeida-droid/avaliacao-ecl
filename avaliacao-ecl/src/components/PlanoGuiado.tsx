@@ -274,7 +274,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // próximo do manual) deixava os alunos com um só tema. Sem nada marcado,
     // escolhem entre todos; o professor marca, se quiser restringir.
     if ('modo' in parcial && escolheTema(nova) && !escolheTema(valor)) novo.conhecimentosProf = [];
-    // Trabalho de grupo: os alunos formam os grupos na aplicação.
+    // Trabalho de grupo: o professor faz os grupos no plano (Rosa, 6/out/2026).
     if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
     addOrUpdatePlanoAula(novo);
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
@@ -522,7 +522,7 @@ function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: Triage
       </>) : '—')}
       {linha('Conta para a nota', pesos.map(x => `${x.nome} ${x.pct}%`).join(' · ') || '—')}
       {escolheTema(triagem) && linha('Tema', triagem.modo === 'grupo'
-        ? `cada grupo escolhe o seu, na autoavaliação.${grupos.length ? ` Grupos: ${grupos.length}; ${alunos.filter(a => !emGrupo.has(a.id)).length} alunos sem grupo.` : ' Os alunos formam os grupos na aplicação.'}`
+        ? `cada grupo escolhe o seu, na autoavaliação.${grupos.length ? ` Grupos: ${grupos.length}; ${alunos.filter(a => !emGrupo.has(a.id)).length} alunos sem grupo.` : ' Faça os grupos em «Grupos», no plano.'}`
         : 'cada aluno escolhe o seu, na autoavaliação' + (triagem.continuaDe ? ' (vem já escolhido o da aula anterior).' : '.'))}
     </div>
   );
