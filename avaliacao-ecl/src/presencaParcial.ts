@@ -17,6 +17,14 @@ export interface PerguntaPresenca { id: string; pergunta: (esteve: string, total
 
 // As perguntas são as da Rosa (6/out/2026): diretas, «percebes que…».
 export const PERGUNTAS_PRESENCA: PerguntaPresenca[] = [
+  // Primeiro, se a falta era inevitável. Uma dor de cabeça ou de barriga não
+  // é uma urgência: às vezes temos de nos aguentar (Rosa, 6/out/2026).
+  { id: 'evitavel', pergunta: () => 'A tua falta (ou o teu atraso) podia ter sido evitada?', opcoes: [
+    { t: 'Sim, podia ter evitado.', certa: true },
+    { t: 'Não. Tive uma dor de cabeça, uma dor de barriga ou estava cansado.', certa: false,
+      porque: 'Isso acontece a toda a gente, e não é uma urgência. Numa cozinha a sério, o serviço não para por uma dor de cabeça: às vezes temos de nos aguentar. Vem à aula e, se piorares, fala com o professor.' },
+    { t: 'Não. Foi uma urgência (por exemplo, ir ao hospital ou um problema grave em casa).', certa: true },
+  ] },
   { id: 'afeta', pergunta: () => 'Percebes que o teu comportamento, quando faltas ou chegas tarde, afeta o teu grupo, a turma, a organização das aulas e a organização dos eventos?', opcoes: [
     { t: 'Sim, percebo.', certa: true },
     { t: 'Não. Só me afeta a mim.', certa: false,
