@@ -1553,7 +1553,8 @@ export function seedAlunosReais(): void {
     { id: '1º BCR-13', turmaId: '1º BCR', numero: 13, ano: 1 as const, nome: 'Martim Alexandre Mendes Máximo', pin: '5580', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-14', turmaId: '1º BCR', numero: 14, ano: 1 as const, nome: 'Martim Rocha Delgado Felizardo da Silva', pin: '8078', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1205', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '7100', ativo: true, pinCriadoEm: agora },
+    // O n.º 16 (Orcinela Campos dos Reis da Cruz) não pertence à turma (Rosa,
+    // 6/out/2026): saiu da lista e fica desativada (os dados não se apagam).
     { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '6230', ativo: true, pinCriadoEm: agora },
     // Só fala inglês: a aplicação abre-lhe em inglês (Rosa, 6/out/2026). O
     // professor pode desligar no Mapa da turma (fica «pt» e a lista não repõe).
