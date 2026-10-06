@@ -3454,6 +3454,7 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
     // A prova de que passou pela ficha (passos e horas): sem isto não chegava ao professor.
     ...((s as any).evidenciaFicha ? { evidenciaFicha: (s as any).evidenciaFicha } : {}),
+    ...((s as any).reflexaoPresenca ? { reflexaoPresenca: (s as any).reflexaoPresenca } : {}),
   };
 }
 
@@ -7365,7 +7366,31 @@ export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
       : (Number(n.nota) || 0);
     return { categoria, nota };
   });
-  return notas.length ? calcularNotaPlano(notas, tipo) : null;
+  if (!notas.length) return null;
+  const r = calcularNotaPlano(notas, tipo);
+  // Esteve só parte da aula: a nota desce pelos tempos em que não esteve
+  // (Rosa, 6/out/2026: «são 3 blocos, desce 1/3» por cada um).
+  const b = fracaoDosBlocos(v);
+  if (b) {
+    const nota20 = Math.round(r.nota20 * b.esteve / b.total * 10) / 10;
+    return { ...r, nota20, detalhes: `${r.detalhes ? r.detalhes + ' · ' : ''}esteve ${b.esteve} de ${b.total} tempos: ${String(r.nota20).replace('.', ',')} × ${b.esteve}/${b.total} = ${String(nota20).replace('.', ',')}` };
+  }
+  return r;
+}
+
+/** Os tempos (blocos) da aula em que o aluno esteve, quando a validação os
+ *  desconta (esteve só parte da aula). null quando conta a aula toda. */
+export function fracaoDosBlocos(v: any): { esteve: number; total: number } | null {
+  const b = v?.blocosNaAula;
+  if (!b || v.semDescontoBlocos) return null;
+  const esteve = Number(b.esteve), total = Number(b.total);
+  return total > 0 && esteve > 0 && esteve < total ? { esteve, total } : null;
+}
+
+/** A nota que o aluno teria se tivesse estado a aula toda. null quando esteve. */
+export function notaSeEstivesseATodaAula(v: any): number | null {
+  if (!fracaoDosBlocos(v)) return null;
+  return calculoDaAulaValidada({ ...v, semDescontoBlocos: true })?.nota20 ?? null;
 }
 
 /** Sem farda completa, as técnicas contaram 0: a nota que o aluno teria com

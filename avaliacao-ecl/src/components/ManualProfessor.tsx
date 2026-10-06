@@ -312,6 +312,25 @@ const SECCOES: Seccao[] = [
           <li><b>Falta de presença</b>.</li>
         </ul>
 
+        <H>O aluno esteve só parte da aula</H>
+        <P>
+          Quando o professor marca «Só algumas horas», ou quando o aluno entra depois de já ter
+          passado um tempo da aula, a autoavaliação começa com três perguntas sobre o que isso
+          fez ao grupo e à confiança. O aluno não escreve: escolhe. Se escolher uma resposta
+          errada, a aplicação explica porquê e ele escolhe outra vez. No fim, escolhe um
+          compromisso para a próxima aula.
+        </P>
+        <P>
+          Na validação, o professor vê a primeira resposta e a resposta final de cada pergunta,
+          e o compromisso. Na aula seguinte, a aplicação diz ao professor e ao aluno se o
+          compromisso foi cumprido.
+        </P>
+        <P>
+          <b>A nota desce pelos tempos em que o aluno não esteve.</b> Se esteve em 1 de 3 tempos,
+          a nota da aula conta 1/3. O professor vê a conta na nota prevista e pode escolher
+          «Não descontar» quando a falta tem justificação.
+        </P>
+
         <Destaque cor="bordeaux">
           <b>Uma falta de presença conta 0 na aula inteira</b>: técnicas, obrigatórias,
           conhecimentos e atitudes. Quem não esteve presente não tem avaliação parcial.
