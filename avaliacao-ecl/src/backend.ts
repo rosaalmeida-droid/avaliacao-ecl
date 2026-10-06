@@ -5397,7 +5397,7 @@ const KEY_NOTAS_ENVIADAS = 'ecl_notas_app_enviadas';
 export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
   // A nota da UC que vai para o Sheets é a mesma que o professor e o aluno
   // veem (a conta da pauta, com as aulas sem autoavaliação a 0) — Rosa, 5/out/2026.
-  import('./pautaUC').then(m => enviarNotasDaTurmaCom(turmaId, forcar, m.notaDaUCComoNaPauta))
+  import('./pautaUC').then(m => enviarNotasDaTurmaCom(turmaId, forcar, m.notaDaUCComDecimas))
     .catch(() => enviarNotasDaTurmaCom(turmaId, forcar, null));
 }
 function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
@@ -7555,6 +7555,40 @@ export function eventosAgregadosAAula(plano: PlanoAula): PlanoAula[] {
 }
 
 /** A nota final de um aluno numa UC. */
+/**
+ * As aulas que fazem a média da UC, uma a uma (Rosa, 5/out/2026: «o aluno
+ * não percebe»): a nota de cada aula validada e as aulas em que esteve e não
+ * se autoavaliou (contam 0), cada uma com o peso da sua aula (½ só de
+ * atitudes, 1 com técnicas ou conhecimentos). É a mesma lista da conta da
+ * nota (notaFinalUC) e a que o aluno e o professor veem. As faltas ficam à parte.
+ */
+export interface AulaDaNotaUC { planoId: string; titulo: string; data: string; nota: number; peso: number; semResposta: boolean }
+export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
+  faltados: Set<string> = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id))): AulaDaNotaUC[] {
+  // Só os planos que contam: publicados ou realizados (os arquivados não).
+  const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento
+    && p.estado !== 'arquivado').map(p => [p.id, p]));
+  // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
+  // a mesma aula a contar duas vezes, com a nota antiga e a nova.
+  const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
+  const linhas: AulaDaNotaUC[] = [];
+  for (const id of new Set(validacoesAluno.map((v: any) => v.planoAulaId as string))) {
+    const p: any = planosUC.get(id);
+    if (!p || faltados.has(id)) continue;
+    const nota = notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno));
+    if (nota === null) continue;
+    linhas.push({ planoId: id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota, peso: pesoNoModulo(p), semResposta: false });
+  }
+  // Aulas em que o aluno esteve e não se autoavaliou: contam 0 até se
+  // autoavaliar (Rosa, out/2026). Assim o aluno responsabiliza-se. Uma
+  // autoavaliação enviada e ainda por validar não conta (espera pelo professor).
+  for (const p of planosSemAutoavaliacao(alunoId, turmaId, ucId)) {
+    if (faltados.has(p.id) || linhas.some(l => l.planoId === p.id)) continue;
+    linhas.push({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota: 0, peso: pesoNoModulo(p), semResposta: true });
+  }
+  return linhas.sort((a, b) => a.data.localeCompare(b.data));
+}
+
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
@@ -7575,18 +7609,8 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
     && p.estado !== 'arquivado').map(p => [p.id, p]));
   // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
   // a mesma aula a contar duas vezes, com a nota antiga e a nova.
-  const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
-  const notasAulas = [...new Set(validacoesAluno.map((v: any) => v.planoAulaId as string))]
-    .filter(id => planosUC.has(id) && !faltados.has(id))
-    .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)), peso: pesoNoModulo(planosUC.get(id)) }))
-    .filter((x): x is { nota: number; peso: number } => x.nota !== null);
-  // Aulas em que o aluno esteve e não se autoavaliou: contam 0 até se
-  // autoavaliar (Rosa, out/2026). Assim o aluno responsabiliza-se. Uma
-  // autoavaliação enviada e ainda por validar não conta (espera pelo professor).
-  for (const p of planosSemAutoavaliacao(alunoId, turmaId, ucId)) {
-    if (faltados.has(p.id)) continue;
-    notasAulas.push({ nota: 0, peso: pesoNoModulo(p) });
-  }
+  void planosUC;
+  const notasAulas = aulasDaNotaUC(alunoId, turmaId, ucId, faltados);
   const pesoAulas = notasAulas.reduce((s, x) => s + x.peso, 0);
   const base = pesoAulas ? notasAulas.reduce((s, x) => s + x.nota * x.peso, 0) / pesoAulas : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;

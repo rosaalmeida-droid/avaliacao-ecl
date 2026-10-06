@@ -11,7 +11,8 @@ import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorU
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
-import { rotuloPlano, rotuloDoPlano } from '../rotuloPlano';
+import { rotuloPlano, rotuloDoPlano, posicaoNaUC } from '../rotuloPlano';
+import { contasDaNotaDoAluno } from '../notaDoAluno';
 import { exportPDF } from '../exportFicha';
 
 // O aluno vê o nome da UC; o código sozinho («1 · UC03576») não lhe dizia nada.
@@ -72,7 +73,7 @@ import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } fro
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
-import { notaDaUCComoNaPauta } from '../pautaUC';
+import { notaDaUCComoNaPauta, notaDaUCComDecimas } from '../pautaUC';
 import { pedeFardaEHigiene, cozinhamNaAula } from '../contextoAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
@@ -979,7 +980,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // (Auditoria 5/out/2026) A nota de hoje é a conta da pauta: as aulas em
   // falta ou sem autoavaliação contam 0. Assim o aluno não é iludido.
   const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
-    : ucAtual ? { final: notaDaUCComoNaPauta(aluno.id, aluno.turmaId, ucAtual) } : null;
+    : ucAtual ? { final: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual) } : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
   const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
@@ -1162,7 +1163,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       planoId: v.plano!.id,
       titulo: v.plano!.titulo || 'Aula',
       data: fmtDataCurta(v.plano!.data),
-      numeroAula: planosOrdenados.findIndex(p => p.id === v.plano!.id) + 1,
+      // A mesma numeração dos planos do professor: dentro da UC, sem os eventos
+      // (a inauguração de 18/09 fazia da aula de 21/09 a «Aula 2» — Rosa, 5/out/2026).
+      numeroAula: posicaoNaUC(v.plano!),
       nota20: v.nota20,
       validada: v.validada,
       ucId: v.plano!.ucId,
@@ -1607,10 +1610,14 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             {destino === 'nota' && (
               <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
                 detalhe={detalheNota}
-                aulas={historialUC.filter(h => h.nota20 != null && !h.evento && (!ucAtual || h.ucId === ucAtual))
-                  .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
-                  .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
-                    data: h.data, nota20: h.nota20 as number }))}
+                aulas={ucAtual
+                  // (Rosa, 5/out/2026) Todas as aulas que fazem a média, com o peso de
+                  // cada uma e as que contam 0 por falta de autoavaliação: antes só
+                  // apareciam as validadas (3 de 7), e a média não batia certo.
+                  ? contasDaNotaDoAluno(aluno.id, aluno.turmaId, ucAtual).aulas
+                  : historialUC.filter(h => h.nota20 != null && !h.evento)
+                    .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
+                    .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo, data: h.data, nota20: h.nota20 as number }))}
                 competenciasPorAvaliar={porAvaliar}
                 notaPossivel={null} />
             )}
@@ -3658,7 +3665,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {(() => {
           // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
           // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
-          const n = plano.ucId ? notaDaUCComoNaPauta(aluno.id, aluno.turmaId, plano.ucId) : null;
+          const n = plano.ucId ? notaDaUCComDecimas(aluno.id, aluno.turmaId, plano.ucId) : null;
           if (n == null) return null;
           const nota20 = n;
           return (

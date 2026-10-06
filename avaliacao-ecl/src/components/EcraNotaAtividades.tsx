@@ -46,6 +46,10 @@ export interface AulaNota {
   titulo: string;
   data: string;
   nota20: number;
+  /** Quanto vale a aula na média: ½ (só atitudes) ou 1 (com técnicas ou conhecimentos). */
+  peso?: number;
+  /** Esteve e não se autoavaliou: conta 0. */
+  semResposta?: boolean;
 }
 
 export function EcraMinhaNota({
@@ -57,6 +61,8 @@ export function EcraMinhaNota({
     media: number | null;
     bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
     bonusTotal: number; teto: boolean; motivoTeto?: string; final: number | null; publicada: boolean;
+    /** A conta de agora (média das aulas + bónus), arredondada. */
+    contaDeAgora?: number | null;
   } | null;
   ucId?: string; ucNome?: string;
   nota: number | null;
@@ -162,9 +168,21 @@ export function EcraMinhaNota({
         {detalhe && (aulas.length > 0 || detalhe.faltas.length > 0 || detalhe.bonus.length > 0) && (
           <div style={{ ...painel, padding: 18, marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.tinta, marginBottom: 10 }}>Como chegaste a esta nota</div>
+            {aulas.some(a => a.peso !== undefined) && (
+              <div style={{ fontSize: 12.5, color: '#888', marginBottom: 6, lineHeight: 1.45 }}>
+                Cada aula conta pelo que se avaliou: uma aula só de atitudes vale meia aula (½); uma aula com técnicas ou conhecimentos vale uma aula inteira (1).
+              </div>
+            )}
             {aulas.map(a => (
-              <div key={'a' + a.numero + a.titulo} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
-                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo} <span style={{ color: '#999' }}>· {fmtDataCurta(a.data)}</span></span>
+              <div key={'a' + a.numero + a.titulo + a.data} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(a.titulo || '')) ? null : <span style={{ color: '#999' }}> · {fmtDataCurta(a.data)}</span>}
+                  {(a.peso !== undefined || a.semResposta) && (
+                    <span style={{ display: 'block', fontSize: 12.5, color: a.semResposta ? C.ambar : '#999' }}>
+                      {a.peso !== undefined ? (a.peso === 0.5 ? 'vale ½ aula' : a.peso === 1 ? 'vale 1 aula' : `vale ${String(a.peso).replace('.', ',')} aulas`) : ''}
+                      {a.semResposta ? `${a.peso !== undefined ? ' · ' : ''}não te autoavaliaste: conta 0 até te autoavaliares` : ''}
+                    </span>
+                  )}
+                </span>
                 <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
               </div>
             ))}
@@ -198,13 +216,28 @@ export function EcraMinhaNota({
                 {detalhe.motivoTeto || 'A nota ficou no limite.'} Participar e candidatar-se também é atitude.
               </div>
             )}
-            {detalhe.final != null && (
+            {/* (Rosa, 5/out/2026) A nota que se mostra tem de bater com a conta de
+                cima. Com nota publicada antes de uma correção (a pauta não somava o
+                bónus), diz-se as duas e porquê, em vez de um número que não bate. */}
+            {detalhe.contaDeAgora != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '10px 0 0', marginTop: 6, borderTop: '2px solid #E6E1EA', fontSize: 16, fontWeight: 800 }}>
+                <span style={{ flex: 1 }}>{detalhe.publicada ? 'Média das aulas com o bónus' : 'Nota se a unidade acabasse hoje'}</span><span>{fmt(detalhe.contaDeAgora)}</span>
+              </div>
+            )}
+            {detalhe.publicada && detalhe.final != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '8px 0 0', fontSize: 16, fontWeight: 800 }}>
+                <span style={{ flex: 1 }}>Nota final publicada pelo professor</span><span>{fmt(detalhe.final)}</span>
+              </div>
+            )}
+            {detalhe.publicada && detalhe.final != null && detalhe.contaDeAgora != null && Math.round(detalhe.final) !== Math.round(detalhe.contaDeAgora) && (
+              <div style={{ fontSize: 13, color: C.ambar, marginTop: 6, lineHeight: 1.45 }}>
+                A nota foi publicada antes de a conta mudar (uma autoavaliação nova, uma validação ou o bónus). Até o professor a publicar de novo, conta a nota publicada: {fmt(detalhe.final)}.
+              </div>
+            )}
+            {!detalhe.publicada && detalhe.contaDeAgora == null && detalhe.final != null && (
               <div style={{ display: 'flex', gap: 10, padding: '10px 0 0', marginTop: 6, borderTop: '2px solid #E6E1EA', fontSize: 16, fontWeight: 800 }}>
                 <span style={{ flex: 1 }}>Nota se a unidade acabasse hoje</span><span>{fmt(detalhe.final)}</span>
               </div>
-            )}
-            {detalhe.publicada && (
-              <div style={{ fontSize: 13, color: C.suave, marginTop: 6 }}>O professor já publicou a nota final; é essa que aparece em cima.</div>
             )}
           </div>
         )}
@@ -226,7 +259,7 @@ export function EcraMinhaNota({
                 Aula {melhor.numero} · {melhor.titulo}
               </div>
               <div style={{ fontSize: 14, color: C.texto, marginTop: 3 }}>
-                {fmt(melhor.nota20)} em 20 · {melhor.data}
+                {fmt(melhor.nota20)} em 20 · {/^\d{4}-\d{2}-\d{2}$/.test(String(melhor.data)) ? fmtDataCurta(melhor.data) : melhor.data}
               </div>
             </div>
           </div>

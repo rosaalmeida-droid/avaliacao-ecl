@@ -5,10 +5,12 @@ import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC, mediaDasAulasValidadas, calculoDaAulaValidada } from '../backend';
-import { notaDaPautaUC, notaDaUCComoNaPauta } from '../pautaUC';
+import { notaDaPautaUC, notaDaUCComoNaPauta, notaDaUCComDecimas } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
+import { EcraMinhaNota } from './EcraNotaAtividades';
+import { contasDaNotaDoAluno } from '../notaDoAluno';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getNomeComp(id: string): string {
@@ -137,14 +139,19 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       // da recuperação. Não há bónus nem outra conta.
       // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
       // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
-      const pauta = !filtroUC || planosComNota.length === 0 ? null
+      // (Rosa, 5/out/2026) Sem UC escolhida, mostrava a média só das aulas
+      // respondidas (Raquel 15,9 contra 12 na pauta). Se as aulas são todas da
+      // mesma UC, é essa a UC da conta: as aulas sem resposta contam 0.
+      const ucsDasAulas = [...new Set(planosComNota.map(id => (planosPorId.get(id) as any)?.ucId).filter(Boolean))] as string[];
+      const ucAlvo = filtroUC || (ucsDasAulas.length === 1 ? ucsDasAulas[0] : '');
+      const pauta = !ucAlvo || planosComNota.length === 0 ? null
         // Professor: a nota da pauta (níveis 2 a 6 e 5 C) só depois de fechar a UC;
         // até lá, a média das aulas em /20, como o aluno vê.
         // (Auditoria 5/out/2026) Sempre a conta da pauta, já durante a UC:
         // as aulas em falta ou sem autoavaliação contam 0.
-        : !alunoId ? (ucJaFechada(turmaId, filtroUC) ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
-          : { nota: notaDaUCComoNaPauta(aluno.id, turmaId, filtroUC) } as any)
-        : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
+        : !alunoId ? (ucJaFechada(turmaId, ucAlvo) ? notaDaPautaUC(aluno.id, turmaId, ucAlvo)
+          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo), comDecimas: !getNotaFinalPublicadaUC(aluno.id, ucAlvo) } as any)
+        : getPropostaFinalUC(aluno.id, ucAlvo) ? notaFinalPublicadaComoPauta(aluno.id, ucAlvo) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
@@ -160,6 +167,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         mediaGeral: nota20ComBonus,
         mediaGeralSemBonus: nota20,
         pauta,
+        ucAlvo,
         porCategoriaUltima,
         total: regs.length,
         // Consolidada: 2 aulas diferentes com nota 3 ou mais (regra da escola).
@@ -167,7 +175,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
       };
     });
-  }, [registosFiltrados, alunos, filtroAluno]);
+  }, [registosFiltrados, alunos, filtroAluno, filtroUC, alunoId, turmaId]);
 
   // Análise de equilíbrio (para aviso ao professor)
   const analiseEquilibrio = useMemo(() => {
@@ -328,7 +336,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
           <div style={{ fontSize: 13, marginTop: 4 }}>Tente selecionar outra UC/UFCD ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima, ucAlvo }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
@@ -353,7 +361,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                 </div>
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta && !(pauta as any).comDecimas ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
@@ -387,6 +395,17 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                   subtitulo={`Nº ${aluno.numero} · ${aluno.turmaId}${filtroUC ? ' · ' + filtroUC : ''}`}
                   onFechar={() => setVistaAluno(null)}
                 >
+                  {/* (Rosa, 5/out/2026) As mesmas contas que o aluno vê no telemóvel:
+                      aula a aula com o peso de cada uma, faltas, média, bónus e a nota da UC. */}
+                  {!alunoId && ucAlvo && (() => {
+                    const c = contasDaNotaDoAluno(aluno.id, turmaId, ucAlvo);
+                    return (
+                      <div style={{ margin: '0 -4px 16px' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.55)', margin: '0 4px 6px' }}>Como o aluno vê a sua nota de {ucAlvo}</div>
+                        <EcraMinhaNota ucId={ucAlvo} nota={c.nota} detalhe={c.detalhe} aulas={c.aulas} />
+                      </div>
+                    );
+                  })()}
                   {comps.length === 0 ? (
                     <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', textAlign: 'center', padding: '16px 0' }}>
                       Sem competências avaliadas com estes filtros
