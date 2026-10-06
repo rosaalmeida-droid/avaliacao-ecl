@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getAlunos, getPerfilProfissionalAluno, definirNivelMedidas } from '../backend';
+import { getAlunos, getPerfilProfissionalAluno, definirNivelMedidas, definirIdiomaDoAluno } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 
 export function MapaCompetencias({ turmaId }: { turmaId: string }) {
@@ -76,6 +76,28 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                         {n === 1 ? 'Universais' : n === 2 ? 'Seletivas' : 'Adicionais'}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Aluno que só fala inglês (Rosa, 6/out/2026). */}
+                <div style={{ marginBottom: 12, padding: 10, background: 'var(--cream-dark)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Língua da aplicação para este aluno
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {([['pt', 'Português'], ['en', 'English (só fala inglês)']] as const).map(([v, t]) => {
+                      const on = (a.idioma === 'en' ? 'en' : 'pt') === v;
+                      return (
+                        <button key={v} onClick={() => { definirIdiomaDoAluno(a.id, v); setRefresh(k => k + 1); }}
+                          style={{ flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                            border: on ? 'none' : '1px solid var(--border)', background: on ? 'var(--copper)' : '#fff', color: on ? 'white' : 'rgba(26,23,20,0.6)' }}>
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)', marginTop: 6, lineHeight: 1.45 }}>
+                    Em inglês, tudo o que o aluno vê no telemóvel é traduzido automaticamente. O que ele escreve chega-lhe tal como escreveu.
                   </div>
                 </div>
 

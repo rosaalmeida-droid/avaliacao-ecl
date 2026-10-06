@@ -6,6 +6,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { AvaliarColegas, configGrupos } from './GruposAluno';
+import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
 import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
@@ -37,7 +38,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, partesDaAulaDoAluno } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -638,6 +639,14 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
 /** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
 export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
   const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id) || emailAdiadoHaPouco(props.aluno.id));
+  // Aluno que só fala inglês: o ecrã dele traduz-se para inglês (Rosa, 6/out/2026).
+  // Lê-se do aparelho a cada 5 s: quando o professor liga ou desliga, chega sozinho.
+  const [ingles, setIngles] = React.useState(() => idiomaDoAluno(props.aluno.id) === 'en');
+  React.useEffect(() => {
+    const t = setInterval(() => setIngles(idiomaDoAluno(props.aluno.id) === 'en'), 5000);
+    return () => clearInterval(t);
+  }, [props.aluno.id]);
+  React.useEffect(() => { ligarTraducaoIngles(ingles); return () => ligarTraducaoIngles(false); }, [ingles]);
   if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
   return <AlunoViewInterno {...props} />;
 }

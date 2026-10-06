@@ -1555,7 +1555,9 @@ export function seedAlunosReais(): void {
     { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1205', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '7100', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '6230', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1339', ativo: true, pinCriadoEm: agora },
+    // Só fala inglês: a aplicação abre-lhe em inglês (Rosa, 6/out/2026). O
+    // professor pode desligar no Mapa da turma (fica «pt» e a lista não repõe).
+    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1339', ativo: true, pinCriadoEm: agora, idioma: 'en' as const },
     { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
 
@@ -1670,9 +1672,11 @@ export function seedAlunosReais(): void {
     // O estado (ativo/removido) NÃO vem da lista oficial: é decisão da
     // coordenação. Se a lista reativasse, uma remoção feita pela
     // coordenadora era desfeita na próxima vez que a aplicação abrisse.
+    // A língua da lista oficial só entra se o professor ainda não escolheu.
+    if ((oficial as any).idioma && !atual.idioma) { merged[idx] = { ...merged[idx], idioma: (oficial as any).idioma }; mudou = true; }
     if (atual.nome !== oficial.nome || atual.turmaId !== oficial.turmaId
         || atual.numero !== oficial.numero || atual.pin !== pin) {
-      merged[idx] = { ...atual, nome: oficial.nome, turmaId: oficial.turmaId,
+      merged[idx] = { ...merged[idx], nome: oficial.nome, turmaId: oficial.turmaId,
         numero: oficial.numero, ano: oficial.ano, pin };
       mudou = true;
     }
@@ -1697,7 +1701,7 @@ export function seedAlunosReais(): void {
   if (perfilDoAparelho !== 'professor' && perfilDoAparelho !== 'coordenadora') return;
   let enviados: Record<string, string> = {};
   try { enviados = JSON.parse(localStorage.getItem(KEY_ALUNOS_ENVIADOS) || '{}'); } catch { enviados = {}; }
-  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false, a.nivelMedidas || 1]);
+  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false, a.nivelMedidas || 1, a.idioma || 'pt']);
   const mudaram = alunos.filter((a: any) => enviados[a.id] !== assinatura(a));
   if (!mudaram.length) return;
   emSegundoPlano(() => mudaram.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a })));
@@ -2584,6 +2588,7 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
         if (row.pinCriadoEm) existing.pinCriadoEm = row.pinCriadoEm;
         if (row.pinAlteradoEm) existing.pinAlteradoEm = row.pinAlteradoEm;
         if (row.nivelMedidas) existing.nivelMedidas = Number(row.nivelMedidas) as 1|2|3;
+        if (row.idioma === 'en' || row.idioma === 'pt') existing.idioma = row.idioma;
         existing.ativo = row.ativo !== false && row.ativo !== 'false';
       } else {
         all.push({
@@ -2596,6 +2601,7 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
           pinCriadoEm: row.pinCriadoEm || undefined,
           pinAlteradoEm: row.pinAlteradoEm || undefined,
           nivelMedidas: row.nivelMedidas ? Number(row.nivelMedidas) as 1|2|3 : undefined,
+          ...(row.idioma === 'en' ? { idioma: 'en' as const } : {}),
           ativo: row.ativo !== false && row.ativo !== 'false',
         });
       }
@@ -7140,6 +7146,20 @@ export function definirNivelMedidas(alunoId: string, nivel: 1 | 2 | 3): void {
   a.nivelMedidas = nivel;
   save(KEYS.alunos, todos);
   enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
+/** A aplicação em inglês (ou português) para um aluno — o professor liga e
+ *  desliga no Mapa da turma (Rosa, 6/out/2026). */
+export function definirIdiomaDoAluno(alunoId: string, idioma: 'pt' | 'en'): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.idioma = idioma;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+export function idiomaDoAluno(alunoId: string): 'pt' | 'en' {
+  return getAlunos().find(x => x.id === alunoId)?.idioma === 'en' ? 'en' : 'pt';
 }
 
 export function removerAlunoDaTurma(alunoId: string, por: string): void {

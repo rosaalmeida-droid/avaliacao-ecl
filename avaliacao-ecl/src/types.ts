@@ -31,6 +31,8 @@ export interface Aluno {
   pinCriadoEm?: string;
   pinAlteradoEm?: string;
   nivelMedidas?: 1 | 2 | 3;
+  /** A aplicação em inglês para este aluno (só fala inglês) — Rosa, 6/out/2026. */
+  idioma?: 'pt' | 'en';
   ativo?: boolean;
   /** Removido da turma pela coordenação — quando e por quem. */
   removidoEm?: string;
