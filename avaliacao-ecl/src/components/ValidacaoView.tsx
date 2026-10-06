@@ -1190,7 +1190,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', lineHeight:1.6 }}>
           {Object.entries(previsaoNota.porCategoria).map(([cat, n]) => (
             <div key={cat} style={{ display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
-              <span>{LABEL_CAT[cat] || cat}</span>
+              <span>{LABEL_CAT[cat] || cat}
+                {/* O 0 das técnicas sem farda tem de se perceber aqui (Rosa, 6/out/2026). */}
+                {cat === 'SUB' && semFarda && tipoPlanAula !== 'teorico' && <b style={{ color:'#8e2418' }}> · sem farda completa, contam 0</b>}</span>
               <span style={{ fontWeight:700 }}>{n}/20</span>
             </div>
           ))}
