@@ -7334,6 +7334,16 @@ export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
   return notas.length ? calcularNotaPlano(notas, tipo) : null;
 }
 
+/** Sem farda completa, as técnicas contaram 0: a nota que o aluno teria com
+ *  a farda completa (Rosa, 6/out/2026: «dizer ao aluno que, se tivesse farda,
+ *  tinha…»). null quando a farda não mudou a nota. */
+export function notaSeTivesseFarda(v: any): number | null {
+  if (!v?.semFarda) return null;
+  const com = calculoDaAulaValidada({ ...v, semFarda: false })?.nota20 ?? null;
+  const sem = calculoDaAulaValidada(v)?.nota20 ?? null;
+  return com != null && sem != null && com > sem ? com : null;
+}
+
 /** A nota 0-20 de uma aula validada (ver calculoDaAulaValidada). */
 export function notaDaAulaValidada(v: any): number | null {
   return calculoDaAulaValidada(v)?.nota20 ?? null;
