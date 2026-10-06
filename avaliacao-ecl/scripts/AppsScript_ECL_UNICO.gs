@@ -2488,6 +2488,10 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // (v26.1) O email da escola: serve para os avisos das autoavaliações em
   // falta (todos os dias às 18h). Quem não o deu não recebe avisos.
   var emailDe = d.emailDe || {};
+  // (v26.6) O mesmo email em vários alunos é o de um professor (o 1.º ano ainda
+  // não sabe o seu): assinala-se, e os avisos não vão para lá.
+  var usoEmail = {}; alunos.forEach(function (a) { var e = String(emailDe[a.id] || '').toLowerCase(); if (e) usoEmail[e] = (usoEmail[e] || 0) + 1; });
+  var emailParaLer = function (a) { var e = emailDe[a.id]; if (!e) return 'Ainda não deu'; return usoEmail[String(e).toLowerCase()] > 1 ? e + ' (partilhado: falta o email do aluno)' : e; };
   var semEmail = alunos.filter(function (a) { return !emailDe[a.id]; }).length;
   junta([(alunos.length - semEmail) + ' de ' + alunos.length + ' alunos já deram o email da escola.'
     + (semEmail ? ' ' + (semEmail === 1 ? 'O aluno que ainda não o deu não recebe' : 'Os ' + semEmail + ' que ainda não o deram não recebem') + ' os avisos das autoavaliações em falta: ' + (semEmail === 1 ? 'é-lhe pedido' : 'é-lhes pedido') + ' quando entrar na aplicação.' : '')]);
@@ -2509,7 +2513,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     comoAula.forEach(function (pl) { var k = chave(a.id, pl.id); if (auto[k]) aa++; if (nota[k] !== undefined) { va++; soma += nota[k]; } else if (!auto[k]) semResposta++; });
     var nMedia = va + semResposta;
     junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não',
-      emailDe[a.id] || 'Ainda não deu']);
+      emailParaLer(a)]);
   });
   vazia();
 
@@ -4543,6 +4547,9 @@ function avisarAutoavaliacoesEmFalta() {
   var hoje = hojeLisboa(0), desde = hojeLisboa(-7);
   var emails = {};
   ler('EMAILS_ALUNOS', {}).forEach(function (e) { if (/@eclisboa\.net$/i.test(String(e.email || '').trim())) emails[e.alunoId] = String(e.email).trim(); });
+  // (v26.6) Um email usado por vários alunos é o de um professor: não recebe os avisos dos alunos.
+  var usos = {}; Object.keys(emails).forEach(function (k) { var e = emails[k].toLowerCase(); usos[e] = (usos[e] || 0) + 1; });
+  Object.keys(emails).forEach(function (k) { if (usos[emails[k].toLowerCase()] > 1 || /^rosa\.almeida@/i.test(emails[k])) delete emails[k]; });
   var jaAvisados = {};
   ler('AVISOS_EMAIL', {}).forEach(function (a) { jaAvisados[a.alunoId + '|' + a.planoAulaId] = true; });
   var abertaEm = {}; ler('SESSOES', {}).forEach(function (s) { if (s.abertaEm) abertaEm[s.planoAulaId] = s.abertaEm; });

@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -635,13 +635,14 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
 
 /** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
 export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
-  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id));
+  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id) || emailAdiadoHaPouco(props.aluno.id));
   if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
   return <AlunoViewInterno {...props} />;
 }
 
 function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const [mudarEmail, setMudarEmail] = useState(false);
   /** Atividade aberta só para ver (o aluno não esteve nela). */
   const [planoConsulta, setPlanoConsulta] = useState<PlanoAula | null>(null);
   // Cinco separadores, como a especificação: Início, Aula, Percurso,
@@ -1472,6 +1473,18 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
                   <PerfilProfissionalAluno aluno={aluno} semTitulo />
                 </div>
+                {/* O email da escola pode mudar-se (o 1.º ano ainda não o sabe — Rosa, 6/out/2026). */}
+                <div style={{ background:'#fff', borderRadius:16, padding:'12px 16px', marginTop:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                  <span style={{ flex:1, minWidth:180, fontSize:14.5 }}>O teu email da escola: <b>{emailDoAluno(aluno.id) || 'ainda não puseste'}</b></span>
+                  <button onClick={() => setMudarEmail(true)} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #6B3FA0', background:'#fff', color:'#6B3FA0', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit' }}>
+                    {emailDoAluno(aluno.id) ? 'Mudar o email' : 'Pôr o email'}
+                  </button>
+                </div>
+                {mudarEmail && (
+                  <div style={{ position:'fixed', inset:0, zIndex:9000, overflowY:'auto' }}>
+                    <PedirEmailEscola aluno={aluno} onFeito={() => setMudarEmail(false)} onCancelar={() => setMudarEmail(false)} />
+                  </div>
+                )}
               </div>
             )}
 

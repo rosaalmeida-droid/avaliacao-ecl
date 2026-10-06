@@ -5,10 +5,10 @@
 // ============================================================
 import React, { useState } from 'react';
 import type { Aluno } from '../types';
-import { registarEmailDoAluno, RE_EMAIL_ESCOLA } from '../backend';
+import { registarEmailDoAluno, RE_EMAIL_ESCOLA, adiarEmailDoAluno, emailDoAluno } from '../backend';
 
-export function PedirEmailEscola({ aluno, onFeito }: { aluno: Aluno; onFeito: () => void }) {
-  const [email, setEmail] = useState('');
+export function PedirEmailEscola({ aluno, onFeito, onCancelar }: { aluno: Aluno; onFeito: () => void; onCancelar?: () => void }) {
+  const [email, setEmail] = useState(() => emailDoAluno(aluno.id));
   const [confirmar, setConfirmar] = useState('');
   const [erro, setErro] = useState('');
 
@@ -16,6 +16,10 @@ export function PedirEmailEscola({ aluno, onFeito }: { aluno: Aluno; onFeito: ()
     const e = email.trim().toLowerCase();
     if (!RE_EMAIL_ESCOLA.test(e)) { setErro('Escreve o teu email da escola, terminado em @eclisboa.net.'); return; }
     if (e !== confirmar.trim().toLowerCase()) { setErro('Os dois emails não são iguais. Confirma que escreveste bem.'); return; }
+    // O email de um professor não serve (os avisos iam para o professor).
+    if (e === 'rosa.almeida@eclisboa.net') {
+      setErro('Esse é o email da professora. Se ainda não sabes o teu, carrega em «Ainda não sei o meu email».'); return;
+    }
     if (registarEmailDoAluno(aluno, e)) onFeito();
   }
 
@@ -40,6 +44,21 @@ export function PedirEmailEscola({ aluno, onFeito }: { aluno: Aluno; onFeito: ()
           style={{ width: '100%', minHeight: 52, borderRadius: 12, border: 'none', background: '#6B3FA0', color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
           Guardar e continuar
         </button>
+        {/* 1.º ano: ainda não sabem o email da escola (Rosa, 6/out/2026). */}
+        {!onCancelar && (
+          <button type="button" onClick={() => { adiarEmailDoAluno(aluno.id); onFeito(); }}
+            style={{ width: '100%', minHeight: 46, marginTop: 10, borderRadius: 12, border: '1.5px solid #6B3FA0', background: '#fff', color: '#6B3FA0',
+              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Ainda não sei o meu email da escola
+          </button>
+        )}
+        {!onCancelar && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginTop: 6, textAlign: 'center' }}>Não uses o email do professor. Voltamos a perguntar daqui a uma semana.</div>}
+        {onCancelar && (
+          <button type="button" onClick={onCancelar}
+            style={{ width: '100%', minHeight: 44, marginTop: 10, borderRadius: 12, border: '1px solid rgba(26,23,20,0.2)', background: '#fff', fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Cancelar
+          </button>
+        )}
       </div>
     </div>
   );

@@ -126,7 +126,8 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
+import { FechoDasAulas, deveAbrirFecho } from './components/FechoDasAulas';
 import { ouvirTurmaNaBase } from './baseDeDados';
 import { EventosOrcamentos, PrecosConsulta } from './components/EventosOrcamentos';
 import { BibliotecaVideos } from './components/BibliotecaVideos';
@@ -251,6 +252,13 @@ function AppInterno() {
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('inicio');
+  // Fecho das aulas (Rosa, 6/out/2026): abre-se sozinho ao entrar, uma vez por dia.
+  const [verFecho, setVerFecho] = useState(false);
+  useEffect(() => {
+    if (!nomeProfessor) return;
+    const t = setTimeout(() => { try { if (deveAbrirFecho(nomeProfessor)) setVerFecho(true); } catch { /* sem dados */ } }, 2500);
+    return () => clearTimeout(t);
+  }, [nomeProfessor]);
   /** Concurso ou outra atividade escolhida em «Atividades e concursos». */
   const [tipoAtividadeNova, setTipoAtividadeNova] = useState<string>('');
   const [planoIdAlvo, setPlanoIdAlvo] = useState<string | null>(null);
@@ -540,6 +548,21 @@ function AppInterno() {
           );
         })()}
         <>
+          {verFecho && nomeProfessor && (
+            <FechoDasAulas nomeProfessor={nomeProfessor} onFechar={() => setVerFecho(false)}
+              onAbrirPlano={(p, m) => { setPlanoAberto(p as any); setModuloPedido(m); }} />
+          )}
+          {vistaGlobal === 'inicio' && nomeProfessor && (() => {
+            let n = 0; try { n = fechoDasAulas(nomeProfessor).reduce((t, f) => t + f.porValidar + f.casos.length, 0); } catch { /* */ }
+            return n > 0 ? (
+              <div style={{ maxWidth: 820, margin: '0 auto 12px' }}>
+                <button onClick={() => setVerFecho(true)} style={{ width: '100%', textAlign: 'left', background: '#fff8ef', border: '1.5px solid var(--copper)',
+                  borderRadius: 12, padding: '12px 16px', fontSize: 15, fontWeight: 700, color: 'var(--copper)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  📋 Fecho das aulas: {n} {n === 1 ? 'coisa' : 'coisas'} por fazer (validar e confirmar presenças) ›
+                </button>
+              </div>
+            ) : null;
+          })()}
           {vistaGlobal === 'inicio' && (() => {
             // A unidade em curso sai do cronograma, pela data de hoje —
             // o professor não tem de a procurar.
