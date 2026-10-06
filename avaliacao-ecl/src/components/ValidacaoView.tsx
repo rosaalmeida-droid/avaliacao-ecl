@@ -911,6 +911,15 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       border:'1px solid #7B2233', background: faltouVerdade ? '#7B2233' : '#fff', color: faltouVerdade ? '#fff' : '#7B2233' }}>
                     {faltouVerdade ? '✓ Não era verdade (farda e responsabilidade com nível 1)' : 'Não era verdade'}
                   </button>
+                  {/* Farda incompleta declarada: a tolerância também aqui, onde o professor
+                      está a ver a farda (Rosa, 6/out/2026: «não está»). */}
+                  {Number((auto as any).nota) < 5 && !faltouVerdade && tipoPlanAula !== 'teorico' && (
+                    <button onClick={() => setSemFarda(!semFarda)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:'1px solid #b5651d', background: semFarda ? '#fff' : '#b5651d', color: semFarda ? '#b5651d' : '#fff' }}>
+                      {semFarda ? 'Dar tolerância: as técnicas contam (última vez)' : '✓ Tolerância dada: as técnicas contam (o aluno é avisado de que é a última vez)'}
+                    </button>
+                  )}
                 </span>
               )}
               {(auto as any).semRegistoKF && (
