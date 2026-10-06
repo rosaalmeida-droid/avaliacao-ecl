@@ -33,7 +33,7 @@ export function FechoDasAulas({ nomeProfessor, onFechar, onAbrirPlano }: {
   };
   const bt = (cor: string, cheio = false): React.CSSProperties => ({ padding: '7px 11px', borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
     fontFamily: 'inherit', border: `1.5px solid ${cor}`, background: cheio ? cor : '#fff', color: cheio ? '#fff' : cor, whiteSpace: 'nowrap' });
-  const total = lista.reduce((s, f) => s + f.porValidar + f.casos.length, 0);
+  const total = lista.reduce((s, f) => s + f.porValidar + f.casos.length + f.desafios, 0);
 
   return (
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(26,23,20,0.6)',
@@ -53,6 +53,12 @@ export function FechoDasAulas({ nomeProfessor, onFechar, onAbrirPlano }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
                 <span style={{ flex: 1, minWidth: 180, fontSize: 14.5 }}>📝 <b>{f.porValidar}</b> {f.porValidar === 1 ? 'autoavaliação por validar' : 'autoavaliações por validar'}</span>
                 <button onClick={() => { fechar(); onAbrirPlano(f.plano, 'validacao'); }} style={bt('#3E7A31', true)}>Validar agora →</button>
+              </div>
+            )}
+            {f.desafios > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, minWidth: 180, fontSize: 14.5 }}>🚀 <b>{f.desafios}</b> {f.desafios === 1 ? 'resposta' : 'respostas'} ao desafio de alta performance por avaliar (extra)</span>
+                <button onClick={() => { fechar(); onAbrirPlano(f.plano, 'validacao'); }} style={bt('#1F4E79', true)}>Avaliar →</button>
               </div>
             )}
             {f.casos.length > 0 && (

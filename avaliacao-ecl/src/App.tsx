@@ -553,7 +553,7 @@ function AppInterno() {
               onAbrirPlano={(p, m) => { setPlanoAberto(p as any); setModuloPedido(m); }} />
           )}
           {vistaGlobal === 'inicio' && nomeProfessor && (() => {
-            let n = 0; try { n = fechoDasAulas(nomeProfessor).reduce((t, f) => t + f.porValidar + f.casos.length, 0); } catch { /* */ }
+            let n = 0; try { n = fechoDasAulas(nomeProfessor).reduce((t, f) => t + f.porValidar + f.casos.length + f.desafios, 0); } catch { /* */ }
             return n > 0 ? (
               <div style={{ maxWidth: 820, margin: '0 auto 12px' }}>
                 <button onClick={() => setVerFecho(true)} style={{ width: '100%', textAlign: 'left', background: '#fff8ef', border: '1.5px solid var(--copper)',

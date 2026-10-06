@@ -14,6 +14,8 @@ import { capituloDoCampo } from '../bancoManuais';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
 import { janelaConfirmar } from './janelaConfirmar';
+import { AvaliarAltaPerformance } from './AltaPerformance';
+import { mediaAP } from '../altaPerformance';
 import { ColegasNaValidacao } from './ColegasNaValidacao';
 
 // Escala 1-4 alinhada com a autoavaliação do aluno
@@ -348,6 +350,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   const [aAlterarVal, setAAlterarVal] = useState(false);
   const soVer = !!validacaoExistente && !aAlterarVal;
   const [, redesenharFalta] = useState(0);
+  // Alta performance (extra): a avaliação do professor; por omissão não entra na avaliação.
+  const [apNotas, setApNotas] = useState<Record<string, number>>(() => (validacaoExistente as any)?.altaPerformance?.notas || {});
+  const [apEntra, setApEntra] = useState<boolean>(() => !!(validacaoExistente as any)?.altaPerformance?.entraNaAvaliacao);
   const faltaMarcada = temFaltaMarcada(selecao.alunoId, selecao.planoAulaId || '');
   /** Marcar falta a este aluno nesta aula, em vez de lhe dar 0 em tudo (Rosa, 6/out/2026). */
   async function marcarFalta(): Promise<boolean> {
@@ -588,6 +593,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     // Sem farda: as técnicas ficam no percurso com a nota dada, mas contam 0 na nota da aula.
     if (semFarda) (validacao as any).semFarda = true;
     if (faltouVerdade) (validacao as any).faltouVerdade = true;
+    if (Object.keys(apNotas).length) (validacao as any).altaPerformance = { notas: apNotas, entraNaAvaliacao: apEntra, media: mediaAP(apNotas) };
     // Guardar a decomposição por categoria para o professor perceber sempre
     // como a nota foi calculada (antes ficava só o número, sem explicação).
     (validacao as any).porCategoria = porCategoria;
@@ -1258,6 +1264,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         );
       })()}
 
+      <AvaliarAltaPerformance alunoId={selecao.alunoId} plano={getPlanosAula().find(p => p.id === selecao.planoAulaId)}
+        notas={apNotas} entra={apEntra} onNotas={setApNotas} onEntra={setApEntra} />
       {/* Comentário e guardar */}
       <Card>
         <Field label="Observação geral (opcional)">

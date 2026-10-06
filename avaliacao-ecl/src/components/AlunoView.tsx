@@ -10,6 +10,7 @@ import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
+import { DesafioAltaPerformance } from './AltaPerformance';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano, rotuloDoPlano, posicaoNaUC } from '../rotuloPlano';
 import { contasDaNotaDoAluno } from '../notaDoAluno';
@@ -3552,6 +3553,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               return 'O professor vai confirmar o teu registo.';
             })()}
           </div>
+        {/* Alta performance (extra, Rosa 6/out/2026): o aluno escolhe se responde. */}
+        <DesafioAltaPerformance aluno={aluno} plano={plano} />
         </div>
 
         {/* Em grupo: avaliar os colegas (só o professor vê; não conta para nota). */}

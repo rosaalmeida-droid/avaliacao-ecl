@@ -3148,10 +3148,12 @@ const PREFIXO_NOTA = 'UCNOTA|';
 const PREFIXO_COLAB = 'COLAB|';
 /** O aluno carregou em «Avisar o professor»: o pedido e o relatório do telemóvel. */
 const PREFIXO_AJUDA = 'AJUDA|';
+/** As respostas às perguntas de alta performance (extra) de uma aula. */
+const PREFIXO_ALTAPERF = 'ALTAPERF|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
   return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB)
-    || p.startsWith(PREFIXO_AJUDA);
+    || p.startsWith(PREFIXO_AJUDA) || p.startsWith(PREFIXO_ALTAPERF);
 };
 
 /**
@@ -10485,7 +10487,9 @@ export function marcarPassadoAESchooling(planoIds: string[], passado = true): vo
 // ou entregou a autoavaliação muito antes do fim (pode ter saído mais cedo).
 export interface CasoPresenca { alunoId: string; nome: string; numero: number;
   motivo: 'sem_autoavaliacao' | 'entregou_cedo' | 'atrasado' | 'nao_entrou'; detalhe: string }
-export interface FechoDaAula { plano: PlanoAula; porValidar: number; casos: CasoPresenca[] }
+export interface FechoDaAula { plano: PlanoAula; porValidar: number; casos: CasoPresenca[];
+  /** Respostas ao desafio de alta performance ainda sem avaliação do professor. */
+  desafios: number }
 export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
   const hoje = new Date().toISOString().slice(0, 10);
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
@@ -10504,6 +10508,8 @@ export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
       const alunos = alunosTodos.filter(a => a.turmaId === p.turmaId && a.ativo !== false && !alunoDeTeste(a))
         .filter(a => !eventoForaDoHorario(p) || participantesDoEvento(p).includes(a.id));
       const porValidar = sels.filter(s => s.planoAulaId === p.id && !alunoDeTeste(s.alunoId) && !selecaoJaValidada(s, vals as any)).length;
+      const desafios = load<SelecaoAluno>(KEYS.selecoes).filter(s => s.planoAulaId === PREFIXO_ALTAPERF + p.id && !alunoDeTeste(s.alunoId)
+        && !vals.some((v: any) => v.alunoId === s.alunoId && v.planoAulaId === p.id && v.altaPerformance)).length;
       const casos: CasoPresenca[] = [];
       const aberta = getSessaoAula(p.id)?.abertaEm;
       // As presenças só nas aulas abertas no próprio dia (aberta depois, só conta o que o professor decide).
@@ -10524,8 +10530,8 @@ export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
             casos.push({ ...quem, motivo: 'entregou_cedo', detalhe: `Entregou a autoavaliação às ${hm(s.criadaEm)}, antes do fim (${p.horaFim}). Esteve a aula toda?` });
         }
       }
-      return { plano: p, porValidar, casos };
+      return { plano: p, porValidar, casos, desafios };
     })
-    .filter(f => f.porValidar > 0 || f.casos.length > 0)
+    .filter(f => f.porValidar > 0 || f.casos.length > 0 || f.desafios > 0)
     .sort((a, b) => String(b.plano.data).localeCompare(String(a.plano.data)));
 }
