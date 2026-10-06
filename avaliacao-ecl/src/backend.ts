@@ -5425,6 +5425,11 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
         const n = notaDaAulaValidada(validacaoDaAula(a.id, p.id, validacoes));
         if (n !== null) porAula[p.id] = Math.round(n * 10) / 10;
       });
+      // A atividade obrigatória fora das horas da aula conta como mais uma aula
+      // (Rosa, 6/out/2026): vai com a sua nota, como na aplicação (falta = 0).
+      for (const l of aulasDaNotaUC(a.id, turmaId, uc)) {
+        if (getPlanosAula().some((x: any) => x.id === l.planoId && x.tipoEvento)) porAula[l.planoId] = Math.round(l.nota * 10) / 10;
+      }
       if (c.final === null && !Object.keys(porAula).length) continue;
       linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
         media: c.base === null ? '' : Math.round(c.base * 10) / 10,

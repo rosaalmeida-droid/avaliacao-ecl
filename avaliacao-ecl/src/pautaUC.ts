@@ -186,6 +186,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
   const planos = getPlanosAulaPorTurma(turmaId);
   const totalAtiv = atividadesDoModulo(turmaId, ucId);
   const tipoDe = (id: string) => (planos.find(p => p.id === id) as any)?.tipoPlanAula || 'pratico';
+  const atividadesComoAula = new Set(atividadesQueContamComoAula(turmaId, ucId).map(r => r.atividade.id as string));
   const validados = getHistoricoAvaliacoes().filter(r =>
     r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
 
@@ -202,12 +203,17 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       // Produtos: média dos planos do grupo; falta = 0 (ou a recuperação).
       // Aulas em que esteve e não se autoavaliou: contam 0, como em todos os
       // outros ecrãs (Rosa, out/2026; auditoria 5/out: aqui ficavam em branco).
+      const linhasApp = aulasDaNotaUC(a.id, turmaId, ucId);
       const semAuto = new Set([...planosSemAutoavaliacao(a.id, turmaId, ucId).map(p => p.id),
-        ...aulasDaNotaUC(a.id, turmaId, ucId).filter(l => l.semResposta).map(l => l.planoId)]);
+        ...linhasApp.filter(l => l.semResposta).map(l => l.planoId)]);
+      // A atividade obrigatória que conta como aula: a mesma nota da aplicação
+      // (com falta marcada conta 0, e não fica em branco).
+      const notaAtividade = new Map(linhasApp.filter(l => atividadesComoAula.has(l.planoId)).map(l => [l.planoId, l.nota]));
       const notasProd = Array.from({ length: colunasDeProdutos(produtos) }, (_, j) => {
         const p = produtos[j];
         if (!p) return null;
         const notas = p.planosIds.map(id => {
+          if (atividadesComoAula.has(id)) return notaAtividade.has(id) ? notaAtividade.get(id)! : null;
           if (faltou.has(id)) return recup ?? 0;
           if (semAuto.has(id)) return 0;
           return notaDoPlano(a.id, id, tipoDe(id));

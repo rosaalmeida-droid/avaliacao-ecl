@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.5';
+var VERSAO = 'ECL único v26.6';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2492,7 +2492,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   junta([(alunos.length - semEmail) + ' de ' + alunos.length + ' alunos já deram o email da escola.'
     + (semEmail ? ' ' + (semEmail === 1 ? 'O aluno que ainda não o deu não recebe' : 'Os ' + semEmail + ' que ainda não o deram não recebem') + ' os avisos das autoavaliações em falta: ' + (semEmail === 1 ? 'é-lhe pedido' : 'é-lhes pedido') + ' quando entrar na aplicação.' : '')]);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
-  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20; sem resposta = 0)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média simples das aulas validadas (0-20; sem resposta = 0; a nota da UC, com faltas e pesos, está na folha Notas)', 'Aulas sem autoavaliação (contam 0)', 'Telemóvel ligado', 'Email da escola']);
   alunos.forEach(function (a) {
     // (v25.9) A média das aulas conta 0 nas aulas em que o aluno esteve e não
     // se autoavaliou, como na aplicação. Antes era a média só das validadas,
