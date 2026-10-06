@@ -5863,6 +5863,19 @@ export const LABEL_DECISAO: Record<DecisaoFalta, string> = {
 };
 
 /** As horas de um plano, uma a uma ("13:00"), sem a hora de almoço. */
+/** O aluno esteve só parte da aula (o professor marcou «Só algumas horas»):
+ *  os tempos em que esteve e os em que faltou (Rosa, 6/out/2026). */
+export function partesDaAulaDoAluno(alunoId: string, planoAulaId: string): { esteve: string[]; faltou: string[]; horasEsteve: number; horasAula: number } | null {
+  const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  if (r?.decisaoProfessor !== 'parcial') return null;
+  const p = getPlanosAula().find(x => x.id === planoAulaId);
+  if (!p) return null;
+  const em = new Set<string>(r.horasPresentes || []);
+  const blocos = blocosDeHoraDoPlano(p);
+  return { esteve: blocos.filter(b => em.has(b.inicio)).map(b => `${b.inicio}–${b.fim}`),
+    faltou: blocos.filter(b => !em.has(b.inicio)).map(b => `${b.inicio}–${b.fim}`),
+    horasEsteve: Math.round(horasDosBlocos(p, r.horasPresentes || []) * 100) / 100, horasAula: Math.round(horasDoPlano(p) * 100) / 100 };
+}
 export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string }[] {
   const min = (h?: string) => {
     if (!h) return NaN;

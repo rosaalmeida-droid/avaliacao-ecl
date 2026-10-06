@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -729,6 +729,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           {(() => { const a = getAlunos().find(x => x.id === selecao.alunoId); return a?.numero ? `N.º ${a.numero} · ` : ''; })()}{nomeDoAluno(selecao.alunoId)}
         </div>
         <div style={{ fontWeight: 700, fontSize: 15, marginTop: 4 }}>{planoTitulo}</div>
+        {(() => { const pa = partesDaAulaDoAluno(selecao.alunoId, selecao.planoAulaId || ''); return pa ? (
+          <div style={{ marginTop: 6, fontSize: 14, color: '#f0b470', fontWeight: 700 }}>
+            Esteve só {String(pa.horasEsteve).replace('.', ',')} de {String(pa.horasAula).replace('.', ',')} horas ({pa.esteve.join(', ') || 'nenhum tempo'}).
+            Confirme que só avalia o que ele fez nesse tempo.
+          </div>) : null; })()}
         {!faltaMarcada && (
           <button onClick={() => { void marcarFalta(); }} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 9, border: '1px solid #f0b4a8',
             background: 'transparent', color: '#f8d7d1', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -3328,6 +3328,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
    *  Abre logo quando o aluno vem do passo anterior no ecrã cheio. */
   const [aberto, setAberto] = useState(!!abrirLogo);
   const topoRef = React.useRef<HTMLDivElement>(null);
+  // Esteve só parte da aula (Rosa, 6/out/2026): responde só ao que fez.
+  const soParte = partesDaAulaDoAluno(aluno.id, plano.id);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
   const aSubmeter = React.useRef(false);
@@ -4107,10 +4109,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         const frases = frasesVisiveis(c);
         // Nas aulas teóricas não há «não tive oportunidade» nos conhecimentos:
         // os conteúdos foram dados à turma toda (Rosa, set/2026).
-        const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico';
+        const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico' && !soParte;
         const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
           <div>
+            {soParte && (
+              <div style={{ background:'#fff8ef', border:'1.5px solid #e0b070', borderRadius:10, padding:'8px 12px', marginBottom:10, fontSize:13.5, lineHeight:1.5, color:'#8a5a12' }}>
+                Estiveste só numa parte da aula ({soParte.esteve.join(', ') || 'nenhum tempo'}). Responde só ao que fizeste.
+                No que não fizeste por não estares, escolhe «Não pude fazer: não estava nessa parte da aula». O professor confirma.
+              </div>
+            )}
             {c.contexto && (
               <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
                 {c.contexto}
@@ -4150,7 +4158,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
-              {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
+              {([['nop', soParte ? 'Não pude fazer: não estava nessa parte da aula' : simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
                  ['nf', ehCriterioTrabalho(c.id) ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
