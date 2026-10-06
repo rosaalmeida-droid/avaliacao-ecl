@@ -1837,8 +1837,12 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   const [entradaConcluida, setEntradaConcluida] = React.useState(() => {
     // Verificar também nas presenças guardadas
     const presencas = getPresencas();
-    const jaEntrou = presencas.some(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
-    return _load('entrada') || jaEntrou;
+    const pres: any = presencas.find(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
+    // Entrou mas não respondeu à farda (saiu da aplicação a meio): a entrada
+    // ainda não está feita, volta à farda (Rosa, 6/out/2026).
+    const fardaRespondida = !pedeFardaEHigiene(plano) || !!pres?.fardaDeclarada || getHistoricoAvaliacoes()
+      .some((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01');
+    return _load('entrada') || (!!pres && fardaRespondida);
   });
   // A função de cada um nesta aula (plano organizacional). Lê-se o plano
   // guardado, que o telemóvel atualiza de poucos em poucos segundos: uma
@@ -2664,7 +2668,14 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
   >(() => {
     const p: any = getPresencas().find(
       x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
-    return p ? { foraDeTempo: !!p.atrasado, minutosAposAbertura: p.atrasadoMins || 0, jaExistia: true } : null;
+    if (!p) return null;
+    // Entrou, saiu da aplicação antes da farda e voltou: a farda ainda não foi
+    // respondida. Antes dizia «Já entraste» e saltava a farda — o professor
+    // ficava sem a farda na validação (Rosa, 6/out/2026).
+    const fardaRespondida = !!p.fardaDeclarada || getHistoricoAvaliacoes()
+      .some((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01');
+    const faltaFarda = pedeFardaEHigiene(plano) && !fardaRespondida;
+    return { foraDeTempo: !!p.atrasado, minutosAposAbertura: p.atrasadoMins || 0, jaExistia: !faltaFarda };
   });
   // A farda em dois tempos: primeiro a pergunta, e só quem tem algo em
   // falta é que abre a lista dos nove itens.
