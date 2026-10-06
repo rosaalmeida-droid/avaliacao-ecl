@@ -3624,6 +3624,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const [respPres, setRespPres] = useState<Record<string, RespostaPresenca>>({});
   const [compromisso, setCompromisso] = useState<IdCompromisso | null>(null);
   const escolherPres = (id: string, i: number) => setRespPres(r => ({ ...r, [id]: { id, primeira: r[id]?.primeira ?? i, final: i } }));
+  /** As opções de cada pergunta numa ordem baralhada, sempre a mesma para este
+   *  aluno nesta aula (Rosa, 6/out/2026: as respostas não ficam por ordem da
+   *  escala, para o aluno não escolher pela posição). Devolve os índices. */
+  const ordem = (n: number, chave: string): number[] => {
+    let h = 2166136261;
+    for (const ch of `${aluno.id}|${plano.id}|${chave}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const ix = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) { h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; const j = h % (i + 1); [ix[i], ix[j]] = [ix[j], ix[i]]; }
+    return ix;
+  };
   const presCerta = (id: string) => { const q = PERGUNTAS_PRESENCA.find(x => x.id === id); const r = respPres[id]; return !!q && !!r && q.opcoes[r.final]?.certa; };
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
@@ -4227,9 +4237,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.4, margin:'8px 0 10px' }}>
                 {umaSo ? '' : `${numero}. `}{q.pergunta}
               </div>
-              {q.respostas.map((t, i) => (
+              {ordem(q.respostas.length, `ati_${qi}_${q.pergunta}`).map(i => (
                 <button key={i} onClick={() => responder(qi, i)} style={estiloOpcao(v === i)}>
-                  {radio(v === i)}{t}
+                  {radio(v === i)}{q.respostas[i]}
                 </button>
               ))}
               {q.naoAconteceu && !umaSo && (
@@ -4379,12 +4389,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   return (
     <EcraCheio titulo={`Autoavaliação · ${plano.titulo}`} onSair={() => setAberto(false)}>
     <div ref={topoRef}>
-      {/* De que aula se trata — numa aula que já passou, o aluno lembra-se. */}
+      {/* De que aula se trata — numa aula que já passou, o aluno lembra-se.
+          Sem o sumário: ocupava o ecrã todo antes da 1.ª pergunta (Rosa, 6/out/2026). */}
       {idx === 0 && (
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
           fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
           <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
-          {sumarioDoPlano(plano, fichas as any) && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{sumarioDoPlano(plano, fichas as any)}</div>}
         </div>
       )}
       {/* Onde estou */}
@@ -4455,14 +4465,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {rotuloSecao(ehCriterioTrabalho(c.id) ? 'Como correu?'
               : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
               : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
-            {NIVEIS_FRASES.map((nivel, i) => (
+            {ordem(NIVEIS_FRASES.length, 'c_' + c.id).map(i => { const nivel = NIVEIS_FRASES[i]; return (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
                 {/* Sem números: o aluno escolhia o número, não o que fez. */}
                 <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
                   border: v === nivel ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
                 <span>{frases[i]}</span>
               </button>
-            ))}
+            ); })}
             {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
@@ -4554,7 +4564,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3, marginBottom:12 }}>
               {q.pergunta(horasEmTexto(presencaParcial.esteve), horasEmTexto(presencaParcial.total))}
             </div>
-            {q.opcoes.map((o, i) => {
+            {ordem(q.opcoes.length, 'pres_' + q.id).map(i => {
+              const o = q.opcoes[i];
               const sel = r?.final === i;
               return (
                 <button key={i} onClick={() => escolherPres(q.id, i)} style={estiloOpcao(sel)}>
@@ -4619,9 +4630,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             Os registos no KitchenFlow: temperaturas e prevenção de contaminações. É obrigatória.
           </div>
           {rotuloSecao('Como correu hoje?')}
-          {/* A mesma ordem das técnicas (do mais fraco ao melhor, e o «não fiz»
-              à parte), sem números: o aluno escolhe o que fez, não a nota. */}
-          {OPCOES.filter(op => op.v !== 'nf').map(op => (
+          {/* Baralhadas como nas técnicas (o «não fiz» à parte), sem números:
+              o aluno escolhe o que fez, não a nota. */}
+          {(() => { const ops = OPCOES.filter(op => op.v !== 'nf'); return ordem(ops.length, 'haccp').map(i => ops[i]); })().map(op => (
             <button key={op.v} onClick={() => setNivelHaccp(op.v)} style={estiloOpcao(nivelHaccp === op.v)}>
               {radio(nivelHaccp === op.v)}
               <span>{op.label}</span>
@@ -4681,7 +4692,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 10px' }}>
             O chef também responde a esta pergunta sobre ti.
           </div>
-          {OPCOES_TEC_EVENTO.map(o => (
+          {ordem(OPCOES_TEC_EVENTO.length, 'tecEvento').map(i => OPCOES_TEC_EVENTO[i]).map(o => (
             <button key={o.nota} onClick={() => setTecEvento(o.nota)} style={estiloOpcao(tecEvento === o.nota)}>
               <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
                 border: tecEvento === o.nota ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
@@ -4791,12 +4802,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 14px', lineHeight:1.5 }}>
               Escolhe o que fizeste hoje. O professor confirma.
             </div>
-            {(simples ? q.frasesSimples : q.frases).map((fr, i) => (
+            {(() => { const frs = simples ? q.frasesSimples : q.frases; return ordem(frs.length, 'tri_' + q.chave + '_' + idDe(q.chave, triagem)).map(i => (
               <button key={i} onClick={() => escolher(i)} style={estiloOpcao(r === i)}>
                 {radio(r === i)}
-                {fr}
+                {frs[i]}
               </button>
-            ))}
+            )); })()}
             {/* O professor disse que hoje se trabalha com os colegas: não há «era individual». */}
             {(simples ? q.semOcasiaoSimples : q.semOcasiao) && !(q.chave === 'cl' && ctxAula.definido && ctxAula.colegas) && (
               <button onClick={() => escolher('sem')} style={{ ...estiloOpcao(r === 'sem'), fontStyle:'italic' }}>
