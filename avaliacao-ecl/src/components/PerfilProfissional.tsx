@@ -34,7 +34,7 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
 
 import { escreverPerfil } from '../motorAvaliacao';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
-import { assiduidadeNaUC, leituraAssiduidade, assiduidadeEmHoras, perfilSocialDoAluno } from '../backend';
+import { assiduidadeNaUC, leituraAssiduidade, assiduidadeEmHoras, perfilSocialDoAluno, sincronizarParesDoAluno, getAlunos } from '../backend';
 import { MICROCOMPETENCIAS } from '../compatECL';
 
 export function PerfilProfissionalAluno({ aluno, semTitulo }: {
@@ -192,9 +192,17 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
 export default PerfilProfissionalAluno;
 
 /** Os 5 C e o que os colegas de grupo veem (Rosa, out/2026). Sem notas: em
- *  palavras e com a barra do caminho. Do que os colegas disseram, só o que o
- *  professor confirmou, sem nomes. Sempre um passo concreto. */
+ *  palavras e com a barra do caminho. O que os colegas disseram, sem nomes e
+ *  sem notas (não conta para a nota). Sempre um passo concreto. */
 function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
+  const [, redesenhar] = React.useState(0);
+  // O que os colegas disseram deste aluno vem do Sheets, já sem nomes.
+  React.useEffect(() => {
+    let vivo = true;
+    const turmaId = getAlunos().find(a => a.id === alunoId)?.turmaId;
+    if (turmaId) sincronizarParesDoAluno(alunoId, turmaId).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    return () => { vivo = false; };
+  }, [alunoId]);
   const p = perfilSocialDoAluno(alunoId);
   if (!p) return null;
   const V = '#6B3FA0';
@@ -256,7 +264,7 @@ function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
       </div>
       {p.aulas > 0 && (
         <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 6 }}>
-          O que os colegas veem: opinião confirmada pelo professor em {p.aulas} aula{p.aulas === 1 ? '' : 's'}. Não conta para a nota.
+          O que os colegas veem: o que disseram de ti em {p.aulas} aula{p.aulas === 1 ? '' : 's'}, sem nomes. Só aparece com 2 ou mais respostas. Não conta para a nota.
         </div>
       )}
     </div>
