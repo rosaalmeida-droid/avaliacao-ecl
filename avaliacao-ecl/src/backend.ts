@@ -10477,6 +10477,8 @@ export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
   const hoje = new Date().toISOString().slice(0, 10);
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
   const sels = selecoesQueContam(getSelecoes());
+  // Também as respostas dadas antes de o plano mudar: quem respondeu esteve na aula.
+  const respondeu = new Set(selecoesDoProfessor().map(x => `${x.alunoId}|${x.planoAulaId}`));
   const vals = getValidacoes();
   const pres = getPresencas();
   const alunosTodos = getAlunos();
@@ -10501,7 +10503,8 @@ export function fechoDasAulas(nomeProfessor: string, dias = 21): FechoDaAula[] {
           if (!r || r.presente === false) { casos.push({ ...quem, motivo: 'nao_entrou', detalhe: 'Não entrou na aplicação: fica com falta à aula toda.' }); continue; }
           if (r.atrasado) { casos.push({ ...quem, motivo: 'atrasado', detalhe: `Entrou atrasado${r.atrasadoMins ? ` (${r.atrasadoMins} min)` : ''}.` }); continue; }
           const s: any = sels.find(x => x.alunoId === a.id && x.planoAulaId === p.id);
-          if (!s) { casos.push({ ...quem, motivo: 'sem_autoavaliacao', detalhe: 'Entrou e não se autoavaliou. Esteve a aula toda?' }); continue; }
+          if (!s && !respondeu.has(`${a.id}|${p.id}`)) { casos.push({ ...quem, motivo: 'sem_autoavaliacao', detalhe: 'Entrou e não se autoavaliou. Esteve a aula toda?' }); continue; }
+          if (!s) continue;
           const entregou = s.criadaEm ? new Date(s.criadaEm) : null;
           const diaEntrega = entregou ? entregou.toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' }) : '';
           if (entregou && diaEntrega === String(p.data).slice(0, 10) && !isNaN(fim) && minutos(hm(s.criadaEm)) < fim - 60)
