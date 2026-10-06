@@ -37,7 +37,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, partesDaAulaDoAluno } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -1216,10 +1216,14 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           {(() => {
             const sel = ultimaResposta(aluno.id, planoAtivo.id);
             const val = sel ? validacaoDaSelecao(sel) : undefined;
-            const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, planoAtivo.id)) : null;
+            const vAula = validacaoDaAula(aluno.id, planoAtivo.id);
+            const nota20 = val ? notaDaAulaValidada(vAula) : null;
             if (nota20 == null) return null;
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
-            return (
+            // Sem farda completa, as técnicas contaram 0: diz-se ao aluno quanto teria (Rosa, 6/out/2026).
+            const comFarda = notaSeTivesseFarda(vAula);
+            const v20 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+            return (<>
               <div style={{ margin:'16px 16px 0', padding:'14px 18px', borderRadius:14, background:cor+'14', border:'1.5px solid '+cor+'44', display:'flex', alignItems:'center', gap:14 }}>
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.5)' }}>Nota desta aula</div>
@@ -1229,7 +1233,26 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   {String(nota20).replace(".", ",")}<span style={{ fontSize:18 }}>/20</span>
                 </div>
               </div>
-            );
+              {(() => {
+                // Tolerância da farda: a última vez (Rosa, 6/out/2026).
+                const seContasse = notaSeContasseAFarda(vAula);
+                return (vAula as any)?.fardaPerdoada && !(vAula as any)?.semFarda ? (
+                  <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fff7e6', border:'1.5px solid #b5651d',
+                    color:'#7a4310', fontSize:15, lineHeight:1.5 }}>
+                    <b>⚠ Atenção: esta foi a última vez.</b> Não tinhas a farda completa, mas o professor deixou contar as técnicas.
+                    Na próxima aula, sem farda completa, as técnicas não contam, porque não se cumprem as regras de higiene.
+                    {seContasse != null && <> Se a falta de farda tivesse contado, a tua nota desta aula seria <b>{v20(seContasse)}/20</b>, e não {v20(nota20)}/20.</>}
+                  </div>
+                ) : null;
+              })()}
+              {comFarda != null && (
+                <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fdf0ef', border:'1.5px solid #c0392b',
+                  color:'#7a1f14', fontSize:15, lineHeight:1.5 }}>
+                  <b>Não tinhas a farda completa: as técnicas de hoje contaram 0.</b> Com a farda completa, a tua nota
+                  desta aula seria <b>{v20(comFarda)}/20</b>, e não {v20(nota20)}/20. O que fizeste nas técnicas fica no teu percurso.
+                </div>
+              )}
+            </>);
           })()}
           {/* Atividade extra para a qual o aluno não foi escolhido (nem está a
               recuperar nela): só para ver — não entra nem se autoavalia (Rosa, out/2026). */}
@@ -1692,6 +1715,21 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
         {aba === 'perfil' && (
           <div>
+            {/* Tolerância da farda: aviso de última vez, no perfil (Rosa, 6/out/2026). */}
+            {(() => {
+              const t = toleranciasDaFarda(aluno.id)[0];
+              if (!t) return null;
+              const v20 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+              return (
+                <div style={{ margin:'0 0 14px', padding:'14px 16px', borderRadius:14, background:'#fff7e6', border:'1.5px solid #b5651d',
+                  color:'#7a4310', fontSize:15, lineHeight:1.5 }}>
+                  <div style={{ fontSize:16, fontWeight:800 }}>⚠ Farda: já usaste a tua última tolerância</div>
+                  Na aula de {t.data.split('-').reverse().slice(0, 2).join('/')} não tinhas a farda completa, e o professor deixou contar as técnicas.
+                  Na próxima vez, sem farda completa, as técnicas não contam, porque não se cumprem as regras de higiene.
+                  {t.seContasse != null && t.nota != null && <> Se a falta de farda tivesse contado, a tua nota dessa aula seria <b>{v20(t.seContasse)}/20</b>, e não {v20(t.nota)}/20.</>}
+                </div>
+              );
+            })()}
             <PerfilProfissionalAluno aluno={aluno} />
             {/* As recuperações estão no Percurso: aqui repetiam-se. */}
             <div style={{ marginTop:24 }}>

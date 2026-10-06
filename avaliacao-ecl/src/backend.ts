@@ -7334,6 +7334,40 @@ export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
   return notas.length ? calcularNotaPlano(notas, tipo) : null;
 }
 
+/** Sem farda completa, as técnicas contaram 0: a nota que o aluno teria com
+ *  a farda completa (Rosa, 6/out/2026: «dizer ao aluno que, se tivesse farda,
+ *  tinha…»). null quando a farda não mudou a nota. */
+export function notaSeTivesseFarda(v: any): number | null {
+  if (!v?.semFarda) return null;
+  const com = calculoDaAulaValidada({ ...v, semFarda: false })?.nota20 ?? null;
+  const sem = calculoDaAulaValidada(v)?.nota20 ?? null;
+  return com != null && sem != null && com > sem ? com : null;
+}
+
+/** O professor deixou contar as técnicas apesar de a farda estar incompleta
+ *  (tolerância, no início do curso): a nota que o aluno teria se a falta de
+ *  farda tivesse contado. É o aviso de «última vez» (Rosa, 6/out/2026). */
+export function notaSeContasseAFarda(v: any): number | null {
+  if (!v?.fardaPerdoada || v.semFarda) return null;
+  const sem = calculoDaAulaValidada({ ...v, semFarda: true })?.nota20 ?? null;
+  const com = calculoDaAulaValidada(v)?.nota20 ?? null;
+  return sem != null && com != null && sem < com ? sem : null;
+}
+/** As aulas em que o aluno teve tolerância da farda (a mais recente primeiro). */
+export function toleranciasDaFarda(alunoId: string): { planoAulaId: string; data: string; titulo: string; nota: number | null; seContasse: number | null }[] {
+  const porPlano = new Map<string, any>();
+  for (const v of getValidacoes() as any[]) {
+    if (v.alunoId !== alunoId) continue;
+    const ant = porPlano.get(v.planoAulaId);
+    if (!ant || String(v.validadoEm || '') > String(ant.validadoEm || '')) porPlano.set(v.planoAulaId, v);
+  }
+  return [...porPlano.values()].filter(v => v.fardaPerdoada && !v.semFarda).map(v => {
+    const p: any = planoPorIdRapido(v.planoAulaId);
+    return { planoAulaId: v.planoAulaId, data: String(p?.data || v.validadoEm || '').slice(0, 10), titulo: p?.titulo || 'Aula',
+      nota: notaDaAulaValidada(v), seContasse: notaSeContasseAFarda(v) };
+  }).sort((a, b) => b.data.localeCompare(a.data));
+}
+
 /** A nota 0-20 de uma aula validada (ver calculoDaAulaValidada). */
 export function notaDaAulaValidada(v: any): number | null {
   return calculoDaAulaValidada(v)?.nota20 ?? null;
