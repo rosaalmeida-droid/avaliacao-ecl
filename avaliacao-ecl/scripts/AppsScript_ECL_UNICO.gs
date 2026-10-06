@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.3';
+var VERSAO = 'ECL único v26.4';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -962,6 +962,7 @@ function doGet(e) {
     if (tipo === 'get_aula')         return respostaAula(turma);
     if (tipo === 'get_grupos')       return comDados('membros',      ler('GRUPOS',       { turmaId: turma }), { info: ler('GRUPOS_INFO', { turmaId: turma }) });
     if (tipo === 'get_pares')        return comDados('pares',        ler('AVALIACAO_PARES', { turmaId: turma }));
+    if (tipo === 'get_pares_aluno')  return comDados('pares',        paresSobreOAluno_(turma, p.alunoId));
     if (tipo === 'get_lideres_kf')   return comDados('lideres',      ler('LIDERES_KF',   { turmaId: turma }));
     if (tipo === 'recuperacoes')     return comDados('recuperacoes', ler('RECUPERACOES', { turmaId: turma }));
     if (tipo === 'evidencias')       return comDados('evidencias',   ler('EVIDENCIAS',   {}));
@@ -982,6 +983,20 @@ function doGet(e) {
   } catch (err) {
     return resposta(false, 'Erro: ' + err.toString());
   }
+}
+
+/** (v26.4) Para o perfil do aluno: o que os colegas disseram dele, sem
+ *  nomes. Quem avaliou fica «c0», «c1»… dentro de cada aula. */
+function paresSobreOAluno_(turma, alunoId) {
+  var porAula = {};
+  return ler('AVALIACAO_PARES', { turmaId: turma }).filter(function (r) {
+    return alunoId && String(r.avaliadoId) === String(alunoId);
+  }).map(function (r) {
+    var n = porAula[r.planoAulaId] = (porAula[r.planoAulaId] || 0) + 1;
+    return { id: 'anon_' + r.planoAulaId + '_' + n, planoAulaId: r.planoAulaId, turmaId: r.turmaId, avaliadorId: 'c' + n,
+      avaliadoId: r.avaliadoId, colabora: Number(r.colabora) || 0, ouve: Number(r.ouve) || 0, flexivel: Number(r.flexivel) || 0,
+      conflito: Number(r.conflito) || 0, criadoEm: r.criadoEm };
+  });
 }
 
 /** A aplicação lê umas vezes .dados e outras o nome próprio — vão os dois. */

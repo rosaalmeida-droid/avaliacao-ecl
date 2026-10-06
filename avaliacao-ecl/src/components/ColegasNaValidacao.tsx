@@ -98,7 +98,7 @@ export function ColegasNaValidacao({ alunoId, turmaId, autoavaliacoes, triagemDo
       })}
       <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 10, fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
         <input type="checkbox" checked={tidoEmConta} onChange={e => onTidoEmConta(e.target.checked)} style={{ marginTop: 3 }} />
-        <span><b>Tive em conta a opinião dos colegas nesta validação.</b> Fica registado e aparece na avaliação final da UC. Se não marcares, não aparece em lado nenhum.</span>
+        <span><b>Tive em conta a opinião dos colegas nesta validação.</b> Fica registado na avaliação final da UC. O aluno vê sempre no perfil o resumo do que os colegas dizem, sem nomes.</span>
       </label>
     </div>
   );

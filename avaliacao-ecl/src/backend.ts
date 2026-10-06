@@ -9383,6 +9383,22 @@ export interface AvaliacaoPar {
 const KEY_MEMBROS = 'ecl_grupos_membros';
 const KEY_INFO_GRUPOS = 'ecl_grupos_info';
 const KEY_PARES = 'ecl_avaliacoes_pares';
+/** No telemóvel do aluno: o que os colegas disseram dele, sem nomes (v26.4). */
+const KEY_PARES_SOBRE_MIM = 'ecl_pares_sobre_mim';
+
+/** Vai buscar ao Sheets o que os colegas disseram deste aluno, sem nomes (para o perfil). */
+export async function sincronizarParesDoAluno(alunoId: string, turmaId: string): Promise<void> {
+  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_pares_aluno', turmaId, alunoId });
+  if (!j?.ok || !Array.isArray(j.dados)) return;
+  save(KEY_PARES_SOBRE_MIM, j.dados.filter((p: any) => p.avaliadoId === alunoId).map((p: any) => ({ ...p,
+    colabora: Number(p.colabora) || 0, ouve: Number(p.ouve) || 0, flexivel: Number(p.flexivel) || 0, conflito: Number(p.conflito) || 0 })));
+}
+/** O que os colegas disseram deste aluno: com nomes no aparelho do professor;
+ *  sem nomes («c1», «c2»…) no telemóvel do aluno. */
+function paresSobre(alunoId: string): AvaliacaoPar[] {
+  const comNomes = load<AvaliacaoPar>(KEY_PARES).filter(p => p.avaliadoId === alunoId);
+  return comNomes.length ? comNomes : load<AvaliacaoPar>(KEY_PARES_SOBRE_MIM).filter(p => p.avaliadoId === alunoId);
+}
 
 export function getMembrosGrupo(planoAulaId: string): MembroGrupo[] {
   return load<MembroGrupo>(KEY_MEMBROS).filter(m => m.planoAulaId === planoAulaId);
@@ -9422,7 +9438,7 @@ export interface OQueOsColegasDizem { dimensao: DimensaoPar; respostas: Resposta
 export function oQueOsColegasDizem(alunoId: string, opts: { ate?: string; planosIds?: Set<string> } = {}): OQueOsColegasDizem[] {
   const planos = new Map(getPlanosAula().map(p => [p.id, p as any]));
   const nomes = new Map(getAlunos().map(a => [a.id, a.nome || `nº ${a.numero}`]));
-  const doAluno = load<AvaliacaoPar>(KEY_PARES).filter(p => p.avaliadoId === alunoId && podemAvaliarSe(p.avaliadorId, p.avaliadoId)
+  const doAluno = paresSobre(alunoId).filter(p => podemAvaliarSe(p.avaliadorId, p.avaliadoId)
     && planos.has(p.planoAulaId) && planos.get(p.planoAulaId).estado !== 'arquivado'
     && (!opts.planosIds || opts.planosIds.has(p.planoAulaId))
     && (!opts.ate || String(planos.get(p.planoAulaId).data || '').slice(0, 10) <= opts.ate));
@@ -9545,16 +9561,25 @@ export function perfilSocialDoAluno(alunoId: string): PerfilSocial | null {
     && p.participantesConfirmadosEm && participantesDoEvento(p).includes(alunoId))
     .sort((a: any, b: any) => String(b.data || '').localeCompare(String(a.data || '')))
     .map((p: any) => ({ titulo: String(p.titulo || 'Atividade').replace(/^Atividade fora da escola — /, ''), data: String(p.data || '').slice(0, 10) })) : [];
-  // O que os colegas disseram, nas aulas em que o professor o teve em conta.
+  // O que os colegas disseram, em todas as aulas (Rosa, out/2026: não conta
+  // para a nota, é para o aluno ter noção das suas atitudes; já não depende
+  // do visto do professor na validação).
   const soma: Record<string, { s: number; n: number }> = {};
   let colegas = 0, aulas = 0, acima = 0, abaixo = 0;
-  ultimas.filter(v => v.consideraColegas && v.colegasNaAula?.dims).forEach(v => {
+  const aulasComColegas = [...new Set(paresSobre(alunoId).map(p => p.planoAulaId))].filter(id => {
+    const pl = planosPorId.get(id); return pl && pl.estado !== 'arquivado';
+  });
+  aulasComColegas.forEach(planoId => {
+    const resp = getSelecoes().filter((x: any) => x.alunoId === alunoId && x.planoAulaId === planoId)
+      .sort((a: any, b: any) => quandoFoi(b.criadaEm) - quandoFoi(a.criadaEm))[0] as any;
+    const r = colegasParaAValidacao(alunoId, planoId, resp?.autoavaliacoes || [], resp?.triagem5c);
+    if (!r) return;
     aulas++;
-    Object.entries(v.colegasNaAula.dims as Record<string, { media: number; colegas: number }>).forEach(([d, x]) => {
+    Object.entries(r.dims).forEach(([d, x]) => {
       soma[d] = soma[d] || { s: 0, n: 0 }; soma[d].s += x.media * x.colegas; soma[d].n += x.colegas;
+      colegas = Math.max(colegas, x.colegas);
     });
-    colegas = Math.max(colegas, ...Object.values(v.colegasNaAula.dims as Record<string, { colegas: number }>).map(x => x.colegas));
-    acima += (v.colegasNaAula.autoAlta || []).length; abaixo += (v.colegasNaAula.autoBaixa || []).length;
+    acima += r.autoAlta.length; abaixo += r.autoBaixa.length;
   });
   const dims = Object.entries(soma).filter(([, x]) => x.n >= 2).map(([d, x]) => ({ d: d as DimensaoPar, m: x.s / x.n }));
   const forte = dims.filter(x => x.m >= 2.5).map(x => LIGACOES_PARES[x.d].muito);
