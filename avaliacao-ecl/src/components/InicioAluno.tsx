@@ -35,7 +35,7 @@ export type DestinoAluno =
   | 'entrar' | 'consultar_plano' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil' | 'manual' | 'calendario'
   | 'recuperacoes' | 'kitchenflow' | 'atividades'
-  | 'avisar_professor' | 'proximas' | 'precos' | 'dicionario';
+  | 'avisar_professor' | 'proximas' | 'precos' | 'dicionario' | 'manual_utilizador';
 
 /** Aviso calculado a partir dos dados. Nunca texto guardado à mão. */
 export interface AvisoAluno {
@@ -494,13 +494,15 @@ export function InicioAluno({
 // ── Como funciona: o guia do aluno, em frases curtas ──────────
 const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '1. Entrar na aula', texto: [
-    'Num dia de aula, a aplicação abre logo nessa aula. Em cima vês o teu grupo e o prato de hoje.',
+    'Num dia de aula, a aplicação abre logo nessa aula. Em cima vês o teu grupo e o prato de hoje. Os grupos são feitos pelo professor.',
     'Primeiro, o professor abre a entrada. Só depois disso o botão «Entrar» se acende. A tua hora de entrada fica registada.',
     'Tens 10 minutos de tolerância, a contar do momento em que o professor abre a aula.',
   ] },
   { titulo: '2. A farda', texto: [
     'Indica se tens a farda completa. A resposta tem de ser verdadeira, porque o professor confirma.',
     'Se não for verdade, a farda e a responsabilidade ficam com a nota mais baixa.',
+    'Só ficas dentro da aula depois de responderes à farda.',
+    'No início do curso, o professor pode dar uma tolerância uma vez. No teu perfil aparece o aviso de que foi a última: na vez seguinte, sem farda completa, as técnicas contam 0.',
   ] },
   { titulo: '3. Trabalhar', texto: [
     'Segue a ficha técnica e faz os registos no KitchenFlow.',
@@ -511,36 +513,45 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '4. A autoavaliação', texto: [
     'No fim da aula, escolhe, para cada competência, a frase que descreve o que fizeste.',
     'Cada técnica mostra de onde vem (o prato e a preparação) e como deve ficar quando está bem feita.',
-    'As opções não têm números: escolhe o que fizeste, e não a nota que gostavas de ter.',
+    'As opções não têm números nem estão por ordem: lê-as todas e escolhe o que fizeste, e não a nota que gostavas de ter.',
     'Se escolheres uma das frases mais altas, escreve um exemplo concreto do que fizeste. O professor lê o que escreves.',
     'Depois de enviares, vês a nota que a tua proposta daria. Quem decide a nota é o professor.',
+    'Em trabalho de grupo, avalias também os colegas do teu grupo. É obrigatório: a aula só fica feita depois disso.',
+    'Podes voltar a ver o que já fizeste, mas só para ver: não podes mudar.',
   ] },
   { titulo: '5. A minha nota', texto: [
     'A tua nota resulta das notas que o professor te dá em todas as aulas da UC.',
     'Uma falta conta zero nessa aula. Se faltares a mais de 10% das horas da UC, ficas em recuperação.',
     'A resposta «Não tive oportunidade» não conta para a nota, mas o professor confirma-a. A resposta «Não fiz» vale 0.',
-    'Sem a farda completa, as técnicas desse dia contam 0. As atitudes contam normalmente, incluindo a forma como ajudas na aula.',
+    'Sem a farda completa, as técnicas desse dia contam 0. As atitudes contam normalmente, incluindo a forma como ajudas na aula. Na nota da aula vês quanto terias com a farda completa.',
     'A participação em eventos e concursos pode dar até 2 valores de bónus: 0,5 por evento e, em cada concurso, até 1 valor (0,2 pela candidatura, 0,2 pela participação, 0,2 por cada fase passada e, se ganhares, o que falta para 1).',
   ] },
-  { titulo: '6. Aula e atividade extra', texto: [
+  { titulo: '6. Se chegaste tarde ou só estiveste parte da aula', texto: [
+    'A aula está dividida em tempos. Se perdeste um tempo, a nota dessa aula conta só os tempos em que estiveste: se estiveste em 1 de 3 tempos, a nota conta 1/3.',
+    'Antes de te avaliares, respondes a umas perguntas sobre a tua falta. Não escreves nada: escolhes. Se a resposta não estiver certa, a aplicação explica porquê e escolhes outra vez.',
+    'Uma dor de cabeça ou de barriga não é uma urgência. Às vezes temos de nos aguentar.',
+    'No fim, escolhes um compromisso para a próxima aula. A aplicação verifica se o cumpriste e o professor vê.',
+    'As horas em que não estiveste contam também como faltas.',
+  ] },
+  { titulo: '7. Aula e atividade extra', texto: [
     'Um plano de aula é a aula da turma toda e conta para a tua nota.',
     'Uma atividade extra é um evento, um concurso, uma visita ou um serviço de catering só para alguns alunos (ou durante as férias). Dá bónus.',
     'Se a turma toda participa num evento durante o ano letivo, trata-se de um plano de aula, que conta como uma aula.',
     '«Fora da escola» significa que decorre no exterior, e não «fora do horário das aulas».',
   ] },
-  { titulo: '7. Se foste a uma atividade extra', texto: [
+  { titulo: '8. Se foste a uma atividade extra', texto: [
     'Recebes o aviso «Estiveste na atividade… autoavalia-te».',
     'Avalias-te nas técnicas da ficha técnica (se houver) e, se o professor pedir, nas atitudes.',
     'As técnicas que consolidares ficam no teu perfil, tal como numa aula. Na nota, contam apenas para o bónus.',
     'Normalmente, respondes também ao plano de aula da turma desse dia, como os teus colegas. Na aula, vês a que partes tens de responder.',
     'Chega a horas, fica até ao fim e leva a farda. Sem farda, a participação não conta.',
   ] },
-  { titulo: '8. Se não foste', texto: [
+  { titulo: '9. Se não foste', texto: [
     'Em «Atividades e concursos › Para ver», podes ver o que os colegas fizeram, a ficha técnica e o guião, para aprenderes.',
     'Não te inscreves nem te avalias nessa atividade.',
     'Se não participares em nenhuma atividade, a nota máxima é 17. Só com eventos, a nota máxima é 18. Para chegar a 20, tens de participar num concurso.',
   ] },
-  { titulo: '9. Recuperar numa atividade', texto: [
+  { titulo: '10. Recuperar numa atividade', texto: [
     'Se estás em recuperação (faltaste a mais de 10% das horas de uma UC), podes recuperar numa atividade extra.',
     'Em «Atividades e concursos › Recuperar numa atividade», carrega em «Candidatar-me para recuperar». Podes fazê-lo mesmo que a atividade seja só para alguns alunos.',
     'O professor aceita a candidatura ou escolhe outra atividade. O professor também pode escolher a atividade por ti.',
