@@ -61,6 +61,8 @@ export function EcraMinhaNota({
     media: number | null;
     bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
     bonusTotal: number; teto: boolean; motivoTeto?: string; final: number | null; publicada: boolean;
+    /** A conta de agora (média das aulas + bónus), arredondada. */
+    contaDeAgora?: number | null;
   } | null;
   ucId?: string; ucNome?: string;
   nota: number | null;
@@ -214,13 +216,28 @@ export function EcraMinhaNota({
                 {detalhe.motivoTeto || 'A nota ficou no limite.'} Participar e candidatar-se também é atitude.
               </div>
             )}
-            {detalhe.final != null && (
+            {/* (Rosa, 5/out/2026) A nota que se mostra tem de bater com a conta de
+                cima. Com nota publicada antes de uma correção (a pauta não somava o
+                bónus), diz-se as duas e porquê, em vez de um número que não bate. */}
+            {detalhe.contaDeAgora != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '10px 0 0', marginTop: 6, borderTop: '2px solid #E6E1EA', fontSize: 16, fontWeight: 800 }}>
+                <span style={{ flex: 1 }}>{detalhe.publicada ? 'Média das aulas com o bónus' : 'Nota se a unidade acabasse hoje'}</span><span>{fmt(detalhe.contaDeAgora)}</span>
+              </div>
+            )}
+            {detalhe.publicada && detalhe.final != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '8px 0 0', fontSize: 16, fontWeight: 800 }}>
+                <span style={{ flex: 1 }}>Nota final publicada pelo professor</span><span>{fmt(detalhe.final)}</span>
+              </div>
+            )}
+            {detalhe.publicada && detalhe.final != null && detalhe.contaDeAgora != null && Math.round(detalhe.final) !== Math.round(detalhe.contaDeAgora) && (
+              <div style={{ fontSize: 13, color: C.ambar, marginTop: 6, lineHeight: 1.45 }}>
+                A nota foi publicada antes de a conta mudar (uma autoavaliação nova, uma validação ou o bónus). Até o professor a publicar de novo, conta a nota publicada: {fmt(detalhe.final)}.
+              </div>
+            )}
+            {!detalhe.publicada && detalhe.contaDeAgora == null && detalhe.final != null && (
               <div style={{ display: 'flex', gap: 10, padding: '10px 0 0', marginTop: 6, borderTop: '2px solid #E6E1EA', fontSize: 16, fontWeight: 800 }}>
                 <span style={{ flex: 1 }}>Nota se a unidade acabasse hoje</span><span>{fmt(detalhe.final)}</span>
               </div>
-            )}
-            {detalhe.publicada && (
-              <div style={{ fontSize: 13, color: C.suave, marginTop: 6 }}>O professor já publicou a nota final; é essa que aparece em cima.</div>
             )}
           </div>
         )}
@@ -242,7 +259,7 @@ export function EcraMinhaNota({
                 Aula {melhor.numero} · {melhor.titulo}
               </div>
               <div style={{ fontSize: 14, color: C.texto, marginTop: 3 }}>
-                {fmt(melhor.nota20)} em 20 · {melhor.data}
+                {fmt(melhor.nota20)} em 20 · {/^\d{4}-\d{2}-\d{2}$/.test(String(melhor.data)) ? fmtDataCurta(melhor.data) : melhor.data}
               </div>
             </div>
           </div>

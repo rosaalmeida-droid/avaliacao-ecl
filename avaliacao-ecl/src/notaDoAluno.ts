@@ -29,6 +29,11 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
     // A mesma nota da UC que se vê no resto da aplicação (a da pauta).
     final: notaDaUCComoNaPauta(alunoId, turmaId, ucId) ?? calc.final,
     publicada: !!getNotaFinalPublicadaUC(alunoId, ucId),
+    // A conta de agora: a média das aulas com o bónus (e os tetos), arredondada.
+    // Sem nota publicada, é a nota da pauta (que já soma o bónus).
+    contaDeAgora: getNotaFinalPublicadaUC(alunoId, ucId)
+      ? (calc.final == null ? null : Math.round(calc.final))
+      : (notaDaUCComoNaPauta(alunoId, turmaId, ucId) ?? (calc.final == null ? null : Math.round(calc.final))),
   };
   return { aulas, detalhe, nota: detalhe.final };
 }
