@@ -56,6 +56,7 @@ import { GuiaProducao } from './GuiaProducao';
 import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
+import { ManualAluno } from './ManualAluno';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 import { getReferencialUC } from '../referencial811RA144';
@@ -1727,6 +1728,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
             {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta paraAluno /></div>}
             {destino === 'dicionario' && <div style={{ padding:'4px 14px 24px' }}><DicionarioComp perfil="aluno" turmaId={aluno.turmaId} /></div>}
+            {destino === 'manual_utilizador' && <ManualAluno />}
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
@@ -1788,6 +1790,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 Recursos
               </div>
               {([
+                ['manual_utilizador', 'Manual do utilizador', 'como funciona a aplicação, passo a passo'],
                 ['manual', 'Manual da unidade', 'em leitura'],
                 ['fichas', 'Fichas técnicas', 'todas as das aulas da turma'],
                 ['guiao', 'Guiões de produção', 'de apoio às fichas técnicas'],
