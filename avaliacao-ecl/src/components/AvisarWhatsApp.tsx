@@ -33,10 +33,11 @@ export function mensagemAberturaAula(plano: PlanoAula): string {
 }
 
 /** A mensagem de uma atividade extra ou de um concurso aberto a inscrições. */
-export function mensagemInscricoes(plano: PlanoAula): string {
+export function mensagemInscricoes(plano: PlanoAula, aviso = ''): string {
   const p: any = plano;
   const oQue = p.tipoEvento === 'concurso' ? 'o concurso' : 'a atividade';
   return `Olá! Estão abertas as inscrições para ${oQue} «${p.titulo || 'Atividade'}», ${dataPT(p.data)}. `
+    + ((aviso || p.avisoDeslocacao) ? `${aviso || p.avisoDeslocacao} ` : '')
     + `Inscrevam-se na aplicação Avaliação ECL (${ENDERECO_APLICACAO}), em «Atividades e concursos». Obrigada!`;
 }
 

@@ -3732,6 +3732,14 @@ export function getPresencas(): RegistoPresenca[] {
   return semPlanosEliminados(load<RegistoPresenca>(KEYS.presencas));
 }
 
+/** O professor marcou falta a este aluno nesta aula ou atividade. Quem tem falta
+ *  não se autoavalia nela (Rosa, 6/out/2026: uma aluna avaliou-se numa
+ *  atividade a que faltou). */
+export function temFaltaMarcada(alunoId: string, planoAulaId: string): boolean {
+  const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  return r?.decisaoProfessor === 'falta_presenca';
+}
+
 // Para um aluno e uma UC, devolve os planos de aula dessa UC a que o aluno
 // NÃO esteve presente (faltou) — usado para a Recuperação de Módulos.
 export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: string): PlanoAula[] {
@@ -7322,7 +7330,7 @@ export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: st
   const diasRegistados = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
   const dosPlanos: Atividade[] = getPlanosAula()
     .filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.estado !== 'arquivado' && validados.has(p.id)
-      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10))
+      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10)) && !atividadeContaComoAula(p)
       // Evento fora do horário: só quem vai (a turma toda, ou os aceites).
       && (!eventoForaDoHorario(p) || participantesDoEvento(p).includes(alunoId)))
     .map((p: any) => ({ id: p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: p.data,
@@ -7419,7 +7427,8 @@ export function oportunidadesNaUC(alunoId: string, turmaId: string, ucId: string
     dias.add(String(p.data || '').slice(0, 10));
     const obrigatoria = modoParticipacao(p) === 'turma';
     ops.push({ titulo: p.titulo || 'Atividade', concurso: p.tipoEvento === 'concurso', obrigatoria,
-      participou: participadas.has(p.id),
+      // A obrigatória que conta como aula não dá bónus, mas quem foi participou.
+      participou: participadas.has(p.id) || (atividadeContaComoAula(p) && getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === p.id)),
       candidatou: !obrigatoria && (inscritosNoEvento(p.id).includes(alunoId) || participantesDoEvento(p).includes(alunoId)) });
   }
   for (const a of getAtividades().filter(a => a.turmaId === turmaId)) {
@@ -7547,11 +7556,14 @@ export function eventosAgregadosAAula(plano: PlanoAula): PlanoAula[] {
   const daUC = getPlanosAula().filter(p => p.turmaId === plano.turmaId && p.ucId === plano.ucId && p.estado !== 'arquivado');
   const aulas = daUC.filter(p => !(p as any).tipoEvento)
     .sort((a, b) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`));
-  return daUC.filter(p => (p as any).tipoEvento).filter(ev => {
+  const bonus = daUC.filter(p => (p as any).tipoEvento && !atividadeContaComoAula(p)).filter(ev => {
     const d = String(ev.data || '').slice(0, 10);
     const seguinte = aulas.find(a => String(a.data || '').slice(0, 10) >= d);
     return seguinte?.id === plano.id;
   });
+  const comoAula = (getPlanosAula() as any[]).filter(p => p.turmaId === plano.turmaId && atividadeContaComoAula(p)
+    && aulaQueRecebeAtividade(p)?.id === plano.id);
+  return [...comoAula, ...bonus];
 }
 
 /** A nota final de um aluno numa UC. */
@@ -7586,7 +7598,29 @@ export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
     if (faltados.has(p.id) || linhas.some(l => l.planoId === p.id)) continue;
     linhas.push({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota: 0, peso: pesoNoModulo(p), semResposta: true });
   }
+  // A atividade obrigatória fora das horas da aula conta como mais uma aula, na
+  // aula que a recebe. Sem autoavaliação conta 0, como as aulas (Rosa, 6/out/2026);
+  // respondida e ainda por validar, espera pelo professor.
+  const hojeISO_ = new Date().toISOString().slice(0, 10);
+  for (const r of atividadesQueContamComoAula(turmaId, ucId)) {
+    if (faltados.has(r.atividade.id) || linhas.some(l => l.planoId === r.atividade.id) || r.atividade.data > hojeISO_) continue;
+    // Com falta marcada: conta 0, e uma resposta que tenha dado não conta.
+    const faltou = temFaltaMarcada(alunoId, r.atividade.id);
+    const v = faltou ? undefined : validacaoDaAula(alunoId, r.atividade.id, validacoesAluno);
+    const nota = faltou ? 0 : v ? notaDaAulaValidada(v) : null;
+    if (nota === null && ultimaResposta(alunoId, r.atividade.id)) continue;
+    linhas.push({ planoId: r.atividade.id, titulo: `${r.atividade.titulo || 'Atividade'} (atividade de ${r.atividade.data.split('-').reverse().slice(0, 2).join('/')}, conta como aula)`,
+      data: r.dataDaAula, nota: nota ?? 0, peso: pesoNoModulo(r.atividade), semResposta: nota === null });
+  }
   return linhas.sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/** As atividades obrigatórias fora das horas da aula que contam como aula nesta UC, e a aula que as recebe. */
+export function atividadesQueContamComoAula(turmaId: string, ucId: string): { atividade: any; aula: PlanoAula; dataDaAula: string }[] {
+  return (getPlanosAula() as any[]).filter(p => p.turmaId === turmaId && atividadeContaComoAula(p))
+    .map(p => ({ atividade: { ...p, data: String(p.data || '').slice(0, 10) }, aula: aulaQueRecebeAtividade(p) as PlanoAula }))
+    .filter(r => r.aula && r.aula.ucId === ucId)
+    .map(r => ({ ...r, dataDaAula: String(r.aula.data || '').slice(0, 10) }));
 }
 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
@@ -9716,6 +9750,45 @@ export type ModoParticipacao = 'turma' | 'inscricao';
 export function modoParticipacao(p: any): ModoParticipacao { return p?.modoParticipacao === 'inscricao' ? 'inscricao' : 'turma'; }
 const idInscricao = (planoId: string) => 'insc_' + planoId;
 export function eventoForaDoHorario(p: any): boolean { return !!p?.tipoEvento && TIPOS_EVENTO_PLANO.includes(p?.tipoAtividade); }
+
+/**
+ * Atividade obrigatória fora das horas da aula (Rosa, 5-6/out/2026): a turma
+ * toda vai, depois das aulas, num sábado, nas férias ou antes do início das UC.
+ * Não é bónus: CONTA COMO MAIS UMA AULA, ligada à aula desse dia ou à seguinte
+ * da mesma UC; se a UC já tiver acabado, à aula seguinte da mesma disciplina.
+ * Quem não se autoavaliou conta 0. Os convidados (inscrição) e os concursos
+ * continuam a ser bónus. Dentro das horas da aula, o evento entra no plano de aula.
+ */
+export function atividadeContaComoAula(p: any): boolean {
+  return !!p?.tipoEvento && p.tipoEvento !== 'concurso' && p.estado !== 'arquivado' && !p.eliminado
+    && modoParticipacao(p) === 'turma' && !p.aulaLigada && !aulaNasMesmasHoras(p);
+}
+/** A aula da turma no mesmo dia e às mesmas horas da atividade (sobrepõem-se). */
+export function aulaNasMesmasHoras(atv: any): PlanoAula | undefined {
+  const dia = String(atv?.data || '').slice(0, 10);
+  const min = (h?: string) => { const [a, b] = String(h || '').split(':').map(Number); return isNaN(a) ? NaN : a * 60 + (b || 0); };
+  const i1 = min(atv?.horaInicio), f1 = min(atv?.horaFim);
+  if (isNaN(i1) || isNaN(f1)) return undefined;
+  return getPlanosAula().find((p: any) => p.id !== atv.id && p.turmaId === atv.turmaId && !p.tipoEvento && p.estado !== 'arquivado' && !p.eliminado
+    && String(p.data || '').slice(0, 10) === dia && i1 < min(p.horaFim) && min(p.horaInicio) < f1);
+}
+/** A aula que recebe a avaliação de uma atividade obrigatória fora das horas da aula. */
+export function aulaQueRecebeAtividade(atv: any): PlanoAula | undefined {
+  if (!atv) return undefined;
+  const dia = String(atv.data || '').slice(0, 10);
+  const aulas = getPlanosAula().filter((p: any) => p.turmaId === atv.turmaId && !p.tipoEvento && p.estado !== 'arquivado' && !p.eliminado
+    && String(p.data || '').slice(0, 10) >= dia)
+    .sort((a, b) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`));
+  const mesmaUC = aulas.find(a => atv.ucId && a.ucId === atv.ucId);
+  if (mesmaUC) return mesmaUC;
+  // A UC já acabou (ou a atividade não tem UC): a aula seguinte da mesma disciplina.
+  const mods: any[] = modulosDaTurma(atv.turmaId) as any[];
+  const disc = mods.find(m => m.id === atv.ucId)?.disciplina
+    || mods.find(m => atv.professor && m.docente === atv.professor)?.disciplina;
+  if (!disc) return undefined;
+  const daDisciplina = new Set(mods.filter(m => m.disciplina === disc).map(m => m.id));
+  return aulas.find(a => daDisciplina.has(a.ucId));
+}
 
 export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: string }, sim: boolean): void {
   entrarNoGrupo({ planoAulaId: idInscricao(plano.id), turmaId: plano.turmaId, alunoId: aluno.id, nomeAluno: aluno.nome,

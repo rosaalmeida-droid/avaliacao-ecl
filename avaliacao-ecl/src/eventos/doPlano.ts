@@ -7,8 +7,9 @@
 // set/2026). Agora o plano cria o evento, com um código fixo — o mesmo
 // em todos os aparelhos, para não haver repetidos.
 import { eventoNovo } from './modelo';
-import { gravarEvento, lerEventosLocais, getPlanosAula, addOrUpdatePlanoAula, proximoNumeroEvento, proximoNumeroPlano } from '../backend';
-import { modulosAtivos } from '../cronograma';
+import { gravarEvento, lerEventosLocais, getPlanosAula, addOrUpdatePlanoAula, proximoNumeroEvento, proximoNumeroPlano, aulaNasMesmasHoras } from '../backend';
+import { modulosAtivos, modulosDaTurma } from '../cronograma';
+import { horarioDaTurma } from '../horarios';
 import { atitudesSugeridasEvento } from '../eventosAvaliacao';
 
 export const idEventoDoPlano = (planoId: string) => 'ev_plano_' + planoId;
@@ -65,30 +66,38 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
   const ativos = modulosAtivos(turmaId, ev.data);
   const meus = ativos.filter(m => professor && m.docente === professor);
   const ucs = meus.length ? meus : ativos.filter(m => !m.docente || !professor);
+  // Sem UC a decorrer nesse dia (férias, antes do início): a próxima UC do professor nessa turma.
+  if (!ucs.length && professor) {
+    const proxima = modulosDaTurma(turmaId).filter(m => m.docente === professor && m.dataInicio >= String(ev.data || '').slice(0, 10))
+      .sort((a, b) => a.dataInicio.localeCompare(b.dataInicio))[0];
+    if (proxima) ucs.push(proxima);
+  }
   const agora = new Date().toISOString();
-  // Regra «Quem vai?» (Rosa, out/2026): a turma toda, dentro do ano letivo, é
-  // um PLANO DE AULA com o evento lá dentro (conta como aula). Fica em
-  // rascunho: o professor escolhe o tipo de aula e publica.
+  const dia = String(ev.data || '').slice(0, 10);
+  // Regra «Quem vai?» (Rosa, out/2026): a turma toda conta sempre como aula.
   if (modo === 'turma' && ucs.length > 0) {
-    // Já há plano de aula desta turma nesse dia: o evento entra nesse plano
+    // Às mesmas horas de uma aula desta turma: o evento entra nesse plano de aula
     // (nunca se cria um plano de aula a mais).
-    const doDia = (getPlanosAula() as any[]).find(p => p.turmaId === turmaId && !p.tipoEvento && p.estado !== 'arquivado'
-      && String(p.data || '').slice(0, 10) === String(ev.data || '').slice(0, 10));
-    if (doDia) {
-      const comEvento = { ...doDia, eventoNaAula: 'evento', eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined, atualizadoEm: agora };
+    const nasHoras = aulaNasMesmasHoras({ id: '', turmaId, data: dia, horaInicio: ev.horaInicio, horaFim: ev.horaFim }) as any;
+    if (nasHoras) {
+      const comEvento = { ...nasHoras, eventoNaAula: 'evento', eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined, atualizadoEm: agora };
       addOrUpdatePlanoAula(comEvento);
       return comEvento;
     }
-    const aula: any = {
+    // Fora das horas da aula (depois das aulas, sábado, férias): não se cria um
+    // plano de aula (Rosa, 6/out/2026). Fica a atividade, obrigatória para a
+    // turma, e conta como mais uma aula, na aula desse dia ou na seguinte da UC.
+    const atv: any = {
       id: `plano_ev_${ev.id}_${turmaId.replace(/\W/g, '')}`, turmaId, professor,
       data: ev.data, horaInicio: ev.horaInicio || '', horaFim: ev.horaFim || '',
-      titulo: ev.nome || 'Evento', observacoes: '', fichasIds: [], estado: 'rascunho',
+      titulo: ev.nome || 'Evento', observacoes: '', fichasIds: [], estado: 'publicado',
       criadoEm: agora, atualizadoEm: agora, ucId: ucs[0].id, ucNome: ucs[0].nome || '',
-      numeroPlan: proximoNumeroPlano(), tipoAtividade: 'Evento externo', eventoNaAula: 'evento',
-      contaAssiduidade: true, eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined,
+      numeroPlan: proximoNumeroPlano(), tipoAtividade: 'Evento externo', tipoEvento: 'evento', tipoPlanAula: 'atitudinal',
+      compAdicionadas: atitudesSugeridasEvento('Evento externo'), modoParticipacao: 'turma',
+      contaAssiduidade: false, eventoId: ev.id, avisoDeslocacao: avisoDeslocacao(ev) || undefined,
     };
-    addOrUpdatePlanoAula(aula);
-    return aula;
+    addOrUpdatePlanoAula(atv);
+    return atv;
   }
   const p: any = {
     id: `plano_ev_${ev.id}_${turmaId.replace(/\W/g, '')}`, turmaId, professor,

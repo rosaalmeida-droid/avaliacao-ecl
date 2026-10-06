@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -1036,7 +1036,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     }
 
     // O professor mudou as perguntas e pediu à turma para responder outra vez.
-    const deNovo = planosOrdenados.filter((p: any) => p.pedirDeNovoEm
+    const deNovo = planosOrdenados.filter((p: any) => p.pedirDeNovoEm && !temFaltaMarcada(aluno.id, p.id)
       && (getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id)
         || getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === p.id))
       && !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id));
@@ -3472,6 +3472,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
     setSubmetido(true); setModalConfirmar(false); onConcluido();
+  }
+
+  // Com falta marcada pelo professor, o aluno não se autoavalia nesta aula
+  // (Rosa, 6/out/2026: uma aluna avaliou-se numa atividade a que faltou).
+  if (temFaltaMarcada(aluno.id, plano.id)) {
+    return (
+      <div style={{ background:'#fdecea', border:'1.5px solid #a23a2e', borderRadius:14, padding:'16px 18px' }}>
+        <div style={{ fontSize:16, fontWeight:700, color:'#7b2233' }}>O professor marcou falta nesta aula</div>
+        <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
+          Por isso não te podes autoavaliar nela. Se achas que é um engano, fala com o professor.
+        </div>
+      </div>
+    );
   }
 
   if (submetido) {

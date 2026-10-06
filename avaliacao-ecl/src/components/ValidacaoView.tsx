@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -619,6 +619,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)', borderRadius: 12,
           padding: '10px 14px', marginBottom: 12, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
           ✓ Validaste {acabouDe}. Agora: {nomeDoAluno(selecao.alunoId)}.
+        </div>
+      )}
+      {/* (Rosa, 6/out/2026) A resposta de quem tem falta aparece para validar, com este aviso: a falta pode ser um engano do professor. */}
+      {temFaltaMarcada(selecao.alunoId, selecao.planoAulaId || '') && (
+        <div style={{ background: '#fdecea', border: '1.5px solid #a23a2e', borderRadius: 12, padding: '10px 14px', marginBottom: 12,
+          fontSize: 14, color: '#7b2233', lineHeight: 1.5 }}>
+          <b>⚠ {nomeDoAluno(selecao.alunoId)} tem falta marcada nesta aula.</b> Confirme se a falta está certa.
+          Se estiver, esta resposta não conta para a nota. Se foi um engano, tire a falta nas presenças da aula e depois valide.
         </div>
       )}
       {/* Os que faltam: toca num nome para saltar para ele. */}

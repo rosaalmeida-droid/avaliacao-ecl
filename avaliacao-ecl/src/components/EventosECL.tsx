@@ -11,7 +11,8 @@
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
 import { janelaConfirmar } from './janelaConfirmar';
-import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento, passarParaInscricoes, atualizarAvisoNosPlanos } from '../eventos/doPlano';
+import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento, passarParaInscricoes, atualizarAvisoNosPlanos, avisoDeslocacao } from '../eventos/doPlano';
+import { BotaoWhatsApp, mensagemInscricoes } from './AvisarWhatsApp';
 import { modulosAtivos } from '../cronograma';
 import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -553,10 +554,17 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
     <div style={{ marginBottom: semPlano.length ? 10 : 0 }}>
       {planos.some(p => p.tipoEvento) && (<>
         <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.filter(p => p.tipoEvento).map(p => `${p.turmaId}${p0Modo(p)}`).join(', ')}.
-        {' '}Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.<br />
+        {' '}Os alunos autoavaliam-se na atividade. {planos.some(p => p.tipoEvento && p.modoParticipacao !== 'inscricao')
+          ? 'Para a turma que vai toda, conta como uma aula, na aula seguinte da UC; para os convidados, dá bónus.'
+          : 'Dá bónus na UC dessa data.'}<br />
         {planos.filter(p => p.tipoEvento && p.modoParticipacao !== 'inscricao').map(p => (
           <button key={p.id} onClick={() => { addOrUpdatePlanoAula({ ...p, modoParticipacao: 'inscricao', estado: 'publicado' }); redesenhar(n => n + 1); }}
             style={{ ...botao('claro'), margin: '6px 6px 0 0', minHeight: 38, fontSize: 13.5 }}>Abrir às inscrições dos alunos — {p.turmaId}</button>
+        ))}
+        {/* (Rosa, 6/out/2026) Aberto às inscrições: a mensagem para o grupo de cada turma. */}
+        {planos.filter(p => p.tipoEvento && p.modoParticipacao === 'inscricao' && String(p.data || '').slice(0, 10) >= new Date().toISOString().slice(0, 10)).map(p => (
+          <BotaoWhatsApp key={'w' + p.id} texto={mensagemInscricoes(p, avisoDeslocacao(e))}
+            rotulo={`Avisar no WhatsApp que as inscrições estão abertas — ${p.turmaId}`} estilo={{ margin: '6px 6px 0 0' }} />
         ))}
       </>)}
       {planos.some(p => !p.tipoEvento) && (<>
