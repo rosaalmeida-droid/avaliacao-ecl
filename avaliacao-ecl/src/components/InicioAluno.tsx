@@ -504,6 +504,8 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   ] },
   { titulo: '3. Trabalhar', texto: [
     'Segue a ficha técnica e faz os registos no KitchenFlow.',
+    'Na ficha, marca cada passo da preparação quando estiver feito. Só te podes avaliar com todos os passos marcados.',
+    'O professor vê a hora a que marcaste cada passo. Marcar tudo de seguida, sem fazer, dá-lhe um aviso.',
     'Antes de começares, já podes ver o que vai ser avaliado.',
   ] },
   { titulo: '4. A autoavaliação', texto: [

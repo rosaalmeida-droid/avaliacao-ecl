@@ -29,7 +29,7 @@ import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTr
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
-  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
+  addOrUpdateSelecao, evidenciaDasFichas, passosDaFicha, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
@@ -1922,7 +1922,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // grande e um botão. A aula validada e a atividade só para ver ficam como
   // estavam, mais abaixo.
   const mudancaGrupo = useMudancaDeGrupo(plano, aluno, comGrupos);
-  const [verAqui, setVerAqui] = React.useState<null | 'orientacao' | 'ficha' | 'guia' | 'requisicao' | 'funcao_inicio' | 'funcao_fim'>(null);
+  const [verAqui, setVerAqui] = React.useState<null | 'orientacao' | 'ficha' | 'guia' | 'requisicao' | 'funcao_inicio' | 'funcao_fim' | 'feito'>(null);
   if (!soConsulta) {
     const teorica = String((plano as any).tipoPlanAula || '') === 'teorico';
     const temGuiao = fichas.some((f: any) => f.textoGuia);
@@ -1937,12 +1937,16 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
       setVerAqui(null); setSecAberta(antesDaAvaliacao());
     };
     const titulosVer: Record<string, string> = { orientacao: 'O que vamos fazer', ficha: 'A ficha técnica', guia: 'O guião',
-      requisicao: 'A requisição', funcao_inicio: 'A tua função: início', funcao_fim: 'A tua função: fim' };
+      requisicao: 'A requisição', funcao_inicio: 'A tua função: início', funcao_fim: 'A tua função: fim', feito: 'O que já fizeste' };
     const colegasDe = (g: any) => (g?.membros || []).filter((m: any) => m.alunoId !== aluno.id)
       .map((m: any) => String(m.nomeAluno || '').split(/\s+/)[0]).filter(Boolean);
     const juntar = (xs: string[]) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`;
     const pratoTexto = pratos.length ? juntar(pratos.map(n => n.charAt(0).toLowerCase() + n.slice(1))) : '';
     const fichaDoGrupoNome = grupoAgora?.fichaId ? (fichas.find((f: any) => f.id === grupoAgora.fichaId) as any)?.nomePrato : undefined;
+    // A ficha tem de ficar feita antes da autoavaliação: todos os passos da
+    // preparação marcados (Rosa, 6/out/2026). Numa aula teórica não se aplica.
+    const passos = teorica ? { feitos: 0, total: 0 } : passosDaFicha(plano.id, aluno.id, fichas);
+    const fichaPorFazer = passos.total > 0 && passos.feitos < passos.total;
 
     let ecraPasso: React.ReactNode = null;
     if (mudancaGrupo) {
@@ -1971,7 +1975,13 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             {fichas.length > 0 && <BotaoDaAula contorno escuro onClick={() => setVerAqui('ficha')}>🧾 {teorica ? 'Ver o trabalho' : 'Ver a ficha técnica'}</BotaoDaAula>}
             {temGuiao && <BotaoDaAula contorno escuro onClick={() => setVerAqui('guia')}>Ver o guião</BotaoDaAula>}
             {requisicao && <BotaoDaAula contorno escuro onClick={() => setVerAqui('requisicao')}>Ver a requisição</BotaoDaAula>}
-            <BotaoDaAula escuro onClick={acabeiDeProduzir}>Já acabei</BotaoDaAula>
+            {fichaPorFazer && (
+              <div style={{ fontSize:14.5, lineHeight:1.45, background:'rgba(255,255,255,.14)', borderRadius:12, padding:'10px 12px' }}>
+                Na ficha, marca cada passo da preparação quando estiver feito: <b>{passos.feitos} de {passos.total}</b>.
+                O «Já acabei» acende-se com todos marcados.
+              </div>
+            )}
+            <BotaoDaAula escuro desligado={fichaPorFazer} onClick={acabeiDeProduzir}>Já acabei</BotaoDaAula>
           </div>
         </EcraDeCor>
       );
@@ -1982,6 +1992,14 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
           titulo={fim ? (minhasFuncoes.length ? 'Acaba a tua função.' : 'Ajudaste os colegas?') : 'Faz a tua função.'}
           sub={minhasFuncoes.length ? `Hoje és: ${minhasFuncoes.map(f => f.nome).join(' + ')}.` : 'Diz ao professor como ajudaste hoje.'}>
           <div style={{ marginTop:'auto' }}><BotaoDaAula onClick={() => setVerAqui(secAberta as any)}>Abrir</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'avaliacao' && fichaPorFazer && !avaliou) {
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.produzir} total={totalPassos} feitos={passosConcluidos}
+          titulo="Primeiro, a ficha técnica."
+          sub={`Antes de te avaliares, marca na ficha os passos da preparação que já estão feitos: ${passos.feitos} de ${passos.total}.`}>
+          <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={() => setVerAqui('ficha')}>🧾 Abrir a ficha técnica</BotaoDaAula></div>
         </EcraDeCor>
       );
     } else if (secAberta === 'avaliacao') {
@@ -2034,6 +2052,19 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
           {ecraPasso}
           {/* O resto, discreto, por baixo: quem quiser mais informação vai buscá-la aqui. */}
           <div style={{ background: MESA, padding:'12px 16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+            {/* Pode rever o que já fez, só para ver; nunca saltar para a frente (Rosa, 6/out/2026). */}
+            {passosConcluidos > 0 && !mudancaGrupo && (
+              <button onClick={() => setVerAqui('feito')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
+                fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                ← Ver o que já fizeste
+              </button>
+            )}
+            {fichas.length > 0 && secAberta !== 'ficha' && !teorica && (
+              <button onClick={() => setVerAqui('ficha')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
+                fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                Ver a ficha técnica
+              </button>
+            )}
             <button onClick={() => setVerAqui('orientacao')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
               fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
               Ver o que vamos fazer hoje
@@ -2043,8 +2074,37 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
         </div>
         {verAqui && (
           <EcraCheio titulo={titulosVer[verAqui]} onSair={() => setVerAqui(null)}>
+            {verAqui === 'feito' && (() => {
+              const pres: any = getPresencas().find(x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
+              const linha = (titulo: string, detalhe: string, abrir?: () => void) => (
+                <div key={titulo} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 0', borderBottom:'1px solid rgba(26,23,20,0.1)' }}>
+                  <span style={{ width:28, height:28, borderRadius:'50%', background:'#2F7A3B', color:'#fff', display:'flex', alignItems:'center',
+                    justifyContent:'center', fontWeight:800, flexShrink:0 }}>✓</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:16, fontWeight:800 }}>{titulo}</div>
+                    {detalhe && <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', lineHeight:1.45 }}>{detalhe}</div>}
+                  </div>
+                  {abrir && <button onClick={abrir} style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #6B3FA0', background:'#fff',
+                    color:'#6B3FA0', fontWeight:700, fontSize:14.5, cursor:'pointer', fontFamily:'inherit' }}>Ver</button>}
+                </div>
+              );
+              const feitos = PASSOS.filter(p => p.id !== 'avaliacao' && estadoPasso(p.id) === 'concluido');
+              return (
+                <div>
+                  <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.65)', marginBottom:6 }}>Só para ver. O que já fizeste fica guardado.</div>
+                  {feitos.map(p => p.id === 'entrada'
+                    ? linha('Entraste na aula', [pres?.horaEntrada ? `Às ${String(pres.horaEntrada).slice(0, 5)}.` : '',
+                        pres && pedeFardaEHigiene(plano) ? (pres.fardamentoOk === false ? `Farda: ${String(pres.observacao || '').replace(/^.*em falta:\s*/, 'faltava ')}.` : 'Farda completa.') : ''].filter(Boolean).join(' '))
+                    : p.id === 'ficha'
+                      ? linha(teorica ? 'Fizeste o trabalho da aula' : 'Produziste', passos.total ? `Marcaste ${passos.feitos} de ${passos.total} passos da ficha.` : '',
+                          fichas.length ? () => setVerAqui('ficha') : undefined)
+                      : linha(p.label, '', p.id === 'funcao_inicio' || p.id === 'funcao_fim' ? () => setVerAqui(p.id as any) : undefined))}
+                </div>
+              );
+            })()}
             {verAqui === 'orientacao' && <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno} onContinuar={() => setVerAqui(null)} />}
-            {verAqui === 'ficha' && <SecaoFichas fichas={fichas} plano={plano} aluno={aluno} onConcluido={acabeiDeProduzir} />}
+            {verAqui === 'ficha' && <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
+              onConcluido={() => { if (secAberta === 'ficha') acabeiDeProduzir(); else setVerAqui(null); }} />}
             {verAqui === 'guia' && <SecaoGuiao fichas={fichas} plano={plano} onConcluido={() => setVerAqui(null)} />}
             {verAqui === 'requisicao' && <SecaoRequisicao requisicao={requisicao} onConcluido={() => setVerAqui(null)} />}
             {(verAqui === 'funcao_inicio' || verAqui === 'funcao_fim') && (
@@ -2052,6 +2112,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
                 onVerQuadro={() => setVerQuadro(true)} onAbrirKitchenFlow={abrirKF}
                 onConcluido={() => {
                   setVerAqui(null);
+                  if (secAberta !== verAqui) return;   // estava só a rever
                   if (verAqui === 'funcao_inicio') { setFuncaoInicioFeita(true); _save('funcao_inicio'); setSecAberta('ficha'); }
                   else { setFuncaoFimFeita(true); _save('funcao_fim'); setSecAberta('avaliacao'); }
                 }} />
@@ -2960,7 +3021,12 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
     setChecklist(prev => {
       const cur = prev[fichaId]||{ing:new Set<number>(),passo:new Set<number>()};
       const next = { ing: novoIng||cur.ing, passo: novoPasso||cur.passo };
-      addOrUpdateChecklistAluno({
+      // A hora de cada passo marcado: é a prova, para o professor, de que o
+      // aluno passou pela ficha (Rosa, 6/out/2026).
+      const horasAntes = getChecklistAlunoFicha(plano.id, fichaId, aluno.id)?.passosHoras || {};
+      const passosHoras: Record<string, string> = {};
+      next.passo.forEach(i => { passosHoras[String(i)] = horasAntes[String(i)] || new Date().toISOString(); });
+      addOrUpdateChecklistAluno({ passosHoras,
         id:`chk_${plano.id}_${fichaId}_${aluno.id}`, planoAulaId:plano.id, fichaId,
         alunoId:aluno.id, pontualidade:'a_horas', fardamento:true, itensFardamento:[],
         ingredientesConfirmados:Array.from(next.ing).map(String),
@@ -3101,11 +3167,19 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
           )}
         </div>
       ))}
-      <button onClick={onConcluido} style={{ width:'100%', padding:'16px', borderRadius:14,
-        border:'none', background:'#6B3FA0', color:'#fff', fontSize:17, fontWeight:600,
-        cursor:'pointer', marginTop:10, fontFamily:'inherit' }}>
-        Concluí a ficha → Continuar
-      </button>
+      {(() => {
+        // Só com todos os passos da preparação marcados (Rosa, 6/out/2026).
+        const feitos = fichas.reduce((s, f) => s + (f.preparacao || []).filter((_, i) => checklist[f.id]?.passo.has(i)).length, 0);
+        const total = fichas.reduce((s, f) => s + (f.preparacao || []).length, 0);
+        const falta = total > 0 && feitos < total;
+        return (
+          <button onClick={falta ? undefined : onConcluido} disabled={falta} style={{ width:'100%', padding:'16px', borderRadius:14,
+            border:'none', background: falta ? '#cfc9d6' : '#6B3FA0', color: falta ? '#4a4452' : '#fff', fontSize:17, fontWeight:600,
+            cursor: falta ? 'default' : 'pointer', marginTop:10, fontFamily:'inherit' }}>
+            {falta ? `Marca os passos da preparação: ${feitos} de ${total}` : 'Concluí a ficha → Continuar'}
+          </button>
+        );
+      })()}
     </div>
   );
 }
@@ -3602,7 +3676,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora,
       // A versão do plano a que o aluno respondeu: se o professor o mudar
       // depois, sabe-se que esta resposta é da versão anterior.
-      versaoPlano:String((plano as any).atualizadoEm || '')} as any);
+      versaoPlano:String((plano as any).atualizadoEm || ''),
+      // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
+      evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas)} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
       { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}

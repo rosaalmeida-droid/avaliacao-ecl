@@ -3062,6 +3062,39 @@ export function getChecklistAlunoFicha(planoId: string, fichaId: string, alunoId
   return getChecklists().find(c => c.planoAulaId === planoId && c.fichaId === fichaId && c.alunoId === alunoId);
 }
 
+// ── A ficha técnica antes da autoavaliação (Rosa, 6/out/2026) ──────────
+// Os alunos iam para a frente sem passar pela ficha. Agora marcam cada
+// passo da preparação à medida que o fazem; a autoavaliação só abre com
+// todos marcados, e o professor vê a hora de cada passo na validação.
+export interface EvidenciaFicha { fichaId: string; nome: string; total: number; marcados: number; horas: string[] }
+export function evidenciaDasFichas(planoId: string, alunoId: string, fichas: FichaProducao[]): EvidenciaFicha[] {
+  return fichas.filter(f => (f.preparacao || []).length > 0).map(f => {
+    const c = getChecklistAlunoFicha(planoId, f.id, alunoId);
+    const marcados = (c?.passosConcluidos || []).filter(i => Number(i) < (f.preparacao || []).length);
+    const horas = marcados.map(i => c?.passosHoras?.[i]).filter(Boolean).sort() as string[];
+    return { fichaId: f.id, nome: f.nomePrato || 'Ficha', total: (f.preparacao || []).length, marcados: marcados.length, horas };
+  });
+}
+/** Quantos passos faltam marcar, em todas as fichas do aluno nesta aula. */
+export function passosDaFicha(planoId: string, alunoId: string, fichas: FichaProducao[]): { feitos: number; total: number } {
+  const ev = evidenciaDasFichas(planoId, alunoId, fichas);
+  return { feitos: ev.reduce((s, e) => s + e.marcados, 0), total: ev.reduce((s, e) => s + e.total, 0) };
+}
+/** Para o professor: a frase da evidência e, se for de desconfiar, o aviso. */
+export function lerEvidenciaFicha(ev: EvidenciaFicha): { texto: string; aviso?: string } {
+  const h = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const base = `${ev.nome}: ${ev.marcados} de ${ev.total} passos marcados`;
+  if (!ev.horas.length) return { texto: base + '.' };
+  const ini = ev.horas[0], fim = ev.horas[ev.horas.length - 1];
+  const seg = Math.round((new Date(fim).getTime() - new Date(ini).getTime()) / 1000);
+  const texto = ev.horas.length > 1 && h(ini) !== h(fim) ? `${base}, das ${h(ini)} às ${h(fim)}.`
+    : ev.horas.length > 1 ? `${base}, todos às ${h(ini)}.` : `${base}, às ${h(ini)}.`;
+  // Três ou mais passos marcados em menos de 2 minutos: marcou tudo de seguida.
+  const aviso = ev.marcados >= 3 && seg < 120
+    ? `Marcou ${ev.marcados} passos em ${seg < 60 ? 'menos de 1 minuto' : 'menos de 2 minutos'}: parece que marcou tudo de seguida, sem os fazer.` : undefined;
+  return { texto, aviso };
+}
+
 export function addOrUpdateChecklistAluno(c: ChecklistAlunoFicha): void {
   const all = getChecklists();
   const idx = all.findIndex(x => x.id === c.id);

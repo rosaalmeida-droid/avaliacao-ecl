@@ -436,6 +436,15 @@ const SECCOES: Seccao[] = [
           em <b>Não era verdade</b>: a farda e a responsabilidade ficam com o nível 1.
         </P>
 
+        <H>A ficha técnica antes da autoavaliação</H>
+        <P>
+          O aluno só chega à autoavaliação depois de marcar, na ficha técnica, todos os passos da
+          preparação. A aplicação guarda a hora de cada passo. Na validação, por baixo do nome do aluno,
+          aparece por exemplo «Creme de legumes: 9 de 9 passos marcados, das 9:12 às 12:40». Se o aluno
+          marcou três ou mais passos em menos de 2 minutos, aparece um aviso: provavelmente marcou tudo
+          de seguida, sem os fazer. Numa aula teórica, ou numa ficha sem passos, não há esta regra.
+        </P>
+
         <H>Para que serve a autoavaliação</H>
         <P>
           Obriga o aluno a ler os critérios antes de ser avaliado. Muitas vezes, a diferença entre

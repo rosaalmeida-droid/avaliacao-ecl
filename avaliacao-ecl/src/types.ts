@@ -695,6 +695,9 @@ export interface ChecklistAlunoFicha {
   itensFardamento: string[];
   ingredientesConfirmados: string[];
   passosConcluidos: string[];
+  /** A hora a que o aluno marcou cada passo (índice → ISO). É a prova de
+   *  que passou pela ficha (Rosa, 6/out/2026). */
+  passosHoras?: Record<string, string>;
   haccpConfirmado: string[];
   requisicaoVerificada?: boolean;
   comentario?: string;
