@@ -32,7 +32,7 @@ const PERGUNTAS: { chave: 'colabora' | 'ouve' | 'flexivel' | 'conflito'; texto: 
   { chave: 'conflito', texto: 'Nos problemas do grupo…', opcoes: ['Criou conflitos', 'Nem uma coisa nem outra', 'Ajudou a resolver'] },
 ];
 
-export function AvaliarColegas({ aluno, plano }: { aluno: Aluno; plano: PlanoAula }) {
+export function AvaliarColegas({ aluno, plano, onFeito }: { aluno: Aluno; plano: PlanoAula; onFeito?: () => void }) {
   const meu = grupoDoAluno(plano.id, aluno.id);
   // Os alunos de teste ficam fora da avaliação dos colegas verdadeiros.
   const colegas = (meu?.membros || []).filter(m => m.alunoId !== aluno.id && podemAvaliarSe(aluno.id, m.alunoId));
@@ -58,7 +58,7 @@ export function AvaliarColegas({ aluno, plano }: { aluno: Aluno; plano: PlanoAul
       avaliadoId: c.alunoId, nomeAvaliado: c.nomeAluno, colabora: resp.colabora, ouve: resp.ouve, flexivel: resp.flexivel,
       conflito: resp.conflito, comentario: comentario.trim() || undefined });
     setResp({}); setComentario('');
-    if (i + 1 < colegas.length) setI(i + 1); else setFim(true);
+    if (i + 1 < colegas.length) setI(i + 1); else { setFim(true); onFeito?.(); }
   }
   return (
     <div style={cartao}>

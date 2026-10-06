@@ -1,5 +1,6 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
+import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
 import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -97,6 +98,12 @@ function temaDoAluno(s: SelecaoAluno): string {
 }
 
 /** O professor precisa do nome, não do identificador interno. */
+/** O compromisso que o aluno fez numa aula anterior (esteve só parte da aula) e se o cumpriu nesta. */
+function planoDaSelecaoParaCompromisso(s: SelecaoAluno) {
+  const p = getPlanosAula().find(x => x.id === s.planoAulaId);
+  return p ? compromissoPorCumprir(s.alunoId, p) : null;
+}
+
 function nomeDoAluno(alunoId: string): string {
   const a = getAlunos().find(x => x.id === alunoId);
   if (!a) return 'Aluno';
@@ -448,6 +455,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   const [semFarda, setSemFarda] = useState<boolean>(() => validacaoExistente
     ? !!validacaoExistente.semFarda
     : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
+  // Esteve só parte da aula: a nota desce pelos tempos em que não esteve
+  // (Rosa, 6/out/2026: «são 3 blocos, desce 1/3»). O professor pode não descontar.
+  const blocosNaAula = (validacaoExistente as any)?.blocosNaAula
+    || (() => { const h = horasDoAlunoNaAula(selecao.alunoId, selecao.planoAulaId || ''); return h ? { esteve: h.blocosEsteve, total: h.blocosTotal } : null; })();
+  const [semDescontoBlocos, setSemDescontoBlocos] = useState<boolean>(() => !!(validacaoExistente as any)?.semDescontoBlocos);
+  const reflexaoPresenca: ReflexaoPresenca | undefined = (selecao as any).reflexaoPresenca;
+  const compromissoAnterior = planoDaSelecaoParaCompromisso(selecao);
   const [guardado, setGuardado] = useState(false);
   // Regra (Rosa, out/2026): o professor só valida o que se perguntou ao aluno.
   // Numa atividade cujas atitudes ficam no plano da turma (ou quando o
@@ -543,7 +557,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   function calcularDaAula(notasFinais: { competenciaId: string; notaFinal: number }[]) {
     return calculoDaAulaValidada({
       notas: notasFinais.map(n => ({ competenciaId: n.competenciaId, nota: n.notaFinal })),
-      semFarda, faltouVerdade, tipoPlanAulaUsado: tipoPlanAula || 'pratico',
+      semFarda, faltouVerdade, tipoPlanAulaUsado: tipoPlanAula || 'pratico', blocosNaAula, semDescontoBlocos,
     }) || { nota20: 0, porCategoria: {} as Record<string, number>, detalhes: '' };
   }
 
@@ -614,6 +628,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     // tolerância. O aluno recebe o aviso de que é a última vez (Rosa, 6/out/2026).
     else if (fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5) (validacao as any).fardaPerdoada = true;
     if (faltouVerdade) (validacao as any).faltouVerdade = true;
+    if (blocosNaAula) (validacao as any).blocosNaAula = blocosNaAula;
+    if (blocosNaAula && semDescontoBlocos) (validacao as any).semDescontoBlocos = true;
     if (Object.keys(apNotas).length) (validacao as any).altaPerformance = { notas: apNotas, entraNaAvaliacao: apEntra, media: mediaAP(apNotas) };
     // Guardar a decomposição por categoria para o professor perceber sempre
     // como a nota foi calculada (antes ficava só o número, sem explicação).
@@ -761,6 +777,31 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Esteve só {String(pa.horasEsteve).replace('.', ',')} de {String(pa.horasAula).replace('.', ',')} horas ({pa.esteve.join(', ') || 'nenhum tempo'}).
             Confirme que só avalia o que ele fez nesse tempo.
           </div>) : null; })()}
+        {/* As perguntas de quem só esteve parte da aula: a 1.ª escolha diz muito (Rosa, 6/out/2026). */}
+        {reflexaoPresenca && (
+          <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.08)' }}>
+            <div style={{ fontWeight: 800, color: '#f0b470' }}>As perguntas sobre ter estado só {horasEmTexto(reflexaoPresenca.esteve)} de {horasEmTexto(reflexaoPresenca.total)} horas</div>
+            {reflexaoPresenca.respostas.map(r => {
+              const q = PERGUNTAS_PRESENCA.find(x => x.id === r.id);
+              if (!q) return null;
+              const errou = r.primeira !== r.final;
+              return (
+                <div key={r.id} style={{ marginTop: 4 }}>
+                  <span style={{ opacity: 0.75 }}>{q.pergunta(horasEmTexto(reflexaoPresenca.esteve), horasEmTexto(reflexaoPresenca.total))}</span><br />
+                  {errou && <span style={{ color: '#f8d7d1' }}>1.ª resposta: «{q.opcoes[r.primeira]?.t}» · depois: </span>}
+                  <span style={{ color: errou ? '#f8d7d1' : '#b9dfb0', fontWeight: 700 }}>«{q.opcoes[r.final]?.t}»</span>
+                </div>
+              );
+            })}
+            {reflexaoPresenca.compromisso && <div style={{ marginTop: 4 }}>Compromisso: <b>«{textoCompromisso(reflexaoPresenca.compromisso)}»</b></div>}
+          </div>
+        )}
+        {compromissoAnterior && compromissoAnterior.cumpriu !== null && (
+          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: compromissoAnterior.cumpriu ? '#b9dfb0' : '#f8d7d1' }}>
+            {compromissoAnterior.cumpriu ? '✓' : '⚠'} Na aula de {compromissoAnterior.data.split('-').reverse().slice(0, 2).join('/')} comprometeu-se a «{textoCompromisso(compromissoAnterior.compromisso)}»
+            {compromissoAnterior.cumpriu ? ' e cumpriu.' : ' e não cumpriu.'}
+          </div>
+        )}
         {/* A prova de que passou pela ficha: passos marcados e a hora (Rosa, 6/out/2026). */}
         {((selecao as any).evidenciaFicha || []).map((ev: any) => {
           const l = lerEvidenciaFicha(ev);
@@ -1252,6 +1293,23 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             </div>
           ))}
         </div>
+        {blocosNaAula && blocosNaAula.esteve < blocosNaAula.total && (
+          <div style={{ fontSize:13.5, marginTop:8, padding:'8px 10px', borderRadius:8, lineHeight:1.5,
+            background: semDescontoBlocos ? 'rgba(26,23,20,0.04)' : '#fdf0ef', color: semDescontoBlocos ? 'rgba(26,23,20,0.7)' : '#8e2418' }}>
+            {semDescontoBlocos
+              ? <>Esteve em {blocosNaAula.esteve} de {blocosNaAula.total} tempos, mas a nota conta a aula toda.</>
+              : <><b>Esteve em {blocosNaAula.esteve} de {blocosNaAula.total} tempos:</b> a nota conta {blocosNaAula.esteve}/{blocosNaAula.total}
+                {' '}(com a aula toda seria {String(calculoDaAulaValidada({ notas: montarNotasFinais().map(n => ({ competenciaId: n.competenciaId, nota: n.notaFinal })),
+                  semFarda, faltouVerdade, tipoPlanAulaUsado: tipoPlanAula || 'pratico' })?.nota20 ?? '—').replace('.', ',')}).</>}
+            <div>
+              <button onClick={() => setSemDescontoBlocos(!semDescontoBlocos)} style={{ marginTop: 6, fontSize: 13, fontWeight: 700,
+                padding: '5px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid #8e2418',
+                background: '#fff', color: '#8e2418' }}>
+                {semDescontoBlocos ? 'Descontar os tempos em que não esteve' : 'Não descontar (a falta tem justificação)'}
+              </button>
+            </div>
+          </div>
+        )}
         <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
           Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : (tipoPlanAula as any) === 'atitudinal' ? 'atitudinal — só atitudes' : 'prática'}.
           {(() => {

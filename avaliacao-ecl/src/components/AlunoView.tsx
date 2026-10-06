@@ -38,7 +38,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, partesDaAulaDoAluno } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, fracaoDosBlocos, notaSeEstivesseATodaAula, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, colegasPorAvaliar, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -89,6 +89,7 @@ import { fraseDaAula } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { criterioTrabalho, ehCriterioTrabalho } from '../criteriosTrabalho';
 import { DicionarioComp } from './DicionarioComp';
+import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, COMPROMISSOS, horasEmTexto, textoCompromisso, compromissoPorCumprir, type RespostaPresenca, type IdCompromisso, type ReflexaoPresenca } from '../presencaParcial';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
 // ─────────────────────────────────────────────────────────────
@@ -818,7 +819,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   useEffect(() => {
     if (abriuAulaSozinha.current || !planoHoje) return;
     abriuAulaSozinha.current = true;
-    if (getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id)) return;
+    // Já se avaliou e já avaliou os colegas: fica no Início.
+    if (getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id)
+      && !colegasPorAvaliar(planoHoje.id, aluno.id).length) return;
     if (eventoForaDoHorario(planoHoje) && !participantesDoEvento(planoHoje).includes(aluno.id)) return;
     setPlanoAtivo(planoHoje);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1254,6 +1257,18 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   </div>
                 ) : null;
               })()}
+              {(() => {
+                // Esteve só parte da aula: a nota desce pelos tempos em que não esteve (Rosa, 6/out/2026).
+                const b = fracaoDosBlocos(vAula);
+                const toda = notaSeEstivesseATodaAula(vAula);
+                return b ? (
+                  <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fdf0ef', border:'1.5px solid #c0392b',
+                    color:'#7a1f14', fontSize:15, lineHeight:1.5 }}>
+                    <b>Estiveste em {b.esteve} de {b.total} tempos desta aula: a nota conta {b.esteve}/{b.total}.</b>
+                    {toda != null && <> Se tivesses estado a aula toda, a tua nota seria <b>{v20(toda)}/20</b>, e não {v20(nota20)}/20.</>}
+                  </div>
+                ) : null;
+              })()}
               {comFarda != null && (
                 <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fdf0ef', border:'1.5px solid #c0392b',
                   color:'#7a1f14', fontSize:15, lineHeight:1.5 }}>
@@ -1262,6 +1277,17 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 </div>
               )}
             </>);
+          })()}
+          {(() => {
+            // O compromisso da última vez que esteve só parte da aula, e se o cumpriu hoje.
+            const c = compromissoPorCumprir(aluno.id, planoAtivo);
+            return c && c.cumpriu === false ? (
+              <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fff7e6', border:'1.5px solid #b5651d',
+                color:'#7a4310', fontSize:15, lineHeight:1.5 }}>
+                <b>⚠ Na aula de {c.data.split('-').reverse().slice(0, 2).join('/')} comprometeste-te a: «{textoCompromisso(c.compromisso)}»</b> Hoje não aconteceu.
+                O teu grupo e o professor contavam com isso.
+              </div>
+            ) : null;
           })()}
           {/* Atividade extra para a qual o aluno não foi escolhido (nem está a
               recuperar nela): só para ver — não entra nem se autoavalia (Rosa, out/2026). */}
@@ -1973,6 +1999,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // grande e um botão. A aula validada e a atividade só para ver ficam como
   // estavam, mais abaixo.
   const mudancaGrupo = useMudancaDeGrupo(plano, aluno, comGrupos);
+  const [, refazerAula] = React.useState(0);
   const [verAqui, setVerAqui] = React.useState<null | 'orientacao' | 'ficha' | 'guia' | 'requisicao' | 'funcao_inicio' | 'funcao_fim' | 'feito'>(null);
   if (!soConsulta) {
     const teorica = String((plano as any).tipoPlanAula || '') === 'teorico';
@@ -2051,6 +2078,15 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
           titulo="Primeiro, a ficha técnica."
           sub={`Antes de te avaliares, marca na ficha os passos da preparação que já estão feitos: ${passos.feitos} de ${passos.total}.`}>
           <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={() => setVerAqui('ficha')}>🧾 Abrir a ficha técnica</BotaoDaAula></div>
+        </EcraDeCor>
+      );
+    } else if (secAberta === 'avaliacao' && avaliou && colegasPorAvaliar(plano.id, aluno.id).length > 0) {
+      // Obrigatório: avaliar os colegas do grupo antes de acabar a aula (Rosa, 6/out/2026).
+      ecraPasso = (
+        <EcraDeCor cor={CORES_AULA.avaliar} total={totalPassos} feitos={passosConcluidos}
+          titulo="Agora, os teus colegas do grupo."
+          sub="Para acabares a aula, diz como trabalhou cada colega. Só o professor vê, e o colega não sabe o que disseste.">
+          <AvaliarColegas aluno={aluno} plano={plano} onFeito={() => refazerAula(n => n + 1)} />
         </EcraDeCor>
       );
     } else if (secAberta === 'avaliacao') {
@@ -3582,6 +3618,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const topoRef = React.useRef<HTMLDivElement>(null);
   // Esteve só parte da aula (Rosa, 6/out/2026): responde só ao que fez.
   const soParte = partesDaAulaDoAluno(aluno.id, plano.id);
+  // E, por isso, umas perguntas sobre o que isso fez ao grupo e à confiança,
+  // sem escrever: a resposta errada explica-se e escolhe-se outra vez.
+  const presencaParcial = React.useMemo(() => horasDoAlunoNaAula(aluno.id, plano.id), [aluno.id, plano.id]);
+  const [respPres, setRespPres] = useState<Record<string, RespostaPresenca>>({});
+  const [compromisso, setCompromisso] = useState<IdCompromisso | null>(null);
+  const escolherPres = (id: string, i: number) => setRespPres(r => ({ ...r, [id]: { id, primeira: r[id]?.primeira ?? i, final: i } }));
+  const presCerta = (id: string) => { const q = PERGUNTAS_PRESENCA.find(x => x.id === id); const r = respPres[id]; return !!q && !!r && q.opcoes[r.final]?.certa; };
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
   const aSubmeter = React.useRef(false);
@@ -3736,7 +3779,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       // depois, sabe-se que esta resposta é da versão anterior.
       versaoPlano:String((plano as any).atualizadoEm || ''),
       // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
-      evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas)} as any);
+      evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas),
+      ...(presencaParcial ? { reflexaoPresenca: { ...presencaParcial, respostas: Object.values(respPres),
+        ...(compromisso ? { compromisso } : {}) } as ReflexaoPresenca } : {})} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
       { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
@@ -4044,9 +4089,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // baralhava a autoavaliação e não interessa à professora.
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
-  type Passo = { id: string; tipo: 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
+  type Passo = { id: string; tipo: 'presenca' | 'compromisso' | 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
+    // Esteve só parte da aula: primeiro, perceber o que isso fez ao grupo (Rosa, 6/out/2026).
+    ...(presencaParcial ? [...PERGUNTAS_PRESENCA.map(q => ({ id: 'pres_' + q.id, tipo: 'presenca' as const, atiId: q.id })),
+      { id: 'compromisso', tipo: 'compromisso' as const }] : []),
     // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
     ...(regras.escolheTema && partes.conhecimentos ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
@@ -4067,7 +4115,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const passo = passos[idx];
   const nPerguntas = passos.length - 1;
   const podeAvancar =
-    passo.tipo === 'tema' ? temaEscolhido != null
+    passo.tipo === 'presenca' ? presCerta(passo.atiId!)
+    : passo.tipo === 'compromisso' ? !!compromisso
+    : passo.tipo === 'tema' ? temaEscolhido != null
     : passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
     : passo.tipo === 'atiAula' ? atiOk(passo.atiId!)
@@ -4080,7 +4130,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     : true;
   const irPara = (i: number) => setPassoIdx(Math.max(0, Math.min(i, passos.length - 1)));
   const tituloPasso = (p: Passo) =>
-    p.tipo === 'tema' ? 'O teu tema'
+    p.tipo === 'presenca' ? 'Estiveste só parte da aula'
+    : p.tipo === 'compromisso' ? 'O teu compromisso'
+    : p.tipo === 'tema' ? 'O teu tema'
     : p.tipo === 'comp' ? p.comp!.rotulo
     : p.tipo === 'outra' ? 'O que fizeste hoje'
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
@@ -4093,7 +4145,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
    *  out/2026). Técnicas, conhecimentos e atitudes fazem a nota da aula
    *  (Competente); o evento conta para o Colaborativo. */
   const cDoPasso = (p: Passo): Letra5CAluno | null =>
-    p.tipo === 'rever' ? null
+    p.tipo === 'rever' || p.tipo === 'presenca' || p.tipo === 'compromisso' ? null
     : p.tipo === 'triagem' ? p.chave!
     : p.tipo === 'tecEvento' ? 'cl'
     : 'cp';
@@ -4483,6 +4535,58 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* ── Esteve só parte da aula: perguntas sem escrever, com correção ── */}
+      {passo.tipo === 'presenca' && presencaParcial && (() => {
+        const q = PERGUNTAS_PRESENCA.find(x => x.id === passo.atiId)!;
+        const r = respPres[q.id];
+        const escolhida = r ? q.opcoes[r.final] : undefined;
+        return (
+          <div>
+            {q.id === PERGUNTAS_PRESENCA[0].id && (
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginBottom:10, lineHeight:1.5 }}>
+                Hoje estiveste {horasEmTexto(presencaParcial.esteve)} das {horasEmTexto(presencaParcial.total)} horas da aula
+                ({presencaParcial.blocosEsteve} de {presencaParcial.blocosTotal} tempos). Antes de te avaliares, pensa no que isso quis dizer para o teu grupo.
+              </div>
+            )}
+            <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3, marginBottom:12 }}>
+              {q.pergunta(horasEmTexto(presencaParcial.esteve), horasEmTexto(presencaParcial.total))}
+            </div>
+            {q.opcoes.map((o, i) => {
+              const sel = r?.final === i;
+              return (
+                <button key={i} onClick={() => escolherPres(q.id, i)} style={estiloOpcao(sel)}>
+                  {radio(sel)}<span>{o.t}</span>
+                </button>
+              );
+            })}
+            {escolhida && !escolhida.certa && (
+              <div style={{ marginTop:6, padding:'10px 12px', borderRadius:12, background:'#FFE3D3', color:'#6b2a10', fontSize:14.5, lineHeight:1.5 }}>
+                <b>Pensa outra vez.</b> {escolhida.porque} Escolhe outra resposta.
+              </div>
+            )}
+          </div>
+        );
+      })()}
+      {passo.tipo === 'compromisso' && presencaParcial && (
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3 }}>
+            O que te comprometes a fazer na próxima aula?
+          </div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
+            O professor vê o teu compromisso e, na próxima aula, a aplicação verifica se o cumpriste.
+          </div>
+          {COMPROMISSOS.map(c => (
+            <button key={c.id} onClick={() => setCompromisso(c.id)} style={estiloOpcao(compromisso === c.id)}>
+              {radio(compromisso === c.id)}<span>{c.t}</span>
+            </button>
+          ))}
+          <div style={{ marginTop:10, padding:'10px 12px', borderRadius:12, background:'rgba(26,23,20,0.05)', fontSize:14, lineHeight:1.5 }}>
+            Como estiveste {presencaParcial.blocosEsteve} de {presencaParcial.blocosTotal} tempos, a nota desta aula
+            conta {presencaParcial.blocosEsteve}/{presencaParcial.blocosTotal}: cada tempo em que não estiveste tira {`1/${presencaParcial.blocosTotal}`} da nota.
+          </div>
         </div>
       )}
 

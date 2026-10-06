@@ -312,6 +312,25 @@ const SECCOES: Seccao[] = [
           <li><b>Falta de presença</b>.</li>
         </ul>
 
+        <H>O aluno esteve só parte da aula</H>
+        <P>
+          Quando o professor marca «Só algumas horas», ou quando o aluno entra depois de já ter
+          passado um tempo da aula, a autoavaliação começa com três perguntas sobre o que isso
+          fez ao grupo e à confiança. O aluno não escreve: escolhe. Se escolher uma resposta
+          errada, a aplicação explica porquê e ele escolhe outra vez. No fim, escolhe um
+          compromisso para a próxima aula.
+        </P>
+        <P>
+          Na validação, o professor vê a primeira resposta e a resposta final de cada pergunta,
+          e o compromisso. Na aula seguinte, a aplicação diz ao professor e ao aluno se o
+          compromisso foi cumprido.
+        </P>
+        <P>
+          <b>A nota desce pelos tempos em que o aluno não esteve.</b> Se esteve em 1 de 3 tempos,
+          a nota da aula conta 1/3. O professor vê a conta na nota prevista e pode escolher
+          «Não descontar» quando a falta tem justificação.
+        </P>
+
         <Destaque cor="bordeaux">
           <b>Uma falta de presença conta 0 na aula inteira</b>: técnicas, obrigatórias,
           conhecimentos e atitudes. Quem não esteve presente não tem avaliação parcial.
@@ -567,7 +586,9 @@ const SECCOES: Seccao[] = [
         <P>
           O professor faz os grupos no plano (Grupos): põe cada aluno num grupo e dá uma ficha a
           cada grupo. Os alunos não criam nem escolhem grupo: veem o seu (colegas e ficha) logo que
-          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
+          abrem a aplicação, antes de a aula abrir, e um visto em quem do grupo já entrou e já se avaliou.
+          No fim, a avaliação dos colegas do grupo é obrigatória: o aluno só vê «Aula feita» depois de
+          avaliar todos. Em «Turma e faltas» aparece «falta avaliar N colegas do grupo» a quem ainda não o fez. Num grupo, os registos de higiene e segurança alimentar fazem-se uma só vez:
           o professor escolhe o líder e pode substituí-lo se este faltar. Os grupos e o líder
           chegam de imediato aos telemóveis dos alunos.
         </P>
