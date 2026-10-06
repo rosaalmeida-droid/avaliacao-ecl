@@ -5397,7 +5397,7 @@ const KEY_NOTAS_ENVIADAS = 'ecl_notas_app_enviadas';
 export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
   // A nota da UC que vai para o Sheets é a mesma que o professor e o aluno
   // veem (a conta da pauta, com as aulas sem autoavaliação a 0) — Rosa, 5/out/2026.
-  import('./pautaUC').then(m => enviarNotasDaTurmaCom(turmaId, forcar, m.notaDaUCComoNaPauta))
+  import('./pautaUC').then(m => enviarNotasDaTurmaCom(turmaId, forcar, m.notaDaUCComDecimas))
     .catch(() => enviarNotasDaTurmaCom(turmaId, forcar, null));
 }
 function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,

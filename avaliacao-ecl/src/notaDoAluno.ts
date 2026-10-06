@@ -5,7 +5,7 @@
 // o bónus de cada atividade e a nota da UC (a da pauta).
 // ============================================================
 import { notaFinalUC, aulasDaNotaUC, getPlanosFaltadosPorUC, bonusPorAtividade, getNotaFinalPublicadaUC } from './backend';
-import { notaDaUCComoNaPauta } from './pautaUC';
+import { notaDaUCComoNaPauta, notaDaUCComDecimas } from './pautaUC';
 import { posicaoNaUC } from './rotuloPlano';
 import { getPlanosAula } from './backend';
 import type { AulaNota } from './components/EcraNotaAtividades';
@@ -31,9 +31,10 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
     publicada: !!getNotaFinalPublicadaUC(alunoId, ucId),
     // A conta de agora: a média das aulas com o bónus (e os tetos), arredondada.
     // Sem nota publicada, é a nota da pauta (que já soma o bónus).
+    // Com décimas (Rosa, 6/out/2026): só a nota final publicada é inteira.
     contaDeAgora: getNotaFinalPublicadaUC(alunoId, ucId)
-      ? (calc.final == null ? null : Math.round(calc.final))
-      : (notaDaUCComoNaPauta(alunoId, turmaId, ucId) ?? (calc.final == null ? null : Math.round(calc.final))),
+      ? (calc.final == null ? null : Math.round(calc.final * 10) / 10)
+      : notaDaUCComDecimas(alunoId, turmaId, ucId),
   };
   return { aulas, detalhe, nota: detalhe.final };
 }

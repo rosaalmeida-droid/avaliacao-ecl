@@ -73,7 +73,7 @@ import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } fro
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
-import { notaDaUCComoNaPauta } from '../pautaUC';
+import { notaDaUCComoNaPauta, notaDaUCComDecimas } from '../pautaUC';
 import { pedeFardaEHigiene, cozinhamNaAula } from '../contextoAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
@@ -980,7 +980,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // (Auditoria 5/out/2026) A nota de hoje é a conta da pauta: as aulas em
   // falta ou sem autoavaliação contam 0. Assim o aluno não é iludido.
   const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
-    : ucAtual ? { final: notaDaUCComoNaPauta(aluno.id, aluno.turmaId, ucAtual) } : null;
+    : ucAtual ? { final: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual) } : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
   const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
@@ -3665,7 +3665,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {(() => {
           // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
           // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
-          const n = plano.ucId ? notaDaUCComoNaPauta(aluno.id, aluno.turmaId, plano.ucId) : null;
+          const n = plano.ucId ? notaDaUCComDecimas(aluno.id, aluno.turmaId, plano.ucId) : null;
           if (n == null) return null;
           const nota20 = n;
           return (

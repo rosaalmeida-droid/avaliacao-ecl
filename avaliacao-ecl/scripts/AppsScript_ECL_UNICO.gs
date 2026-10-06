@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.2';
+var VERSAO = 'ECL único v26.3';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -1889,7 +1889,9 @@ function instalarTarefas() {
   });
   var tem = function (fn) { return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === fn; }); };
   if (!tem('tratarPendentes')) ScriptApp.newTrigger('tratarPendentes').timeBased().everyMinutes(5).create();
-  if (!tem('atualizarFolhasDasTurmas')) ScriptApp.newTrigger('atualizarFolhasDasTurmas').timeBased().everyMinutes(10).create();
+  // (v26.3) De minuto a minuto: só faz alguma coisa quando há novidades numa
+  // turma (ou uma volta de meia em meia hora); sem novidades, acaba logo.
+  if (!tem('atualizarFolhasDasTurmas')) ScriptApp.newTrigger('atualizarFolhasDasTurmas').timeBased().everyMinutes(1).create();
   if (!tem('arrumacaoDaNoite')) ScriptApp.newTrigger('arrumacaoDaNoite').timeBased().atHour(2).everyDays(1).create();
   criarCopiaAutomatica();
   atualizarFolhasDasTurmas();
@@ -2041,6 +2043,12 @@ function atualizarFolhasDasTurmas() {
   var turma, comGerais;
   if (comNovidades.length) { turma = comNovidades[0]; comGerais = false; }
   else {
+    // (v26.3) Sem novidades em lado nenhum: só a volta pela ordem, e só se a
+    // turma seguinte não é refeita há mais de meia hora (as datas mudam: uma
+    // aula passa a «dada»). Assim corre de minuto a minuto sem gastar o
+    // tempo diário do Google (Rosa, 6/out/2026: «os grupos levaram 20 minutos»).
+    var seguinte = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
+    if (new Date().getTime() - Number(feitas[seguinte] || 0) < 30 * 60 * 1000) return;
     turma = TURMAS_DO_ANO[i % TURMAS_DO_ANO.length];
     comGerais = i % TURMAS_DO_ANO.length === 0;
     props.setProperty('PROXIMA_TURMA', String((i + 1) % TURMAS_DO_ANO.length));

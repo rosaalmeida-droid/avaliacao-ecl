@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC, mediaDasAulasValidadas, calculoDaAulaValidada } from '../backend';
-import { notaDaPautaUC, notaDaUCComoNaPauta } from '../pautaUC';
+import { notaDaPautaUC, notaDaUCComoNaPauta, notaDaUCComDecimas } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -150,7 +150,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         // (Auditoria 5/out/2026) Sempre a conta da pauta, já durante a UC:
         // as aulas em falta ou sem autoavaliação contam 0.
         : !alunoId ? (ucJaFechada(turmaId, ucAlvo) ? notaDaPautaUC(aluno.id, turmaId, ucAlvo)
-          : { nota: notaDaUCComoNaPauta(aluno.id, turmaId, ucAlvo) } as any)
+          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo), comDecimas: !getNotaFinalPublicadaUC(aluno.id, ucAlvo) } as any)
         : getPropostaFinalUC(aluno.id, ucAlvo) ? notaFinalPublicadaComoPauta(aluno.id, ucAlvo) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
@@ -361,7 +361,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                 </div>
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta && !(pauta as any).comDecimas ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')

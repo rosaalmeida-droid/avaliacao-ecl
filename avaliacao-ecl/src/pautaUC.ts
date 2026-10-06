@@ -477,6 +477,32 @@ export function notaDaUCComoNaPauta(alunoId: string, turmaId: string, ucId: stri
   return n?.final ?? null;
 }
 
+/**
+ * (Rosa, 6/out/2026: «as notas devem ter sempre décimas») A nota da UC com
+ * décimas, para mostrar na aplicação e no Sheets: a mesma conta da pauta
+ * (as aulas pelo seu peso, sem resposta a 0, mais o bónus), sem arredondar.
+ * Na pauta, só a nota final é inteira; depois de publicada, conta a publicada.
+ * As regras (negativa, recuperação) continuam com notaDaUCComoNaPauta.
+ */
+export function notaDaUCComDecimas(alunoId: string, turmaId: string, ucId: string): number | null {
+  try {
+    const pub = getNotaFinalPublicadaUC(alunoId, ucId);
+    if (pub) return pub.nota;
+    const produtos = produtosDaUC(turmaId, ucId);
+    if (produtos.length) {
+      const l = linhasDaPautaUC(turmaId, ucId, produtos, alunoId)[0];
+      const n = l ? notaDoCompetente(l, produtos) : null;
+      if (n !== null) {
+        const b = bonusDaPauta(alunoId, n, turmaId, ucId);
+        const v = b ? Math.min(n + b.bonus, b.teto) : n;
+        return Math.round(Math.min(20, v) * 10) / 10;
+      }
+    }
+  } catch { /* sem pauta: a conta pelos registos */ }
+  const f = notaFinalUC(alunoId, turmaId, ucId)?.final;
+  return f == null ? null : Math.round(f * 10) / 10;
+}
+
 // ── Cabeçalho ────────────────────────────────────────────────
 
 export interface CabecalhoPauta {
