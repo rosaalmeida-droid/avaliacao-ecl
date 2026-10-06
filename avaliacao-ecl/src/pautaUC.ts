@@ -36,6 +36,7 @@ import {
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
   validacaoDaAula, notaFinalUC, alunoDeTeste, planosSemAutoavaliacao,
+  aplicarBonusesUC,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { pesoNoModulo } from './contextoAula';
@@ -383,17 +384,34 @@ export function notaDoCompetente(l: LinhaPautaUC, produtos: ProdutoPauta[]): num
 
 /** Sugestão para a CLASSIF. ATRIBUÍDA: o Competente em 0-20, dentro da
  *  faixa do Competente (um aluno com 4 no CP fica entre 10 e 13). */
-export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cp: number): number | null {
+export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cp: number, turmaId?: string, ucId?: string): number | null {
   const n = notaDoCompetente(l, produtos);
   if (n === null) return null;
   const f = FAIXAS[faixaDoNivel(cp)];
-  return Math.min(f.ate, Math.max(f.de, Math.round(n)));
+  const base = Math.min(f.ate, Math.max(f.de, Math.round(n)));
+  // (Rosa) O bónus das atividades e dos eventos entra na nota final, até 2
+  // valores e com os tetos de sempre — como em «Notas da UC». A pauta
+  // publicava a nota sem o bónus (Leonel 18 em vez de 19, 5/out/2026).
+  const b = bonusDaPauta(l.alunoId, n, turmaId, ucId);
+  if (!b || !b.bonus) return base;
+  return Math.max(base, Math.min(20, Math.round(Math.min(n + b.bonus, b.teto))));
+}
+
+/** O bónus das atividades na UC (o mesmo da aplicação) e o teto da nota. */
+export function bonusDaPauta(alunoId: string, competente: number, turmaId?: string, ucId?: string): { bonus: number; teto: number } | null {
+  if (!turmaId || !ucId) return null;
+  try {
+    const r: any = aplicarBonusesUC(competente, alunoId, turmaId, ucId);
+    return { bonus: Number(r.bonusParticipacao) || 0, teto: Number(r.teto ?? 20) };
+  } catch { return null; }
 }
 
 /** A nota tem de estar na faixa do Competente: devolve o erro, ou null. */
-export function erroClassificacao(nota: number | null, cp: number): string | null {
+export function erroClassificacao(nota: number | null, cp: number, bonus = 0): string | null {
   if (nota === null) return null;
   const f = FAIXAS[faixaDoNivel(cp)];
+  // O bónus das atividades pode levar a nota acima da faixa do Competente.
+  if (nota > f.ate && nota <= Math.min(20, f.ate + Math.ceil(bonus))) return null;
   return faixaDaNota(nota) === faixaDoNivel(cp) ? null
     : `Com Competente ${cp} (${f.nome}) a nota tem de estar entre ${f.de} e ${f.ate}.`;
 }
@@ -436,9 +454,10 @@ export function notaDaPautaUC(alunoId: string, turmaId: string, ucId: string):
   try {
     const v = JSON.parse(localStorage.getItem(chaveClassificacoes(turmaId, ucId)) || '{}')[alunoId];
     const n = v === undefined || v === '' ? NaN : Number(String(v).replace(',', '.'));
-    if (!isNaN(n) && n >= 0 && n <= 20 && !erroClassificacao(Math.round(n), c.cp)) escrita = Math.round(n);
+    const bon = bonusDaPauta(alunoId, notaDoCompetente(l, produtos) ?? 0, turmaId, ucId)?.bonus || 0;
+    if (!isNaN(n) && n >= 0 && n <= 20 && !erroClassificacao(Math.round(n), c.cp, bon)) escrita = Math.round(n);
   } catch { /* */ }
-  return { nota: escrita ?? sugestaoClassificacao(l, produtos, c.cp), cp: c.cp, total: c.total,
+  return { nota: escrita ?? sugestaoClassificacao(l, produtos, c.cp, turmaId, ucId), cp: c.cp, total: c.total,
     resultado: c.resultado, atribuida: escrita !== null, publicada: false };
 }
 

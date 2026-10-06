@@ -28,6 +28,7 @@ import {
   calculoDoModelo, classificacaoComNota, descarregar, MAPA_5C, colunasDeProdutos,
   planosRealizadosDaUC, sugestaoClassificacao, chaveClassificacoes, avisosClassificacao, erroClassificacao, notaDoCompetente,
   type CabecalhoPauta, type DadosPauta, type Letra5C,
+  bonusDaPauta,
 } from '../pautaUC';
 
 const rotulo: React.CSSProperties = {
@@ -86,11 +87,12 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
     const c = calculoDoModelo(l, produtos, totalAtividades);
     // A nota publicada é o ponto de partida; sem publicação, a sugestão.
     const publicada = getNotaFinalPublicadaUC(l.alunoId, ucId);
-    const sugestao = sugestaoClassificacao(l, produtos, c.cp);
+    const sugestao = sugestaoClassificacao(l, produtos, c.cp, provisoria ? undefined : turmaId, provisoria ? undefined : ucId);
+    const bonus = provisoria ? 0 : (bonusDaPauta(l.alunoId, notaDoCompetente(l, produtos) ?? 0, turmaId, ucId)?.bonus || 0);
     const escrita = classifEscrita[l.alunoId];
     const n = escrita !== undefined && escrita !== '' ? Number(escrita.replace(',', '.')) : NaN;
     const nota = !isNaN(n) && n >= 0 && n <= 20 ? Math.round(n) : publicada ? publicada.nota : sugestao;
-    const erro = erroClassificacao(nota, c.cp);
+    const erro = erroClassificacao(nota, c.cp, bonus);
     return [l.alunoId, { c, sugestao, nota, erro, publicada, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
   })), [linhas, produtos, totalAtividades, classifEscrita]);
   const classificacoes = Object.fromEntries(escolhidas.map(l => [l.alunoId, contas[l.alunoId]?.nota ?? null]));

@@ -12,6 +12,10 @@ function parseSafe(iso: string): Date | null {
       const [a, m, d] = s.split('-').map(Number);
       return new Date(a, m - 1, d, 12, 0, 0);
     }
+    // (Rosa, 5/out/2026) Datas à portuguesa (DD/MM/AAAA): o navegador lia
+    // «01/10/2026» como 10 de janeiro. Leem-se sempre como dia/mês/ano.
+    const pt = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+    if (pt) return new Date(Number(pt[3]), Number(pt[2]) - 1, Number(pt[1]), 12, 0, 0);
     const d = new Date(s);
     return isNaN(d.getTime()) ? null : d;
   } catch { return null; }

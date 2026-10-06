@@ -46,6 +46,10 @@ export interface AulaNota {
   titulo: string;
   data: string;
   nota20: number;
+  /** Quanto vale a aula na média: ½ (só atitudes) ou 1 (com técnicas ou conhecimentos). */
+  peso?: number;
+  /** Esteve e não se autoavaliou: conta 0. */
+  semResposta?: boolean;
 }
 
 export function EcraMinhaNota({
@@ -162,9 +166,21 @@ export function EcraMinhaNota({
         {detalhe && (aulas.length > 0 || detalhe.faltas.length > 0 || detalhe.bonus.length > 0) && (
           <div style={{ ...painel, padding: 18, marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.tinta, marginBottom: 10 }}>Como chegaste a esta nota</div>
+            {aulas.some(a => a.peso !== undefined) && (
+              <div style={{ fontSize: 12.5, color: '#888', marginBottom: 6, lineHeight: 1.45 }}>
+                Cada aula conta pelo que se avaliou: uma aula só de atitudes vale meia aula (½); uma aula com técnicas ou conhecimentos vale uma aula inteira (1).
+              </div>
+            )}
             {aulas.map(a => (
-              <div key={'a' + a.numero + a.titulo} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
-                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo} <span style={{ color: '#999' }}>· {fmtDataCurta(a.data)}</span></span>
+              <div key={'a' + a.numero + a.titulo + a.data} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(a.titulo || '')) ? null : <span style={{ color: '#999' }}> · {fmtDataCurta(a.data)}</span>}
+                  {(a.peso !== undefined || a.semResposta) && (
+                    <span style={{ display: 'block', fontSize: 12.5, color: a.semResposta ? C.ambar : '#999' }}>
+                      {a.peso !== undefined ? (a.peso === 0.5 ? 'vale ½ aula' : a.peso === 1 ? 'vale 1 aula' : `vale ${String(a.peso).replace('.', ',')} aulas`) : ''}
+                      {a.semResposta ? `${a.peso !== undefined ? ' · ' : ''}não te autoavaliaste: conta 0 até te autoavaliares` : ''}
+                    </span>
+                  )}
+                </span>
                 <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
               </div>
             ))}
