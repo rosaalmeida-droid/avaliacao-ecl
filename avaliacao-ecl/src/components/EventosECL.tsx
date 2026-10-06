@@ -554,7 +554,9 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
     <div style={{ marginBottom: semPlano.length ? 10 : 0 }}>
       {planos.some(p => p.tipoEvento) && (<>
         <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.filter(p => p.tipoEvento).map(p => `${p.turmaId}${p0Modo(p)}`).join(', ')}.
-        {' '}Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.<br />
+        {' '}Os alunos autoavaliam-se na atividade. {planos.some(p => p.tipoEvento && p.modoParticipacao !== 'inscricao')
+          ? 'Para a turma que vai toda, conta como uma aula, na aula seguinte da UC; para os convidados, dá bónus.'
+          : 'Dá bónus na UC dessa data.'}<br />
         {planos.filter(p => p.tipoEvento && p.modoParticipacao !== 'inscricao').map(p => (
           <button key={p.id} onClick={() => { addOrUpdatePlanoAula({ ...p, modoParticipacao: 'inscricao', estado: 'publicado' }); redesenhar(n => n + 1); }}
             style={{ ...botao('claro'), margin: '6px 6px 0 0', minHeight: 38, fontSize: 13.5 }}>Abrir às inscrições dos alunos — {p.turmaId}</button>

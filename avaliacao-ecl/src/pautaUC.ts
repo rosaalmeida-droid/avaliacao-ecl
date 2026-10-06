@@ -36,7 +36,7 @@ import {
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
   validacaoDaAula, notaFinalUC, alunoDeTeste, planosSemAutoavaliacao,
-  aplicarBonusesUC,
+  aplicarBonusesUC, aulasDaNotaUC, atividadesQueContamComoAula,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { pesoNoModulo } from './contextoAula';
@@ -118,7 +118,13 @@ export function planosRealizadosDaUC(turmaId: string, ucId: string): PlanoRealiz
     .sort((a, b) => String(a.data).localeCompare(String(b.data))
       || String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))
     .map(p => ({ id: p.id, titulo: p.titulo || 'Plano', data: String(p.data).slice(0, 10),
-      avaliado: validacoes.some(v => v.planoAulaId === p.id) }));
+      avaliado: validacoes.some(v => v.planoAulaId === p.id) }))
+    // A atividade obrigatória fora das horas da aula conta como mais uma aula, na data da
+    // aula que a recebe (Rosa, out/2026).
+    .concat(atividadesQueContamComoAula(turmaId, ucId).filter(r => r.atividade.data <= hojeISO())
+      .map(r => ({ id: r.atividade.id, titulo: `${r.atividade.titulo || 'Atividade'} (atividade de ${r.atividade.data.split('-').reverse().slice(0, 2).join('/')})`,
+        data: r.dataDaAula, avaliado: validacoes.some(v => v.planoAulaId === r.atividade.id) })))
+    .sort((a, b) => a.data.localeCompare(b.data));
 }
 
 /**
@@ -196,7 +202,8 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       // Produtos: média dos planos do grupo; falta = 0 (ou a recuperação).
       // Aulas em que esteve e não se autoavaliou: contam 0, como em todos os
       // outros ecrãs (Rosa, out/2026; auditoria 5/out: aqui ficavam em branco).
-      const semAuto = new Set(planosSemAutoavaliacao(a.id, turmaId, ucId).map(p => p.id));
+      const semAuto = new Set([...planosSemAutoavaliacao(a.id, turmaId, ucId).map(p => p.id),
+        ...aulasDaNotaUC(a.id, turmaId, ucId).filter(l => l.semResposta).map(l => l.planoId)]);
       const notasProd = Array.from({ length: colunasDeProdutos(produtos) }, (_, j) => {
         const p = produtos[j];
         if (!p) return null;

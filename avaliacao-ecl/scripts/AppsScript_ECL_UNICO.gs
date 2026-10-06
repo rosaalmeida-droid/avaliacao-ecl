@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.4';
+var VERSAO = 'ECL único v26.5';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2000,6 +2000,29 @@ function diaISO_(v) {
   return Utilities.formatDate(d, 'Europe/Lisbon', 'yyyy-MM-dd');
 }
 
+/** (v26.5) Atividade obrigatória para a turma fora das horas da aula (depois
+ *  das aulas, sábado, férias): conta como mais uma aula, na aula desse dia ou na
+ *  seguinte da mesma UC; quem não se autoavaliou conta 0 (Rosa, 6/out/2026).
+ *  Igual à aplicação. Os convidados e os concursos são só bónus. */
+function transpostaDe_(p, planos) {
+  var r = aulaQueRecebe_(p, planos);
+  return r ? 'Avaliação transposta para a aula de ' + diaCurto(r.data) + '.' : 'Avaliação transposta para a aula seguinte da disciplina.';
+}
+function atvContaComoAula_(p, planos) {
+  if (!p || !p.tipoEvento || p.tipoEvento === 'concurso' || p.modoParticipacao === 'inscricao' || p.estado === 'arquivado' || p.eliminado || p.aulaLigada) return false;
+  var dia = String(p.data || '').slice(0, 10);
+  var min = function (h) { var x = String(h || '').split(':'); var a = Number(x[0]); return isNaN(a) || x[0] === '' ? NaN : a * 60 + (Number(x[1]) || 0); };
+  var i1 = min(horaDe(p.horaInicio)), f1 = min(horaDe(p.horaFim));
+  if (isNaN(i1) || isNaN(f1)) return true;
+  return !planos.some(function (q) { return q.id !== p.id && !q.tipoEvento && q.turmaId === p.turmaId && q.estado !== 'arquivado' && !q.eliminado && String(q.data || '').slice(0, 10) === dia
+    && i1 < min(horaDe(q.horaFim)) && min(horaDe(q.horaInicio)) < f1; });
+}
+function aulaQueRecebe_(p, planos) {
+  var dia = String(p.data || '').slice(0, 10);
+  return planos.filter(function (q) { return !q.tipoEvento && q.turmaId === p.turmaId && q.estado !== 'arquivado' && !q.eliminado && p.ucId && q.ucId === p.ucId && String(q.data || '').slice(0, 10) >= dia; })
+    .sort(function (a, b) { return (String(a.data).slice(0, 10) + ' ' + (a.horaInicio || '')).localeCompare(String(b.data).slice(0, 10) + ' ' + (b.horaInicio || '')); })[0] || null;
+}
+
 function diaCurto(s) {
   var t = String(s || '').slice(0, 10);
   var p = t.split('-');
@@ -2022,7 +2045,7 @@ var NOME_ESTADO = { publicado: 'Publicado', rascunho: 'Rascunho', arquivado: 'Ar
 function tipoParaLer(p) {
   var t = (p.triagemAula && p.triagemAula.tipo) || p.tipoPlanAula || '';
   var nome = NOME_TIPO_AULA[t] || t;
-  return p.tipoEvento ? 'Atividade extra' + (nome ? ' (' + nome.toLowerCase() + ')' : '') : nome;
+  return p.tipoEvento ? (p.tipoEvento !== 'concurso' && p.modoParticipacao !== 'inscricao' ? 'Atividade obrigatória (turma toda)' : 'Atividade extra') + (nome ? ' (' + nome.toLowerCase() + ')' : '') : nome;
 }
 
 /** «03/10/2026 09:06», na hora de Lisboa. */
@@ -2311,7 +2334,7 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (faltouX) casos.push('Faltou');
       if (atrasoContaAqui(x, p)) casos.push(decX === 'falta_atraso' ? 'Falta de atraso (declarada pelo professor)' : 'Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
       if (x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
-      if (p.tipoEvento) casos.push('Atividade extra: conta como bónus');
+      if (p.tipoEvento) casos.push(atvContaComoAula_(p, d.planos) ? 'Atividade obrigatória fora das horas da aula: conta como mais uma aula. ' + transpostaDe_(p, d.planos) : 'Atividade extra: conta como bónus');
       if (s && p.pedirDeNovoEm && s.versaoPlano && String(s.versaoPlano) < String(p.pedirDeNovoEm)) casos.push('Respondeu à versão antiga do plano');
       auto.forEach(function (q) { if (q.nivel === 'nop') casos.push('Sem oportunidade: ' + nomeC(q.competenciaId)); });
       if (v && v.semFarda) casos.push('Sem farda: as técnicas contam 0 na nota da aula');
@@ -2319,7 +2342,8 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (v && Array.isArray(v.naoReparou) && v.naoReparou.length) casos.push('O professor não reparou em: ' + v.naoReparou.map(nomeC).join(', '));
       if (v && (v.comentarioGeral || v.comentario)) casos.push('Comentário do professor: «' + (v.comentarioGeral || v.comentario) + '»');
       if (s && !v) casos.push('Por validar');
-      if (!s && !faltouX) casos.push('Não respondeu: conta 0 na nota da UC até se autoavaliar');
+      // (v26.5) Numa atividade não há «conta 0»: sem resposta, não conta para ele.
+      if (!s && !faltouX) casos.push(p.tipoEvento && !atvContaComoAula_(p, d.planos) ? 'Não respondeu: esta atividade não conta para ele' : 'Não respondeu: conta 0 na nota da UC até se autoavaliar');
       var presenca = !x ? '' : faltouX ? 'Faltou' : atrasoContaAqui(x, p) ? 'Atrasado' : 'Presente';
       var n20 = v ? Number(String(v.notaMedia20 === undefined ? '' : v.notaMedia20).replace(',', '.')) : NaN;
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.titulo || '', a.numero || '', a.nome || '', presenca,
@@ -2365,6 +2389,14 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   d.planos.filter(function (p) { return p.estado !== 'arquivado' && !p.tipoEvento && !p.eliminado; })
     .sort(function (a, b) { return String(a.data || '').localeCompare(String(b.data || '')) || (Number(a.numeroPlan) || 0) - (Number(b.numeroPlan) || 0); })
     .forEach(function (p) { var u = p.ucId || ''; contaUC[u] = (contaUC[u] || 0) + 1; posNaUC[p.id] = contaUC[u]; });
+  // (v26.5) Atividades obrigatórias fora das horas da aula: contam como mais uma aula.
+  var recebe = {};
+  d.planos.forEach(function (p) { if (atvContaComoAula_(p, d.planos)) recebe[p.id] = aulaQueRecebe_(p, d.planos); });
+  var comoAula = aulas.filter(function (p) { return recebe.hasOwnProperty(p.id); });
+  var transposta = function (p) {
+    var r = recebe[p.id];
+    return r ? 'Avaliação transposta para a aula de ' + diaCurto(r.data) + (posNaUC[r.id] ? ' (Plano n.º ' + posNaUC[r.id] + ')' : '') : 'Avaliação transposta para a aula seguinte da disciplina';
+  };
 
   // Por aluno e aula: presença, autoavaliação, nota validada.
   var chave = function (a, p) { return a + '|' + p; };
@@ -2474,6 +2506,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       if (nota[k] !== undefined) { va++; soma += nota[k]; }
       else if (!auto[k] && esteve(x, pl.id) && !faltou(x, pl.id)) semResposta++;
     });
+    comoAula.forEach(function (pl) { var k = chave(a.id, pl.id); if (auto[k]) aa++; if (nota[k] !== undefined) { va++; soma += nota[k]; } else if (!auto[k]) semResposta++; });
     var nMedia = va + semResposta;
     junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), nMedia ? virgula(Math.round(soma / nMedia * 10) / 10) : '', semResposta, ligado[a.id] ? 'Sim' : 'Não',
       emailDe[a.id] || 'Ainda não deu']);
@@ -2555,7 +2588,9 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   ucs.reverse();
   novaFolha('Notas', 'As notas de cada UC: um aluno por linha, uma aula por coluna. São as notas da aplicação.');
   ucs.forEach(function (uc) {
-    var daUC = contam.filter(function (p) { return String(p.ucId || 'Sem UC') === uc; });
+    var daUC = contam.filter(function (p) { return String(p.ucId || 'Sem UC') === uc; })
+      .concat(comoAula.filter(function (p) { return recebe[p.id] && String(recebe[p.id].ucId || 'Sem UC') === uc; }))
+      .sort(function (a, b) { var da = recebe[a.id] ? recebe[a.id].data : a.data, db = recebe[b.id] ? recebe[b.id].data : b.data; return String(da).slice(0, 10).localeCompare(String(db).slice(0, 10)); });
     var nome = daUC.map(function (p) { return p.ucNome; }).filter(Boolean)[0] || '';
     titulo('NOTAS — ' + uc + (nome ? ' · ' + nome : '') + ' (' + daUC.length + ' aula' + (daUC.length === 1 ? '' : 's') + ')', '#3E7A31');
     junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · 0 (sem resposta) = esteve e não se autoavaliou, conta 0 · vazio = sem registo. A média, o bónus e a nota da UC são os da aplicação (cada aula pelo seu peso, as faltas a 0).']);
@@ -2570,7 +2605,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         + ' · ' + (notasUC.length - neg) + (notasUC.length - neg === 1 ? ' com positiva' : ' com positiva') + ' (nota da UC, como na aplicação).']);
       formatos.push({ tipo: 'destaque', linha: linhas.length });
     }
-    cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
+    cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return recebe[p.id] ? diaCurto(recebe[p.id].data) + '\n(atividade de ' + diaCurto(p.data) + ')' : diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
       .concat(['Média', 'Faltas (contam 0)', 'Bónus', 'Nota da UC (como na aplicação)', 'Nota final publicada']));
     alunos.forEach(function (a) {
       var soma = 0, n = 0;
@@ -2580,7 +2615,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         if (auto[k]) return 'AA';
         if (faltou(pres[k], p.id)) return 'F';
         // (v25.9) Esteve e não se autoavaliou: conta 0, como na aplicação.
-        if (esteve(pres[k], p.id)) { n++; return '0 (sem resposta)'; }
+        // (v26.5) Na atividade obrigatória que conta como aula também.
+        if (esteve(pres[k], p.id) || recebe.hasOwnProperty(p.id)) { n++; return '0 (sem resposta)'; }
         return '';
       });
       var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();
@@ -2609,14 +2645,18 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var gruposAulas = [
     { nome: 'AULAS LANÇADAS — contam para a nota', cor: '#3E7A31', fundo: '#DFF0D8',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
+    { nome: 'ATIVIDADES OBRIGATÓRIAS FORA DAS HORAS DA AULA — contam como mais uma aula, na aula desse dia ou na seguinte da UC', cor: '#2F5D8A', fundo: '#E3EDF7',
+      lista: aulas.filter(function (p) { return p.estado !== 'rascunho' && recebe.hasOwnProperty(p.id); }) },
     { nome: 'ATIVIDADES EXTRA — contam como bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
-      lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && p.tipoEvento; }) },
+      lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && p.tipoEvento && !recebe.hasOwnProperty(p.id); }) },
     // (v26.2) As atividades extra dos próximos dias à parte das aulas: não
     // contam para a nota, só dão bónus (Rosa, out/2026).
     { nome: 'AULAS PUBLICADAS PARA OS PRÓXIMOS DIAS', cor: '#2F5D8A', fundo: '#E3EDF7',
       lista: d.planos.filter(function (p) { return !p.eliminado && !p.tipoEvento && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
+    { nome: 'ATIVIDADES OBRIGATÓRIAS DOS PRÓXIMOS DIAS (fora das horas da aula) — vão contar como mais uma aula', cor: '#2F5D8A', fundo: '#E3EDF7',
+      lista: d.planos.filter(function (p) { return recebe.hasOwnProperty(p.id) && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'ATIVIDADES EXTRA DOS PRÓXIMOS DIAS — não contam para a nota, só bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
-      lista: d.planos.filter(function (p) { return !p.eliminado && p.tipoEvento && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
+      lista: d.planos.filter(function (p) { return !p.eliminado && p.tipoEvento && !recebe.hasOwnProperty(p.id) && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'RASCUNHOS (ainda não publicados) — não contam', cor: '#8A5A12', fundo: '#FFF4E0',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.estado === 'rascunho'; }) },
     { nome: 'NUM DIA EM QUE A TURMA NÃO TEM AULAS — não contam (confirme na aplicação se houve aula ou arquive)', cor: '#A23A2E', fundo: '#F8D7DA',
@@ -2640,7 +2680,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       });
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
         p.ucId || '', p.titulo || '', tipoParaLer(p), NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va,
-        p.tipoEvento ? '' : (posNaUC[p.id] ? 'Plano ' + posNaUC[p.id] : ''), criadoParaLer(p.criadoEm)]);
+        recebe.hasOwnProperty(p.id) ? transposta(p) : p.tipoEvento ? '' : (posNaUC[p.id] ? 'Plano ' + posNaUC[p.id] : ''), criadoParaLer(p.criadoEm)]);
       formatos.push({ tipo: 'cor', linha: linhas.length, n: 13, cor: g.fundo });
     });
     vazia();
@@ -2895,7 +2935,7 @@ function escreverFichasDosAlunos_(turma, alunos, linhasFicha, _resumo, daApp, re
       if (!daUC.length) return;
       notas.push([u + (nomeUC[u] ? ' — ' + nomeUC[u] : '')]); fNotas.push({ tipo: 'aulaTit', rel: notas.length - 1 });
       notas.push(['Dia', 'Plano de aula', 'Nota da aula (0-20)']); fNotas.push({ tipo: 'cab', rel: notas.length - 1, n: 3 });
-      daUC.forEach(function (l) { notas.push([l[1], l[3], l[8] !== '' ? l[8] : (l[4] === 'Faltou' ? 'Faltou (conta 0)' : /Não respondeu/.test(l[9]) ? '0 (sem resposta)' : 'Por validar')]); });
+      daUC.forEach(function (l) { notas.push([l[1], l[3], l[8] !== '' ? l[8] : (l[4] === 'Faltou' ? 'Faltou (conta 0)' : /Não respondeu: conta 0/.test(l[9]) ? '0 (sem resposta)' : 'Por validar')]); });
     });
     if (!notas.length) notas.push(['Ainda não há notas.']);
     parte('NOTAS', '#3E7A31', notas, fNotas);
