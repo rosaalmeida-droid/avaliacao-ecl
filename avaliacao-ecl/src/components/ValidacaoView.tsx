@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -966,7 +966,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                   const disseNao = (auto as any).respIdx?.[i] === NAO_ACONTECEU;
                   const chave = `${auto.competenciaId}|${i}`;
                   // Os colegas da mesma aula que responderam a esta pergunta (não disseram «não aconteceu»).
-                  const col = disseNao ? getSelecoes().filter((s: any) => s.planoAulaId === selecao.planoAulaId && s.alunoId !== selecao.alunoId)
+                  // Em grupo, só os colegas do grupo (Rosa, 6/out/2026).
+                  const doGrupo = colegasDeComparacao(selecao.alunoId, selecao.planoAulaId || '');
+                  const col = disseNao ? getSelecoes().filter((s: any) => s.planoAulaId === selecao.planoAulaId && s.alunoId !== selecao.alunoId
+                      && (!doGrupo || doGrupo.has(s.alunoId)))
                     .map((s: any) => (s.autoavaliacoes || []).find((x: any) => x.competenciaId === auto.competenciaId)?.respIdx?.[i])
                     .filter((v: any) => v != null) : [];
                   const viram = col.filter((v: any) => v >= 0).length;
@@ -978,7 +981,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                         <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 8, background: '#fdf6e8', border: '1px solid #e8c98f' }}>
                           {col.length > 0 && (
                             <div style={{ fontSize: 12.5, color: '#8a5a12', marginBottom: 6 }}>
-                              {viram} de {col.length} colegas disseram que isto aconteceu nesta aula.
+                              {viram} de {col.length} colegas {doGrupo ? 'do grupo ' : ''}disseram que isto aconteceu nesta aula.
                             </div>
                           )}
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1134,7 +1137,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                     background:'rgba(184,115,51,0.12)', color:'#8a4a15', lineHeight:1.45 }}>
                     {pSaltada && <div style={{ marginBottom:4 }}>Antes disse que hoje não aconteceu: «{pSaltada.pergunta}»</div>}
                     {viram >= 1
-                      ? <>⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colega{viram === 1 ? '' : 's'}</b> disse{viram === 1 ? '' : 'ram'} que sim.</>
+                      ? <>⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colega{viram === 1 ? '' : 's'}{colegasDeComparacao(selecao.alunoId, selecao.planoAulaId || '') ? ' do grupo' : ''}</b> disse{viram === 1 ? '' : 'ram'} que sim.</>
                       : <>O aluno diz que hoje não aconteceu.</>}
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
                       {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e o aluno não reparou: fica com a resposta mais baixa']] as const).map(([v, t]) => {
