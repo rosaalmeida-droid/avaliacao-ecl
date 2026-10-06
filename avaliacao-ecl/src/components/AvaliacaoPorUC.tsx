@@ -2,6 +2,7 @@ import { LOGO_ECL } from '../logo_ecl';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC, mediaDasAulasValidadas, calculoDaAulaValidada } from '../backend';
@@ -77,12 +78,17 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
   // Impressão de 1 aluno específico — quando definido, o CSS de impressão
   // esconde todos os outros cartões, mostrando só este.
   const [imprimirApenas, setImprimirApenas] = useState<string | null>(null);
+  // (Rosa, 6/out/2026) Saía uma folha vazia: o cabeçalho de cada aluno é um
+  // botão (a impressão esconde os botões) e o detalhe só existe na janela por
+  // cima. Agora há uma folha só para imprimir, com o detalhe do aluno.
   function imprimirAluno(alunoId: string) {
     setImprimirApenas(alunoId);
     setTimeout(() => {
+      document.body.classList.add('imprimir-um-aluno');
       window.print();
+      document.body.classList.remove('imprimir-um-aluno');
       setImprimirApenas(null);
-    }, 100);
+    }, 150);
   }
   const [filtroAluno, setFiltroAluno] = useState(alunoId || 'todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState<'tudo' | 'T1' | 'T2' | 'T3' | 'personalizado'>('tudo');
@@ -198,6 +204,51 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
     border: 'rgba(26,23,20,0.08)', cream: '#f8f6f2',
   };
 
+  /** O detalhe de um aluno: as contas da nota (como o aluno as vê) e as
+   *  competências. O mesmo no ecrã e na folha impressa. */
+  function detalheDoAluno(alunoIdD: string, comps: any[], ucAlvo: string | null | undefined) {
+    const aluno = { id: alunoIdD };
+    return (<>
+                  {/* (Rosa, 5/out/2026) As mesmas contas que o aluno vê no telemóvel:
+                      aula a aula com o peso de cada uma, faltas, média, bónus e a nota da UC. */}
+                  {!alunoId && ucAlvo && (() => {
+                    const c = contasDaNotaDoAluno(aluno.id, turmaId, ucAlvo);
+                    return (
+                      <div style={{ margin: '0 -4px 16px' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.55)', margin: '0 4px 6px' }}>Como o aluno vê a sua nota de {ucAlvo}</div>
+                        <EcraMinhaNota ucId={ucAlvo} nota={c.nota} detalhe={c.detalhe} aulas={c.aulas} />
+                      </div>
+                    );
+                  })()}
+                  {comps.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', textAlign: 'center', padding: '16px 0' }}>
+                      Sem competências avaliadas com estes filtros
+                    </div>
+                  ) : (
+                    comps.sort((a, b) => a.media - b.media).map(c => {
+                      const { cor: cr } = labelNota(c.media);
+                      return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 10px', borderRadius: 8, marginBottom: 6,
+                          background: c.media >= 3 ? 'rgba(90,122,78,0.05)' : c.media >= 2 ? 'rgba(181,101,29,0.05)' : 'rgba(192,57,43,0.05)',
+                          border: `1px solid ${c.media >= 3 ? 'rgba(90,122,78,0.15)' : c.media >= 2 ? 'rgba(181,101,29,0.15)' : 'rgba(192,57,43,0.15)'}` }}>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}></span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
+                            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                              {c.n} {c.n !== 1 ? 'avaliações' : 'avaliação'} · última: {formatarData(c.ultima?.data || '')}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: cr }}>{c.media.toFixed(1).replace('.', ',')}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+    </>);
+  }
+
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* O que falta avaliar na UC escolhida (só para o professor). */}
@@ -230,9 +281,35 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
-          ${imprimirApenas ? `.aluno-card:not([data-aluno-id="${imprimirApenas}"]) { display: none !important; }` : ''}
+          body.imprimir-um-aluno > *:not(#folha-aluno) { display: none !important; }
         }
+        #folha-aluno { display: none; }
+        @media print { body.imprimir-um-aluno #folha-aluno { display: block !important; } }
       `}</style>
+
+      {/* A folha impressa de um aluno (fica no fim da página, fora do resto). */}
+      {imprimirApenas && (() => {
+        const d = dadosPorAluno.find(x => x.aluno.id === imprimirApenas);
+        if (!d) return null;
+        const { aluno, comps, ucAlvo, mediaGeral, pauta } = d;
+        return createPortal(
+          <div id="folha-aluno" style={{ fontFamily: 'Nunito, sans-serif', color: '#1a1714', padding: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderBottom: '2px solid #1a1714', paddingBottom: 8, marginBottom: 12 }}>
+              <img src={LOGO_ECL} alt="" style={{ height: 40 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{aluno.nome || `Aluno ${aluno.numero}`}</div>
+                <div style={{ fontSize: 13 }}>N.º {aluno.numero} · {aluno.turmaId}{ucAlvo ? ' · ' + ucAlvo : filtroUC ? ' · ' + filtroUC : ''} · {new Date().toLocaleDateString('pt-PT')}</div>
+              </div>
+              {mediaGeral > 0 && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{pauta && !(pauta as any).comDecimas ? String(Math.round(mediaGeral)) : mediaGeral.toFixed(1).replace('.', ',')}/20</div>
+                  {pauta && <div style={{ fontSize: 12 }}>{pauta.resultado}{pauta.atribuida ? '' : ' · sugestão'}</div>}
+                </div>
+              )}
+            </div>
+            {detalheDoAluno(aluno.id, comps, ucAlvo)}
+          </div>, document.body);
+      })()}
 
       {pautaAberta && filtroUC && (
         <FecharUC turmaId={turmaId} ucId={filtroUC} ucNome={ucSelNome} nomeProfessor={nomeProfessor}
@@ -345,7 +422,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
               {/* Cabeçalho do aluno. A impressora fica na mesma linha (antes, em
                   «float», criava uma faixa vazia por cima de cada aluno). */}
               <div style={{ display: 'flex', alignItems: 'stretch', background: aberto ? 'rgba(181,101,29,0.06)' : '#fff' }}>
-              <button onClick={() => setVistaAluno(aberto ? null : aluno.id)}
+              <button className="guia-print-visible" onClick={() => setVistaAluno(aberto ? null : aluno.id)}
                 style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                   background: aberto ? 'rgba(181,101,29,0.06)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: T.copper, color: '#fff',
@@ -395,43 +472,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                   subtitulo={`Nº ${aluno.numero} · ${aluno.turmaId}${filtroUC ? ' · ' + filtroUC : ''}`}
                   onFechar={() => setVistaAluno(null)}
                 >
-                  {/* (Rosa, 5/out/2026) As mesmas contas que o aluno vê no telemóvel:
-                      aula a aula com o peso de cada uma, faltas, média, bónus e a nota da UC. */}
-                  {!alunoId && ucAlvo && (() => {
-                    const c = contasDaNotaDoAluno(aluno.id, turmaId, ucAlvo);
-                    return (
-                      <div style={{ margin: '0 -4px 16px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.55)', margin: '0 4px 6px' }}>Como o aluno vê a sua nota de {ucAlvo}</div>
-                        <EcraMinhaNota ucId={ucAlvo} nota={c.nota} detalhe={c.detalhe} aulas={c.aulas} />
-                      </div>
-                    );
-                  })()}
-                  {comps.length === 0 ? (
-                    <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', textAlign: 'center', padding: '16px 0' }}>
-                      Sem competências avaliadas com estes filtros
-                    </div>
-                  ) : (
-                    comps.sort((a, b) => a.media - b.media).map(c => {
-                      const { cor: cr } = labelNota(c.media);
-                      return (
-                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 10px', borderRadius: 8, marginBottom: 6,
-                          background: c.media >= 3 ? 'rgba(90,122,78,0.05)' : c.media >= 2 ? 'rgba(181,101,29,0.05)' : 'rgba(192,57,43,0.05)',
-                          border: `1px solid ${c.media >= 3 ? 'rgba(90,122,78,0.15)' : c.media >= 2 ? 'rgba(181,101,29,0.15)' : 'rgba(192,57,43,0.15)'}` }}>
-                          <span style={{ fontSize: 16, flexShrink: 0 }}></span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
-                            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
-                              {c.n} {c.n !== 1 ? 'avaliações' : 'avaliação'} · última: {formatarData(c.ultima?.data || '')}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: cr }}>{c.media.toFixed(1).replace('.', ',')}</div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                  {detalheDoAluno(aluno.id, comps, ucAlvo)}
                 </ModalFullscreen>
               )}
             </div>
