@@ -1,4 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
+import { pedeFardaEHigiene } from '../contextoAula';
 import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -395,9 +396,26 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
+  // A farda aparece sempre na validação de uma aula com farda (Rosa, 6/out/2026:
+  // «porque é que não aparece a farda nesta aluna?»). Se não veio na
+  // autoavaliação (o aluno saiu depois de «Entrar» e voltou), vem da presença;
+  // se o aluno nunca a declarou, o professor avalia.
+  const fardaSintetica: any = (() => {
+    const pl: any = getPlanosAula().find(p => p.id === selecao.planoAulaId);
+    if (!pl || !pedeFardaEHigiene(pl) || (pl.compRemovidas || []).includes('OBR_01')) return null;
+    if ((selecao.autoavaliacoes || []).some((a: any) => a.competenciaId === 'OBR_01')) return null;
+    const pres: any = getPresencas().find(p => p.alunoId === selecao.alunoId && p.planoAulaId === selecao.planoAulaId);
+    if (pres?.fardaDeclarada) {
+      const n = (pres.fardaEmFalta || []).length;
+      return { competenciaId: 'OBR_01', nivel: 'entrada', nota: n ? Math.max(1, 5 - n) : 5, daEntrada: true, daPresenca: true,
+        reflexaoFarda: n ? { emFalta: pres.fardaEmFalta } : undefined };
+    }
+    return { competenciaId: 'OBR_01', nivel: 'professor', nota: 5, semDeclaracao: true };
+  })();
+  const autoDoAluno: any[] = [...(selecao.autoavaliacoes || []), ...(fardaSintetica ? [fardaSintetica] : [])];
   const [notasProf, setNotasProf] = useState<Record<string, number>>(() => {
     const inicial: Record<string, number> = {};
-    (selecao.autoavaliacoes || []).forEach((auto: any) => {
+    autoDoAluno.forEach((auto: any) => {
       const notaAlunoProposta = auto.nota || (
         auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
         auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
@@ -426,7 +444,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   const [faltouVerdade, setFaltouVerdade] = useState<boolean>(() => !!validacaoExistente?.faltouVerdade);
   // Sem farda completa (declarado à entrada, ou «Não era verdade»): avalia-se
   // tudo e fica no percurso, mas as técnicas contam 0 na nota. O professor pode desfazer.
-  const fardaDaEntrada = (selecao.autoavaliacoes || []).find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
+  const fardaDaEntrada = autoDoAluno.find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
   const [semFarda, setSemFarda] = useState<boolean>(() => validacaoExistente
     ? !!validacaoExistente.semFarda
     : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
@@ -447,7 +465,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // Obter competências da autoavaliação
   // A pergunta antiga ao aluno sobre a higiene e segurança alimentar sai:
   // os registos do KitchenFlow marca-os o professor, pelo relatório.
-  const autoavaliacoesAluno = (selecao.autoavaliacoes || []).filter((a: any) => a.competenciaId !== 'OBR_02');
+  const autoavaliacoesAluno = autoDoAluno.filter((a: any) => a.competenciaId !== 'OBR_02');
   // Numa atividade extra cujas atitudes ficam no plano da turma, a higiene e
   // os registos do KitchenFlow também ficam nesse plano: não se pedem aqui
   // (era a nota que faltava e não deixava o professor validar — Rosa, out/2026).
@@ -918,6 +936,20 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                         border:'1px solid #b5651d', background: semFarda ? '#fff' : '#b5651d', color: semFarda ? '#b5651d' : '#fff' }}>
                       {semFarda ? 'Dar tolerância: as técnicas contam (última vez)' : '✓ Tolerância dada: as técnicas contam (o aluno é avisado de que é a última vez)'}
+                    </button>
+                  )}
+                </span>
+              )}
+              {auto.competenciaId === 'OBR_01' && (auto as any).semDeclaracao && (
+                <span style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'#fdf0e6', color:'#b5651d' }}>
+                    O aluno não declarou a farda: avalie
+                  </span>
+                  {tipoPlanAula !== 'teorico' && (
+                    <button onClick={() => setSemFarda(!semFarda)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:'1px solid #c0392b', background: semFarda ? '#c0392b' : '#fff', color: semFarda ? '#fff' : '#c0392b' }}>
+                      {semFarda ? '✓ Não tinha a farda completa (as técnicas contam 0)' : 'Não tinha a farda completa'}
                     </button>
                   )}
                 </span>

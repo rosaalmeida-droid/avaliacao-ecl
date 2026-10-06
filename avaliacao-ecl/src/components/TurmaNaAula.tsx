@@ -86,7 +86,7 @@ export function TurmaNaAula({
         {/* Na aula teórica não se pede farda nem higiene (auditoria 5/out/2026). */}
         {pedeFardaEHigiene(plano) && resumo(r.semFarda, 0, 'sem farda', C.cobre)}
         {resumo(r.porAvaliar, 0, 'por avaliar', C.bordeaux)}
-        {resumo(r.porValidar, 0, 'por validar', C.bordeaux)}
+        {resumo(r.porValidar, 0, 'autoavaliações por validar', C.bordeaux)}
       </div>
 
       {/* Fechar esta parte: confirma e volta a enviar todas as decisões. */}
@@ -178,10 +178,10 @@ export function TurmaNaAula({
                 {e.kfFinal && <Pastilha texto="KF feito" cor={C.verde} fundo={C.verdeSuave} />}
 
                 {e.validado
-                  ? <Pastilha texto="validado" cor={C.verde} fundo={C.verdeSuave} />
+                  ? <Pastilha texto="autoavaliação validada" cor={C.verde} fundo={C.verdeSuave} />
                   : e.autoavaliou
-                    ? <Pastilha texto="por validar" cor={C.bordeaux} fundo={C.bordeauxSuave} />
-                    : e.entrou && <Pastilha texto="não se avaliou" cor={C.suave} fundo="#F5F5F5" />}
+                    ? <Pastilha texto="autoavaliação por validar" cor={C.bordeaux} fundo={C.bordeauxSuave} />
+                    : e.entrou && <Pastilha texto="ainda não se autoavaliou" cor={C.suave} fundo="#F5F5F5" />}
               </div>
 
               {/* Validar dali, sem ter de ir ao menu procurar. */}
@@ -193,7 +193,8 @@ export function TurmaNaAula({
                   color: e.validado ? C.suave : '#fff',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}>
-                  {e.validado ? 'Rever avaliação' : 'Validar agora'}
+                  {/* «Validar agora» confundia-se com validar a presença (Rosa, 6/out/2026). */}
+                  {e.validado ? 'Rever a autoavaliação' : 'Validar a autoavaliação'}
                 </button>
               )}
 

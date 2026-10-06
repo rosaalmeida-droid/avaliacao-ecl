@@ -743,7 +743,14 @@ function juntarPresencas(dados: any[]): void {
   for (const s of dados) {
     if (!s?.alunoId || !s?.planoAulaId) continue;
     const k = s.alunoId + '|' + s.planoAulaId;
-    const local = porChave.get(k);
+    let local = porChave.get(k);
+    // A farda que o aluno declarou no telemóvel dele chega a este aparelho
+    // (o professor vê-a na validação — Rosa, 6/out/2026).
+    if (local && (s.fardaDeclarada === true || s.fardaDeclarada === 'true') && !local.fardaDeclarada) {
+      local = { ...local, fardaDeclarada: true, fardaEmFalta: Array.isArray(s.fardaEmFalta) ? s.fardaEmFalta : [],
+        fardamentoOk: s.fardamentoOk === true || s.fardamentoOk === 'true', observacao: s.observacao || local.observacao };
+      porChave.set(k, local);
+    }
     if (!local) {
       porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
     } else if (decisaoLocalMaisRecente(local, s)) {
@@ -3439,6 +3446,8 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     criadaEm: s.criadaEm,
     // A versão do plano a que respondeu (out/2026).
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
+    // A prova de que passou pela ficha (passos e horas): sem isto não chegava ao professor.
+    ...((s as any).evidenciaFicha ? { evidenciaFicha: (s as any).evidenciaFicha } : {}),
   };
 }
 
@@ -3708,8 +3717,11 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     fardamentoOk: registo.fardamentoOk ?? true,
     observacao: registo.observacao || '',
     data: registo.data || '',
-    ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '' } : {}),
+    ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '',
+      ...(registo.decididoEm ? { decididoEm: registo.decididoEm } : {}) } : {}),
     ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
+    // A farda declarada pelo aluno chega ao professor (Rosa, 6/out/2026).
+    ...(registo.fardaDeclarada ? { fardaDeclarada: true, fardaEmFalta: registo.fardaEmFalta || [] } : {}),
   });
 }
 
@@ -3739,7 +3751,9 @@ export function registarFardaNaPresenca(alunoId: string, planoAulaId: string, em
   if (i < 0) return;
   const semFalta = (all[i].observacao || '').replace(/\|?\s*em falta:.*$/, '').trim();
   const obs = emFalta.length ? [semFalta, `em falta: ${emFalta.join(', ')}`].filter(Boolean).join(' | ') : semFalta;
-  all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs };
+  // «fardaDeclarada»: o aluno respondeu à farda (o professor vê-a na validação
+  // mesmo que não venha na autoavaliação — Rosa, 6/out/2026).
+  all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs, fardaDeclarada: true, fardaEmFalta: emFalta } as any;
   save(KEYS.presencas, all);
   enviarPresenca(all[i]);
 }
