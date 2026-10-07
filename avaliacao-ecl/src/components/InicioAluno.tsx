@@ -502,7 +502,8 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
     'Indica se tens a farda completa. A resposta tem de ser verdadeira, porque o professor confirma.',
     'Se não for verdade, a farda e a responsabilidade ficam com a nota mais baixa.',
     'Só ficas dentro da aula depois de responderes à farda.',
-    'No início do curso, o professor pode dar uma tolerância uma vez. No teu perfil aparece o aviso de que foi a última: na vez seguinte, sem farda completa, as técnicas contam 0.',
+    'O professor pode dar uma tolerância por período: fazes a aula e as técnicas contam.',
+    'Se já usaste a tolerância do período, não fazes prática: fazes outra tarefa e autoavalias-te só nos conhecimentos e nas atitudes.',
   ] },
   { titulo: '3. Trabalhar', texto: [
     'Segue a ficha técnica e faz os registos no KitchenFlow.',

@@ -312,6 +312,21 @@ const SECCOES: Seccao[] = [
           <li><b>Falta de presença</b>.</li>
         </ul>
 
+        <H>Sem farda completa: uma tolerância por período</H>
+        <P>
+          Quando o aluno diz à entrada que lhe falta farda, em «Turma e faltas» aparecem dois botões:
+          <b> «Dar tolerância (a única do período)»</b> — faz a aula e as técnicas contam — e
+          <b> «Não faz prática hoje»</b> — faz outra tarefa (o guião, por exemplo) e, na autoavaliação,
+          não lhe aparecem as técnicas: responde só aos conhecimentos e às atitudes; as técnicas contam 0.
+          Se o aluno já usou a tolerância do período, fica logo «Não faz prática». A validação segue a
+          decisão tomada na aula.
+        </P>
+        <P>
+          O que aconteceu em cada aula (farda, tolerância, atrasos e tempos em falta, atitudes abaixo de 3,
+          compromisso não cumprido e a mensagem do professor) fica escrito por baixo de cada aula, na nota
+          do aluno, nas Notas da UC e na folha impressa.
+        </P>
+
         <H>O aluno esteve só parte da aula</H>
         <P>
           Quando o professor marca «Só algumas horas», ou quando o aluno entra depois de já ter

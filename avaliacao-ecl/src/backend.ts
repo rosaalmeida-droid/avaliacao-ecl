@@ -751,6 +751,11 @@ function juntarPresencas(dados: any[]): void {
         fardamentoOk: s.fardamentoOk === true || s.fardamentoOk === 'true', observacao: s.observacao || local.observacao };
       porChave.set(k, local);
     }
+    // A decisão da farda (tolerância / sem prática) do aparelho do professor chega a todos.
+    if (local && s.decisaoFardaEm && String(s.decisaoFardaEm) > String(local.decisaoFardaEm || '')) {
+      local = { ...local, decisaoFarda: s.decisaoFarda || '', decisaoFardaEm: s.decisaoFardaEm };
+      porChave.set(k, local);
+    }
     if (!local) {
       porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
     } else if (decisaoLocalMaisRecente(local, s)) {
@@ -3455,6 +3460,7 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
     // A prova de que passou pela ficha (passos e horas): sem isto não chegava ao professor.
     ...((s as any).evidenciaFicha ? { evidenciaFicha: (s as any).evidenciaFicha } : {}),
+    ...((s as any).semPratica ? { semPratica: true } : {}),
     ...((s as any).reflexaoPresenca ? { reflexaoPresenca: (s as any).reflexaoPresenca } : {}),
   };
 }
@@ -3730,6 +3736,8 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
     // A farda declarada pelo aluno chega ao professor (Rosa, 6/out/2026).
     ...(registo.fardaDeclarada ? { fardaDeclarada: true, fardaEmFalta: registo.fardaEmFalta || [] } : {}),
+    // Sem farda: o professor deu a tolerância do período, ou o aluno não faz prática (Rosa, 7/out/2026).
+    ...((registo as any).decisaoFardaEm ? { decisaoFarda: (registo as any).decisaoFarda || '', decisaoFardaEm: (registo as any).decisaoFardaEm } : {}),
   });
 }
 
@@ -3762,6 +3770,19 @@ export function registarFardaNaPresenca(alunoId: string, planoAulaId: string, em
   // «fardaDeclarada»: o aluno respondeu à farda (o professor vê-a na validação
   // mesmo que não venha na autoavaliação — Rosa, 6/out/2026).
   all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs, fardaDeclarada: true, fardaEmFalta: emFalta } as any;
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** Sem farda completa, o professor decide (Rosa, 7/out/2026): «tolerancia»
+ *  (a única do período: faz a aula e as técnicas contam) ou «sem_pratica»
+ *  (não faz prática: outra tarefa, autoavalia-se só nos conhecimentos).
+ *  null desfaz a decisão. */
+export function decidirFardaNaPresenca(alunoId: string, planoAulaId: string, decisao: 'tolerancia' | 'sem_pratica' | null, professor?: string): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  all[i] = { ...all[i], decisaoFarda: decisao || '', decisaoFardaEm: new Date().toISOString(), decisaoFardaPor: professor || '' } as any;
   save(KEYS.presencas, all);
   enviarPresenca(all[i]);
 }

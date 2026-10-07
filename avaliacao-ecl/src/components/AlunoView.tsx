@@ -57,6 +57,7 @@ import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { ManualAluno } from './ManualAluno';
+import { decisaoFardaNaAula, toleranciaNoPeriodo, diaMes } from '../regrasFarda';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 import { getReferencialUC } from '../referencial811RA144';
@@ -2985,6 +2986,12 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
             Sem a farda completa, <b>as técnicas de hoje contam 0</b>. Se conseguires resolver
             (se alguém te trouxer a farda ou se a pedires emprestada), fala com o professor. As atitudes contam
             normalmente, incluindo a forma como ajudas na aula. Assumir o que aconteceu é uma atitude profissional.
+            {/* Uma tolerância por período (Rosa, 7/out/2026). */}
+            {(() => { const t = toleranciaNoPeriodo(aluno.id, String(plano.data || ''), plano.id); return (
+              <div style={{ marginTop:8, fontWeight:700 }}>
+                {t ? `Já usaste a tua tolerância deste período (${diaMes(t.data)}). Hoje não fazes prática: o professor dá-te outra tarefa e, no fim, autoavalias-te só nos conhecimentos.`
+                  : 'O professor decide se te dá a tolerância deste período. Só há uma por período.'}
+              </div>); })()}
           </div>
         )}
 
@@ -3798,6 +3805,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       versaoPlano:String((plano as any).atualizadoEm || ''),
       // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
       evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas),
+      ...(semPratica ? { semPratica: true } : {}),
       ...(presencaParcial ? { reflexaoPresenca: { ...presencaParcial, respostas: Object.values(respPres),
         ...(compromisso ? { compromisso } : {}) } as ReflexaoPresenca } : {})} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
@@ -4058,15 +4066,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     ]),
     ...subsSug.filter(m => !m.aparelhoId || !idsApp.has(m.aparelhoId)).map(itemTec),
   ];
+  // Sem farda e sem tolerância, o aluno não fez prática: não se autoavalia nas
+  // técnicas, só nos conhecimentos e nas atitudes (Rosa, 7/out/2026).
+  const semPratica = decisaoFardaNaAula(aluno.id, plano.id).decisao === 'sem_pratica';
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
     resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean }[] = [
-    ...(partes.tecnicas ? itensPratica : []),
+    ...(partes.tecnicas && !semPratica ? itensPratica : []),
     // Um campo do manual leva o capítulo por cima («Manual, cap. 21 — O bacalhau: demolha e cozedura»).
     ...(partes.conhecimentos ? conhecimentosSug : []).map(m => ({ id: m.id, nome: m.nome,
       contexto: m.capitulo || (regras.manual ? 'Conhecimento · no manual' : 'Conhecimento'),
       descricao: m.definicao, resultado: '', rotulo: 'Conhecimento', frases: false,
       manual: regras.manual || m.id.startsWith('KNW-P-M-') })),
-    ...(partes.tecnicas ? microsSug : []).map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
+    ...(partes.tecnicas && !semPratica ? microsSug : []).map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
       descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
   ];
 
@@ -4403,6 +4414,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
           fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
           <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
+          {semPratica && <div style={{ marginTop:6, fontWeight:700, color:'#8e2418' }}>
+            Hoje não fizeste prática (sem farda completa): respondes só aos conhecimentos e às atitudes.</div>}
         </div>
       )}
       {/* Onde estou */}

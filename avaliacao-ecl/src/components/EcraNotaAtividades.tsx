@@ -50,6 +50,8 @@ export interface AulaNota {
   peso?: number;
   /** Esteve e não se autoavaliou: conta 0. */
   semResposta?: boolean;
+  /** O que aconteceu nessa aula (farda, atraso, atitudes, compromisso, professor). */
+  ocorrencias?: string[];
 }
 
 export function EcraMinhaNota({
@@ -182,6 +184,9 @@ export function EcraMinhaNota({
                       {a.semResposta ? `${a.peso !== undefined ? ' · ' : ''}não te autoavaliaste: conta 0 até te autoavaliares` : ''}
                     </span>
                   )}
+                  {(a.ocorrencias || []).map((o, k) => (
+                    <span key={k} style={{ display: 'block', fontSize: 12.5, color: '#8e2418', lineHeight: 1.4, marginTop: 2 }}>• {o}</span>
+                  ))}
                 </span>
                 <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
               </div>
