@@ -17,6 +17,8 @@ export interface BlocoAula {
   inicio: string;   // 'HH:MM'
   fim: string;
   sala?: string;
+  /** A hora de almoço da turma neste dia, quando não é a habitual (13:00–14:00). */
+  almoco?: { inicio: string; fim: string };
 }
 
 export interface HorarioTurma {
@@ -34,7 +36,8 @@ export const HORARIOS: HorarioTurma[] = [
     blocos: [
       // Terça-feira, das 08:30 às 15:30 (Rosa, 5/out/2026: estava até às
       // 17:30, mas à terça a turma só tem aulas até às 15:30).
-      { dia: 2, inicio: '08:30', fim: '15:30' },
+      // Almoço das 12:00 às 13:00 (Rosa, 7/out/2026).
+      { dia: 2, inicio: '08:30', fim: '15:30', almoco: { inicio: '12:00', fim: '13:00' } },
     ],
   },
   {
@@ -88,6 +91,11 @@ export function blocosNoDia(turmaId: string, dataISO: string): BlocoAula[] {
   const dia = d.getDay();
 
   return h.blocos.filter(b => b.dia === dia);
+}
+
+/** A hora de almoço da turma nesse dia, quando o horário a define. */
+export function almocoNoDia(turmaId: string, dataISO: string): { inicio: string; fim: string } | undefined {
+  return blocosNoDia(turmaId, dataISO).find(b => b.almoco)?.almoco;
 }
 
 /** Há cozinha nesta turma neste dia? */

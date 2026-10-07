@@ -10,7 +10,7 @@ import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
-import { planoNumDiaSemAulas } from './horarios';
+import { planoNumDiaSemAulas, almocoNoDia } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
@@ -3871,6 +3871,22 @@ function temAlmoco(ini: number, fim: number): boolean {
   return ini < 13 * 60 && fim > 13 * 60 + 30 && fim - ini >= 180;
 }
 
+/** A hora de almoço dentro de um plano, em minutos [início, fim], ou null.
+ *  Vem do horário da turma nesse dia (o 1.º BCR, à terça, almoça das 12:00 às
+ *  13:00 — Rosa, 7/out/2026); sem isso, das 13:00 às 14:00, ou mais cedo se
+ *  o plano acabar antes das 14:00. */
+function almocoDoPlano(p: PlanoAula, ini: number, fim: number): [number, number] | null {
+  const doHorario = p.turmaId && p.data ? almocoNoDia(p.turmaId, String(p.data).slice(0, 10)) : undefined;
+  if (doHorario) {
+    const [h1, m1] = doHorario.inicio.split(':').map(Number), [h2, m2] = doHorario.fim.split(':').map(Number);
+    const a = h1 * 60 + m1, b = h2 * 60 + m2;
+    return ini < a && fim > b ? [a, b] : null;
+  }
+  if (!temAlmoco(ini, fim)) return null;
+  const a = Math.max(12 * 60, Math.min(13 * 60, fim - 60));
+  return [a, a + 60];
+}
+
 export function horasDoPlano(p: PlanoAula): number {
   const min = (h?: string) => {
     if (!h) return NaN;
@@ -3881,7 +3897,8 @@ export function horasDoPlano(p: PlanoAula): number {
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return 0;
   let m = fim - ini;
-  if (temAlmoco(ini, fim)) m -= 60;   // almoço
+  const almoco = almocoDoPlano(p, ini, fim);
+  if (almoco) m -= almoco[1] - almoco[0];   // almoço
   return m / 60;
 }
 
@@ -5952,8 +5969,8 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   // de hora e meia quando dá certo (4h30 = 3 tempos); senão, de uma hora.
   // A hora de almoço nos tempos: das 13:00 às 14:00, ou mais cedo se o plano
   // acabar antes das 14:00 (entre as 12:00 e as 13:30 começa sempre).
-  const iniAlmoco = Math.max(12 * 60, Math.min(13 * 60, fim - 60));
-  const partes: [number, number][] = (temAlmoco(ini, fim) ? [[ini, iniAlmoco], [iniAlmoco + 60, fim]] as [number, number][] : [[ini, fim]] as [number, number][])
+  const almoco = almocoDoPlano(p, ini, fim);
+  const partes: [number, number][] = (almoco ? [[ini, almoco[0]], [almoco[1], fim]] as [number, number][] : [[ini, fim]] as [number, number][])
     .filter(([a, b]) => b > a);
   const blocos: { inicio: string; fim: string }[] = [];
   for (const [a, b] of partes) {
