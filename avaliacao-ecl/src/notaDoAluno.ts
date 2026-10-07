@@ -9,6 +9,7 @@ import { notaDaUCComoNaPauta, notaDaUCComDecimas } from './pautaUC';
 import { posicaoNaUC } from './rotuloPlano';
 import { getPlanosAula } from './backend';
 import type { AulaNota } from './components/EcraNotaAtividades';
+import { ocorrenciasDaAula } from './registoDaAula';
 
 const dataCurta = (iso: string) => String(iso || '').slice(0, 10).split('-').reverse().join('/');
 
@@ -18,6 +19,8 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
   const aulas: AulaNota[] = aulasDaNotaUC(alunoId, turmaId, ucId).map(l => ({
     numero: planos.get(l.planoId) ? posicaoNaUC(planos.get(l.planoId)!) : 0,
     titulo: l.titulo, data: l.data, nota20: l.nota, peso: l.peso, semResposta: l.semResposta,
+    // O que aconteceu nessa aula fica escrito (Rosa, 7/out/2026).
+    ocorrencias: ocorrenciasDaAula(alunoId, l.planoId),
   }));
   const detalhe = {
     faltas: getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => ({ titulo: p.titulo || 'Aula', data: dataCurta(p.data) })),

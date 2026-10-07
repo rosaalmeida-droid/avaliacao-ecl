@@ -76,7 +76,9 @@ const SECCOES: { id: string; titulo: string; resumo: string; conteudo: React.Rea
     <P>À entrada, respondes «Sim, está completa» ou «Falta-me alguma coisa». Só ficas dentro da aula depois de responderes.</P>
     <P>A resposta tem de ser verdadeira: o professor confirma. Se não for verdade, a farda e a responsabilidade ficam com a nota mais baixa.</P>
     <Destaque cor="roxo">Sem a farda completa, as técnicas desse dia contam 0, porque não se cumprem as regras de higiene. O que fizeste fica no teu percurso, e na nota da aula vês quanto terias com a farda completa.</Destaque>
-    <P>No início do curso, o professor pode dar uma tolerância uma vez. No teu Perfil aparece o aviso de que foi a última: na vez seguinte, as técnicas contam 0.</P>
+    <P>O professor pode dar <b>uma tolerância por período</b>: fazes a aula e as técnicas contam. No teu Perfil aparece o aviso de que foi a última.</P>
+    <P>Se já usaste a tolerância do período, <b>não fazes prática</b>: o professor dá-te outra tarefa (por exemplo, o guião) e, na autoavaliação, respondes só aos conhecimentos e às atitudes.</P>
+    <P>Fica sempre escrito, na tua nota, o que aconteceu em cada aula: a farda, a tolerância, os atrasos, as atitudes abaixo de 3 e o que o professor te disse.</P>
   </> },
   { id: 'ficha', titulo: 'Durante a aula: a ficha técnica', resumo: 'Marcar cada passo quando estiver feito.', conteudo: <>
     <P>Na ficha técnica, marca cada passo da preparação <b>quando o acabares</b>. Só podes avaliar-te depois de marcares todos os passos.</P>

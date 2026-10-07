@@ -1,5 +1,6 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
+import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
 import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
@@ -452,8 +453,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // Sem farda completa (declarado à entrada, ou «Não era verdade»): avalia-se
   // tudo e fica no percurso, mas as técnicas contam 0 na nota. O professor pode desfazer.
   const fardaDaEntrada = autoDoAluno.find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
+  // A decisão tomada na aula (Rosa, 7/out/2026): com a tolerância do período
+  // as técnicas contam; sem prática, contam 0.
+  const decisaoFarda = decisaoFardaNaAula(selecao.alunoId, selecao.planoAulaId || '').decisao;
   const [semFarda, setSemFarda] = useState<boolean>(() => validacaoExistente
     ? !!validacaoExistente.semFarda
+    : decisaoFarda === 'tolerancia' ? false
+    : decisaoFarda === 'sem_pratica' ? true
     : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
   // Esteve só parte da aula: a nota desce pelos tempos em que não esteve
   // (Rosa, 6/out/2026: «são 3 blocos, desce 1/3»). O professor pode não descontar.
@@ -854,6 +860,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 ? 'O aluno vai ver, na nota da aula e no perfil, que esta é a última vez: na próxima, sem farda completa, as técnicas não contam. E vê quanto teria se a falta de farda contasse.'
                 : 'O aluno declarou a farda completa à entrada.'}
           </div>
+          {decisaoFarda && (
+            <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 6, color: decisaoFarda === 'tolerancia' ? '#3f5e34' : '#8e2418' }}>
+              Decidido na aula: {decisaoFarda === 'tolerancia' ? 'tolerância (a única do período) — as técnicas contam.' : 'não fez prática — autoavaliou-se só nos conhecimentos; as técnicas contam 0.'}
+            </div>
+          )}
           {(() => {
             // Já teve tolerância noutra aula? O professor tem de saber (Rosa, 6/out/2026).
             const antes = toleranciasDaFarda(selecao.alunoId).filter(t => t.planoAulaId !== selecao.planoAulaId);

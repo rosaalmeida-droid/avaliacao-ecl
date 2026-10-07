@@ -13,8 +13,9 @@ import React, { useEffect, useState } from 'react';
 import {
   estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
-  getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos,
+  getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos, decidirFardaNaPresenca,
 } from '../backend';
+import { decisaoFardaNaAula, toleranciaNoPeriodo, diaMes } from '../regrasFarda';
 import { pedeFardaEHigiene } from '../contextoAula';
 
 const C = {
@@ -196,6 +197,31 @@ export function TurmaNaAula({
                     cor={C.cobre} fundo={C.cobreSuave} />
                 )}
               </div>
+
+              {/* Sem farda completa: o professor decide já (Rosa, 7/out/2026). Uma
+                  tolerância por período; sem ela, o aluno não faz prática e
+                  autoavalia-se só nos conhecimentos. */}
+              {pedeFardaEHigiene(plano) && e.entrou && !!e.horaEntrada && !e.fardamentoOk && (() => {
+                const { decisao, automatica } = decisaoFardaNaAula(e.alunoId, planoAulaId);
+                const usada = toleranciaNoPeriodo(e.alunoId, String(plano?.data || ''), planoAulaId);
+                const decidir = (d: 'tolerancia' | 'sem_pratica' | null) => { decidirFardaNaPresenca(e.alunoId, planoAulaId, d, nomeProfessor); redesenhar(n => n + 1); onAtualizar?.(); };
+                const bt = (ativo: boolean, cor: string): React.CSSProperties => ({ padding: '7px 12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: 'inherit', border: `1.5px solid ${cor}`, background: ativo ? cor : '#fff', color: ativo ? '#fff' : cor });
+                return (
+                  <div style={{ marginTop: 9, padding: '9px 11px', borderRadius: 10, background: C.cobreSuave, fontSize: 13, lineHeight: 1.45 }}>
+                    <b>Sem farda completa.</b>{' '}
+                    {decisao === 'tolerancia' ? 'Tolerância dada: faz a aula e as técnicas contam (a única deste período).'
+                      : decisao === 'sem_pratica' ? (automatica ? `Já usou a tolerância deste período (${diaMes(usada!.data)}): hoje não faz prática.` : 'Hoje não faz prática.') + ' Autoavalia-se só nos conhecimentos.'
+                      : usada ? `Já usou a tolerância deste período (${diaMes(usada.data)}).` : 'Ainda tem a tolerância deste período.'}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                      {!usada && <button onClick={() => decidir(decisao === 'tolerancia' ? null : 'tolerancia')} style={bt(decisao === 'tolerancia', C.verde)}>
+                        {decisao === 'tolerancia' ? '✓ ' : ''}Dar tolerância (a única do período)</button>}
+                      <button onClick={() => decidir(decisao === 'sem_pratica' && !automatica ? null : 'sem_pratica')} style={bt(decisao === 'sem_pratica', C.bordeaux)}>
+                        {decisao === 'sem_pratica' ? '✓ ' : ''}Não faz prática hoje</button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Validar dali, sem ter de ir ao menu procurar. */}
               {e.autoavaliou && onValidar && (

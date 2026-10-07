@@ -10,7 +10,7 @@ import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
-import { planoNumDiaSemAulas } from './horarios';
+import { planoNumDiaSemAulas, almocoNoDia } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
@@ -749,6 +749,11 @@ function juntarPresencas(dados: any[]): void {
     if (local && (s.fardaDeclarada === true || s.fardaDeclarada === 'true') && !local.fardaDeclarada) {
       local = { ...local, fardaDeclarada: true, fardaEmFalta: Array.isArray(s.fardaEmFalta) ? s.fardaEmFalta : [],
         fardamentoOk: s.fardamentoOk === true || s.fardamentoOk === 'true', observacao: s.observacao || local.observacao };
+      porChave.set(k, local);
+    }
+    // A decisão da farda (tolerância / sem prática) do aparelho do professor chega a todos.
+    if (local && s.decisaoFardaEm && String(s.decisaoFardaEm) > String(local.decisaoFardaEm || '')) {
+      local = { ...local, decisaoFarda: s.decisaoFarda || '', decisaoFardaEm: s.decisaoFardaEm };
       porChave.set(k, local);
     }
     if (!local) {
@@ -3455,6 +3460,7 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
     // A prova de que passou pela ficha (passos e horas): sem isto não chegava ao professor.
     ...((s as any).evidenciaFicha ? { evidenciaFicha: (s as any).evidenciaFicha } : {}),
+    ...((s as any).semPratica ? { semPratica: true } : {}),
     ...((s as any).reflexaoPresenca ? { reflexaoPresenca: (s as any).reflexaoPresenca } : {}),
   };
 }
@@ -3730,6 +3736,8 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
     // A farda declarada pelo aluno chega ao professor (Rosa, 6/out/2026).
     ...(registo.fardaDeclarada ? { fardaDeclarada: true, fardaEmFalta: registo.fardaEmFalta || [] } : {}),
+    // Sem farda: o professor deu a tolerância do período, ou o aluno não faz prática (Rosa, 7/out/2026).
+    ...((registo as any).decisaoFardaEm ? { decisaoFarda: (registo as any).decisaoFarda || '', decisaoFardaEm: (registo as any).decisaoFardaEm } : {}),
   });
 }
 
@@ -3762,6 +3770,19 @@ export function registarFardaNaPresenca(alunoId: string, planoAulaId: string, em
   // «fardaDeclarada»: o aluno respondeu à farda (o professor vê-a na validação
   // mesmo que não venha na autoavaliação — Rosa, 6/out/2026).
   all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs, fardaDeclarada: true, fardaEmFalta: emFalta } as any;
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** Sem farda completa, o professor decide (Rosa, 7/out/2026): «tolerancia»
+ *  (a única do período: faz a aula e as técnicas contam) ou «sem_pratica»
+ *  (não faz prática: outra tarefa, autoavalia-se só nos conhecimentos).
+ *  null desfaz a decisão. */
+export function decidirFardaNaPresenca(alunoId: string, planoAulaId: string, decisao: 'tolerancia' | 'sem_pratica' | null, professor?: string): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  all[i] = { ...all[i], decisaoFarda: decisao || '', decisaoFardaEm: new Date().toISOString(), decisaoFardaPor: professor || '' } as any;
   save(KEYS.presencas, all);
   enviarPresenca(all[i]);
 }
@@ -3871,6 +3892,22 @@ function temAlmoco(ini: number, fim: number): boolean {
   return ini < 13 * 60 && fim > 13 * 60 + 30 && fim - ini >= 180;
 }
 
+/** A hora de almoço dentro de um plano, em minutos [início, fim], ou null.
+ *  Vem do horário da turma nesse dia (o 1.º BCR, à terça, almoça das 12:00 às
+ *  13:00 — Rosa, 7/out/2026); sem isso, das 13:00 às 14:00, ou mais cedo se
+ *  o plano acabar antes das 14:00. */
+function almocoDoPlano(p: PlanoAula, ini: number, fim: number): [number, number] | null {
+  const doHorario = p.turmaId && p.data ? almocoNoDia(p.turmaId, String(p.data).slice(0, 10)) : undefined;
+  if (doHorario) {
+    const [h1, m1] = doHorario.inicio.split(':').map(Number), [h2, m2] = doHorario.fim.split(':').map(Number);
+    const a = h1 * 60 + m1, b = h2 * 60 + m2;
+    return ini < a && fim > b ? [a, b] : null;
+  }
+  if (!temAlmoco(ini, fim)) return null;
+  const a = Math.max(12 * 60, Math.min(13 * 60, fim - 60));
+  return [a, a + 60];
+}
+
 export function horasDoPlano(p: PlanoAula): number {
   const min = (h?: string) => {
     if (!h) return NaN;
@@ -3881,7 +3918,8 @@ export function horasDoPlano(p: PlanoAula): number {
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return 0;
   let m = fim - ini;
-  if (temAlmoco(ini, fim)) m -= 60;   // almoço
+  const almoco = almocoDoPlano(p, ini, fim);
+  if (almoco) m -= almoco[1] - almoco[0];   // almoço
   return m / 60;
 }
 
@@ -5952,8 +5990,8 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   // de hora e meia quando dá certo (4h30 = 3 tempos); senão, de uma hora.
   // A hora de almoço nos tempos: das 13:00 às 14:00, ou mais cedo se o plano
   // acabar antes das 14:00 (entre as 12:00 e as 13:30 começa sempre).
-  const iniAlmoco = Math.max(12 * 60, Math.min(13 * 60, fim - 60));
-  const partes: [number, number][] = (temAlmoco(ini, fim) ? [[ini, iniAlmoco], [iniAlmoco + 60, fim]] as [number, number][] : [[ini, fim]] as [number, number][])
+  const almoco = almocoDoPlano(p, ini, fim);
+  const partes: [number, number][] = (almoco ? [[ini, almoco[0]], [almoco[1], fim]] as [number, number][] : [[ini, fim]] as [number, number][])
     .filter(([a, b]) => b > a);
   const blocos: { inicio: string; fim: string }[] = [];
   for (const [a, b] of partes) {
