@@ -7,7 +7,6 @@ import {
 import {
   getEntradasManual, addEntradaManual, deleteEntradaManual, pesquisarManual,
 } from '../backend';
-import { exportarGuiaoDocx } from './exportGuiao';
 import { abrirIA } from '../abrirIA';
 import { EQUIVALENCIAS_UFCD_UC } from '../cronograma';
 import { getReferencialUC } from '../referencial811RA144';
@@ -1003,7 +1002,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         </div>
         {modoProf && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <button onClick={() => exportarGuiaoDocx(entradaAtiva)} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
+            <button onClick={() => import('./exportGuiao').then(m => m.exportarGuiaoDocx(entradaAtiva))} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
             <button onClick={async () => {
               try {
                 const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
