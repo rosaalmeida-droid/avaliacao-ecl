@@ -1223,6 +1223,44 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     publicada: !!publicadaDaUC,
   } : null;
 
+  // «A minha nota»: o mesmo ecrã no Início e no Percurso. O do Início mostrava
+  // só as aulas validadas, sem as que contam 0 nem a conta (Rosa, 11/out/2026:
+  // o aluno via 5 e as aulas com 10 e 10, e não percebia porquê).
+  const ecraDaMinhaNota = () => (
+    <>
+      <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
+        detalhe={detalheNota}
+        aulas={ucAtual
+          // (Rosa, 5/out/2026) Todas as aulas que fazem a média, com o peso de
+          // cada uma e as que contam 0 por falta de autoavaliação: antes só
+          // apareciam as validadas (3 de 7), e a média não batia certo.
+          ? contasDaNotaDoAluno(aluno.id, aluno.turmaId, ucAtual).aulas
+          : historialUC.filter(h => h.nota20 != null && !h.evento)
+            .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
+            .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo, data: h.data, nota20: h.nota20 as number }))}
+        competenciasPorAvaliar={porAvaliar}
+        notaPossivel={null} />
+            {/* No fim da UC (nota publicada): como os colegas de grupo o veem.
+        Sem nomes, sem notas, só com 2 ou mais colegas (Rosa, out/2026). */}
+            {publicadaDaUC && ucAtual && (() => {
+      // Calculado no aparelho do professor e publicado com a nota: o
+      // telemóvel do aluno não tem (nem deve ter) o que cada colega disse.
+      const r = publicadaDaUC.colegas;
+      if (!r || (!r.forte.length && !r.melhorar.length)) return null;
+      return (
+        <div style={{ margin: '12px 16px', background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1.5px solid rgba(107,63,160,0.3)' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>O que os teus colegas de grupo veem em ti</div>
+          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 8px', lineHeight: 1.5 }}>
+            Não conta para a nota. É para pensares nas tuas atitudes: às vezes os outros não nos veem como nós nos vemos.
+          </div>
+          {r.forte.length > 0 && <div style={{ fontSize: 14.5, marginBottom: 6 }}>👍 Os teus colegas acham que {r.forte.join('; ')}.</div>}
+          {r.melhorar.length > 0 && <div style={{ fontSize: 14.5 }}>🌱 Para melhorar: {r.melhorar.join('; ')}.</div>}
+        </div>
+      );
+            })()}
+    </>
+  );
+
   return (
     <div style={{ minHeight:'100vh', background:T.cream, paddingBottom:72 }}>
 
@@ -1513,24 +1551,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               />
             )}
 
-            {destino === 'nota' && (
-              <EcraMinhaNota
-                ucId={ucAtual}
-                ucNome={ucNomeOficial}
-                nota={notaProgressiva}
-                aulas={historialUC
-                  .filter(h => h.nota20 != null)
-                  .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
-                  .map(h => ({
-                    numero: h.numeroAula ?? 0,
-                    titulo: h.titulo,
-                    data: h.data,
-                    nota20: h.nota20 as number,
-                  }))}
-                competenciasPorAvaliar={porAvaliar}
-                notaPossivel={null}
-              />
-            )}
+            {destino === 'nota' && ecraDaMinhaNota()}
 
             {destino === 'atividades' && (
               <EcraAtividades
@@ -1701,38 +1722,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 anteriores={(aulaDeHojeAtitudinal || blocoAvaliar === 'atitudes') ? atitudesAnterioresDoAluno : undefined}
                 blocos={aulaDeHojeAtitudinal ? ['atitudes'] : undefined} />
             )}
-            {destino === 'nota' && (
-              <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
-                detalhe={detalheNota}
-                aulas={ucAtual
-                  // (Rosa, 5/out/2026) Todas as aulas que fazem a média, com o peso de
-                  // cada uma e as que contam 0 por falta de autoavaliação: antes só
-                  // apareciam as validadas (3 de 7), e a média não batia certo.
-                  ? contasDaNotaDoAluno(aluno.id, aluno.turmaId, ucAtual).aulas
-                  : historialUC.filter(h => h.nota20 != null && !h.evento)
-                    .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
-                    .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo, data: h.data, nota20: h.nota20 as number }))}
-                competenciasPorAvaliar={porAvaliar}
-                notaPossivel={null} />
-            )}
-            {/* No fim da UC (nota publicada): como os colegas de grupo o veem.
-                Sem nomes, sem notas, só com 2 ou mais colegas (Rosa, out/2026). */}
-            {destino === 'nota' && publicadaDaUC && ucAtual && (() => {
-              // Calculado no aparelho do professor e publicado com a nota: o
-              // telemóvel do aluno não tem (nem deve ter) o que cada colega disse.
-              const r = publicadaDaUC.colegas;
-              if (!r || (!r.forte.length && !r.melhorar.length)) return null;
-              return (
-                <div style={{ margin: '12px 16px', background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1.5px solid rgba(107,63,160,0.3)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>O que os teus colegas de grupo veem em ti</div>
-                  <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 8px', lineHeight: 1.5 }}>
-                    Não conta para a nota. É para pensares nas tuas atitudes: às vezes os outros não nos veem como nós nos vemos.
-                  </div>
-                  {r.forte.length > 0 && <div style={{ fontSize: 14.5, marginBottom: 6 }}>👍 Os teus colegas acham que {r.forte.join('; ')}.</div>}
-                  {r.melhorar.length > 0 && <div style={{ fontSize: 14.5 }}>🌱 Para melhorar: {r.melhorar.join('; ')}.</div>}
-                </div>
-              );
-            })()}
+            {destino === 'nota' && ecraDaMinhaNota()}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
             {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta paraAluno /></div>}
             {destino === 'dicionario' && <div style={{ padding:'4px 14px 24px' }}><DicionarioComp perfil="aluno" turmaId={aluno.turmaId} /></div>}

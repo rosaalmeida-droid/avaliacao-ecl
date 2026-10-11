@@ -78,9 +78,11 @@ export function EcraMinhaNota({
   const maxNota = Math.max(...ultimas.map(a => a.nota20), 20);
   const melhor = aulas.length ? aulas.reduce((m, a) => (a.nota20 > m.nota20 ? a : m)) : null;
 
-  // A diferença para a aula anterior — é o que o aluno procura primeiro.
-  const evolucao = aulas.length >= 2
-    ? Math.round((aulas[aulas.length - 1].nota20 - aulas[aulas.length - 2].nota20) * 10) / 10
+  // A diferença para a aula anterior — é o que o aluno procura primeiro. Sem as
+  // aulas ainda por autoavaliar: o 0 delas não é uma descida (dizia «Desceste 15»).
+  const comNota = aulas.filter(a => !a.semResposta);
+  const evolucao = comNota.length >= 2
+    ? Math.round((comNota[comNota.length - 1].nota20 - comNota[comNota.length - 2].nota20) * 10) / 10
     : null;
 
   const fmt = (n: number) => n.toFixed(1).replace('.', ',').replace(',0', '');
@@ -118,7 +120,7 @@ export function EcraMinhaNota({
           )}
 
           <div style={{ fontSize: 13.5, color: C.suave, marginTop: 12 }}>
-            se a unidade acabasse hoje
+            {detalhe?.publicada ? 'nota final publicada pelo professor' : 'se a unidade acabasse hoje'}
           </div>
         </div>
 
@@ -133,8 +135,10 @@ export function EcraMinhaNota({
                 const ultima = i === ultimas.length - 1;
                 const fraca = a.nota20 < 10;
                 return (
-                  <div key={a.numero} style={{ flex: 1, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', gap: 5 }}>
+                  // A coluna tem a altura toda: sem isso, a altura da barra em %
+                  // não tinha a que se referir e a barra não aparecia (Rosa, 11/out/2026).
+                  <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column',
+                    justifyContent: 'flex-end', alignItems: 'center', gap: 5 }}>
                     <span style={{
                       fontSize: ultima ? 13.5 : 12.5,
                       fontWeight: ultima ? 700 : 600,
@@ -156,10 +160,10 @@ export function EcraMinhaNota({
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {ultimas.map((a, i) => (
-                <div key={a.numero} style={{ flex: 1, textAlign: 'center', fontSize: 11.5,
+                <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11.5,
                   color: i === ultimas.length - 1 ? C.violeta : '#999',
                   fontWeight: i === ultimas.length - 1 ? 700 : 400 }}>
-                  {a.numero}
+                  {a.numero > 0 ? a.numero : '—'}
                 </div>
               ))}
             </div>
@@ -177,7 +181,7 @@ export function EcraMinhaNota({
             )}
             {aulas.map(a => (
               <div key={'a' + a.numero + a.titulo + a.data} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
-                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(a.titulo || '')) ? null : <span style={{ color: '#999' }}> · {fmtDataCurta(a.data)}</span>}
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>{a.numero > 0 ? `Aula ${a.numero} · ` : ''}{a.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(a.titulo || '')) ? null : <span style={{ color: '#999' }}> · {fmtDataCurta(a.data)}</span>}
                   {(a.peso !== undefined || a.semResposta) && (
                     <span style={{ display: 'block', fontSize: 12.5, color: a.semResposta ? C.ambar : '#999' }}>
                       {a.peso !== undefined ? (a.peso === 0.5 ? 'vale ½ aula' : a.peso === 1 ? 'vale 1 aula' : `vale ${String(a.peso).replace('.', ',')} aulas`) : ''}
@@ -261,7 +265,7 @@ export function EcraMinhaNota({
             <div>
               <div style={{ fontSize: 13, color: C.suave }}>A tua melhor aula</div>
               <div style={{ fontSize: 16.5, fontWeight: 600, color: C.tinta, marginTop: 2 }}>
-                Aula {melhor.numero} · {melhor.titulo}
+                {melhor.numero > 0 ? `Aula ${melhor.numero} · ` : ''}{melhor.titulo}
               </div>
               <div style={{ fontSize: 14, color: C.texto, marginTop: 3 }}>
                 {fmt(melhor.nota20)} em 20 · {/^\d{4}-\d{2}-\d{2}$/.test(String(melhor.data)) ? fmtDataCurta(melhor.data) : melhor.data}
