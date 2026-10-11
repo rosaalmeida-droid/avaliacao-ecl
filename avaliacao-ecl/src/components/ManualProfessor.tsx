@@ -312,6 +312,15 @@ const SECCOES: Seccao[] = [
           <li><b>Falta de presença</b>.</li>
         </ul>
 
+        <H>Registo de horas extra</H>
+        <P>
+          Em «Atividades e concursos», o botão <b>«Registo de horas extra»</b> mostra, por aluno, as horas
+          feitas em atividades extra fora do horário da turma: nos dias de semana fora das aulas, à noite
+          (depois das 19:00) e ao fim de semana. A parte que coincide com a aula não conta. Só contam as
+          atividades em que confirmou quem participou; as outras aparecem «por confirmar». Descarrega-se
+          para o Excel.
+        </P>
+
         <H>Sem farda completa: uma tolerância por período</H>
         <P>
           Quando o aluno diz à entrada que lhe falta farda, em «Turma e faltas» aparecem dois botões:

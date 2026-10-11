@@ -5,27 +5,46 @@ import { inicializarCompat } from './compatECL';
 import { loadLibrary } from './libraryService';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
-import { ManualCozinheiro } from './components/ManualCozinheiro';
-import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
-import { PainelProfessor } from './components/PainelProfessor';
 import { EstadoSincronizacao } from './components/EstadoSincronizacao';
 import { modulosAtivos } from './cronograma';
-import ProfessorView from './components/ProfessorView';
-import { AlunoView } from './components/AlunoView';
-import { ValidacaoView } from './components/ValidacaoView';
-import { CoordenadoraView } from './components/CoordenadoraView';
-import PlanoAula from './components/PlanoAula';
 import { ModalFullscreen } from './components/ModalFullscreen';
-import { VistaDePlano } from './components/VistaDePlano';
-import { MenuDoPlano } from './components/MenuDoPlano';
-import { ManualProfessor } from './components/ManualProfessor';
-import { FecharUC } from './components/FecharUC';
 import { posicaoNaUC, totalAulasUC, avisoFimUC } from './rotuloPlano';
 import { CRONOGRAMA_2026_2027 } from './cronograma';
-import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
-import { MomentosAvaliacao } from './components/MomentosAvaliacao';
-import Requisicao from './components/Requisicao';
+import { aPedido, prepararDepois } from './aPedido';
+
+// Os ecrãs grandes descarregam-se à parte, só quando são precisos: o telemóvel
+// do aluno deixa de descarregar os do professor e da coordenadora (Rosa,
+// 11/out/2026: «os alunos acham a aplicação muito lenta»).
+const ManualCozinheiro = aPedido(() => import('./components/ManualCozinheiro').then(m => m.ManualCozinheiro));
+const ManuaisAluno = aPedido(() => import('./components/ManuaisAluno').then(m => m.ManuaisAluno));
+const PainelProfessor = aPedido(() => import('./components/PainelProfessor').then(m => m.PainelProfessor));
+const ProfessorView = aPedido(() => import('./components/ProfessorView').then(m => m.default));
+const AlunoView = aPedido(() => import('./components/AlunoView').then(m => m.AlunoView));
+const ValidacaoView = aPedido(() => import('./components/ValidacaoView').then(m => m.ValidacaoView));
+const CoordenadoraView = aPedido(() => import('./components/CoordenadoraView').then(m => m.CoordenadoraView));
+const PlanoAula = aPedido(() => import('./components/PlanoAula').then(m => m.default));
+const VistaDePlano = aPedido(() => import('./components/VistaDePlano').then(m => m.VistaDePlano));
+const MenuDoPlano = aPedido(() => import('./components/MenuDoPlano').then(m => m.MenuDoPlano));
+const ManualProfessor = aPedido(() => import('./components/ManualProfessor').then(m => m.ManualProfessor));
+const FecharUC = aPedido(() => import('./components/FecharUC').then(m => m.FecharUC));
+const AvaliacaoPorUC = aPedido(() => import('./components/AvaliacaoPorUC').then(m => m.AvaliacaoPorUC));
+const MomentosAvaliacao = aPedido(() => import('./components/MomentosAvaliacao').then(m => m.MomentosAvaliacao));
+const Requisicao = aPedido(() => import('./components/Requisicao').then(m => m.default));
+const FichaRegistoUC = aPedido(() => import('./components/FichaRegistoUC').then(m => m.FichaRegistoUC));
+const GestaoRecuperacoes = aPedido(() => import('./components/GestaoRecuperacoes').then(m => m.GestaoRecuperacoes));
+const MapaCompetencias = aPedido(() => import('./components/MapaCompetencias').then(m => m.MapaCompetencias));
+const EventosECL = aPedido(() => import('./components/EventosECL').then(m => m.EventosECL));
+const AbrirAulas = aPedido(() => import('./components/AbrirAulas').then(m => m.AbrirAulas));
+const HistorialPorUC = aPedido(() => import('./components/HistorialPorUC').then(m => m.HistorialPorUC));
+const BibliotecaVideos = aPedido(() => import('./components/BibliotecaVideos').then(m => m.BibliotecaVideos));
+const PassarESchooling = aPedido(() => import('./components/PassarESchooling').then(m => m.PassarESchooling));
+const EventosOrcamentos = aPedido(() => import('./components/EventosOrcamentos').then(m => m.EventosOrcamentos));
+const PrecosConsulta = aPedido<{ paraAluno?: boolean }>(() => import('./components/PrecosConsulta').then(m => m.PrecosConsulta));
+/** Os ecrãs do professor: descarregam-se em segundo plano logo depois de entrar. */
+const ECRAS_PROFESSOR = [PainelProfessor, VistaDePlano, MenuDoPlano, PlanoAula, ProfessorView, ValidacaoView, Requisicao, EventosECL,
+  AvaliacaoPorUC, MomentosAvaliacao, FichaRegistoUC, FecharUC, ManualProfessor, ManualCozinheiro, ManuaisAluno, GestaoRecuperacoes,
+  MapaCompetencias, AbrirAulas, HistorialPorUC, PrecosConsulta, PassarESchooling, BibliotecaVideos];
 
 // Wrapper Orçamentos — fichas e requisições sem plano
 function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
@@ -70,7 +89,6 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
     </div>
   );
 }
-import { FichaRegistoUC } from './components/FichaRegistoUC';
 
 // Wrapper que combina Historial + Momentos + Ficha de Registo
 // "Notas da UC" e "Historial" eram dois itens do menu que abriam o mesmo
@@ -112,14 +130,9 @@ function HistorialView({ turmaId, onIrPara, nomeProfessor }: {
     </div>
   );
 }
-import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
-import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { EventosECL } from './components/EventosECL';
-import { AbrirAulas } from './components/AbrirAulas';
 import { CronogramaTab } from './components/CronogramaTab';
-import { HistorialPorUC } from './components/HistorialPorUC';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor, definirPerfilDoAparelho, definirNomeDoAparelho,
@@ -129,9 +142,6 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   ucsPorFechar, confirmarEReenviar, estadoDaEspera, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
 import { FechoDasAulas, deveAbrirFecho } from './components/FechoDasAulas';
 import { ouvirTurmaNaBase } from './baseDeDados';
-import { EventosOrcamentos, PrecosConsulta } from './components/EventosOrcamentos';
-import { BibliotecaVideos } from './components/BibliotecaVideos';
-import { PassarESchooling } from './components/PassarESchooling';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -196,6 +206,15 @@ function AppInterno() {
   const [espera, setEspera] = useState<{ total: number; teimosos: any[] }>({ total: 0, teimosos: [] });
   /** A resposta do botão «Tentar enviar agora» (antes não dizia nada). */
   const [msgEnvio, setMsgEnvio] = useState('');
+
+  // Enquanto se escolhe o nome no ecrã de entrada, o ecrã do aluno já se vai
+  // descarregando; depois de entrar, os ecrãs de quem entrou.
+  useEffect(() => prepararDepois([AlunoView], 300), []);
+  useEffect(() => {
+    if (perfil === 'professor') return prepararDepois(ECRAS_PROFESSOR);
+    if (perfil === 'coordenadora') return prepararDepois([CoordenadoraView]);
+    if (perfil === 'eventos') return prepararDepois([EventosOrcamentos]);
+  }, [perfil]);
 
   // De minuto a minuto: conferir o que foi enviado e repetir o que não
   // chegou. Um plano podia ficar uma hora sem aparecer no Sheets e

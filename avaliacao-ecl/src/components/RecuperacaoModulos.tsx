@@ -17,7 +17,7 @@ import {
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../compatECL';
 import { gerarPerguntasDefesaOral } from '../matrizEvidencias';
 import { getReferencialUC } from '../referencial811RA144';
-import { UCS_COZINHA } from './PlanoAula';
+import { UCS_COZINHA } from '../ucsCozinha';
 import { GuiaProducao } from './GuiaProducao';
 import { SeletorIA } from './SeletorIA';
 

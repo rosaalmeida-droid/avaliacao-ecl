@@ -227,11 +227,68 @@ export function semDataInglesa(v: unknown): unknown {
   return m[4] === '1899' ? `${m[5]}:${m[6]}` : `${m[4]}-${MESES_EN[m[2]]}-${m[3]}`;
 }
 
+// ── Leituras guardadas na memória (Rosa, 11/out/2026: «os alunos acham a
+// aplicação lenta») ─────────────────────────────────────────────────────
+// Cada ecrã chamava getPlanosAula(), getValidacoes()… centenas de vezes, e
+// cada chamada voltava a converter o texto guardado (com as datas, o mais
+// lento). No ecrã do aluno eram 266 leituras (58 MB) só para abrir — 4 s num
+// telemóvel médio — e, parado no ecrã, 8 de cada 10 segundos. Agora cada
+// conjunto converte-se uma vez e guarda-se; só se volta a converter quando o
+// texto guardado muda. Dentro da mesma tarefa nem se volta a comparar.
+const leituras: Record<string, { raw: string; dados: any }> = {};
+const vistasNestaTarefa = new Set<string>();
+let limpezaMarcada = false;
+function vistoNestaTarefa(key: string): void {
+  vistasNestaTarefa.add(key);
+  if (!limpezaMarcada) { limpezaMarcada = true; setTimeout(() => { vistasNestaTarefa.clear(); limpezaMarcada = false; if (leiturasVigiadas.ativo) verificarLeituras(); }, 0); }
+}
+/** Só para os testes: no fim de cada tarefa, avisa se alguém alterou o que
+ *  leu sem gravar (a leitura guardada ficava diferente do que está gravado). */
+export const leiturasVigiadas = { ativo: false, avisos: [] as string[] };
+function verificarLeituras(): void {
+  for (const [k, c] of Object.entries(leituras)) {
+    if ((c as any).norm !== undefined && JSON.stringify(c.dados) !== (c as any).norm) {
+      leiturasVigiadas.avisos.push(k); console.warn('LEITURA ALTERADA SEM GRAVAR: ' + k); (c as any).norm = JSON.stringify(c.dados);
+    }
+  }
+}
+
+const copiaRasa = (d: any) => Array.isArray(d) ? d.slice() : (d && typeof d === 'object' ? { ...d } : d);
+
 function load<T>(key: string): T[] {
   try {
+    vigiarEscritas();
+    const c = leituras[key];
+    // A lista é sempre uma cópia (quem a ordena ou acrescenta não mexe na guardada).
+    if (c && vistasNestaTarefa.has(key)) return copiaRasa(c.dados) as T[];
     const r = key in naMemoria ? naMemoria[key] : localStorage.getItem(key);
-    return r ? JSON.parse(r, (_k, v) => semDataInglesa(v)) : [];
+    if (!r) { delete leituras[key]; return []; }
+    if (!c || c.raw !== r) {
+      const dados = JSON.parse(r, (_k, v) => semDataInglesa(v));
+      leituras[key] = { raw: r, dados };
+      if (leiturasVigiadas.ativo) (leituras[key] as any).norm = JSON.stringify(dados);
+    }
+    vistoNestaTarefa(key);
+    return copiaRasa(leituras[key].dados) as T[];
   } catch { return []; }
+}
+/** Esquecer a leitura guardada (depois de gravar). */
+function esquecerLeitura(key: string): void { delete leituras[key]; vistasNestaTarefa.delete(key); }
+// Qualquer escrita no armazenamento (venha de onde vier, ou de outro separador)
+// faz esquecer a leitura dessa chave: nunca se lê uma cópia velha.
+let escritasVigiadas = false;
+function vigiarEscritas(): void {
+  if (escritasVigiadas) return;
+  try {
+    const ls: any = localStorage;
+    const alvo: any = typeof Storage !== 'undefined' && ls instanceof Storage ? Storage.prototype : ls;
+    const set = alvo.setItem, rem = alvo.removeItem, clr = alvo.clear;
+    alvo.setItem = function (k: string, v: string) { esquecerLeitura(String(k)); return set.call(this, k, v); };
+    alvo.removeItem = function (k: string) { esquecerLeitura(String(k)); return rem.call(this, k); };
+    if (clr) alvo.clear = function () { Object.keys(leituras).forEach(esquecerLeitura); return clr.call(this); };
+    if (typeof window !== 'undefined') window.addEventListener('storage', e => { if (e.key) esquecerLeitura(e.key); else Object.keys(leituras).forEach(esquecerLeitura); });
+    escritasVigiadas = true;
+  } catch { /* sem armazenamento */ }
 }
 
 /** Liberta o que já não serve (cópias antigas) para caberem os dados novos. */
@@ -246,6 +303,7 @@ function libertarEspaco(): void {
 
 export function save<T>(key: string, data: T[]): void {
   const texto = JSON.stringify(data);
+  esquecerLeitura(key);
   try { localStorage.setItem(key, texto); delete naMemoria[key]; return; }
   catch { /* sem espaço: tenta libertar */ }
   libertarEspaco();

@@ -4,11 +4,17 @@ import { BotaoPCC } from './BotaoPCC';
 import { ManuaisDoAluno, BotaoManualDaUC } from './BibliotecaManuais';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
+import { aPedido } from '../aPedido';
+// Ecrãs que o aluno abre poucas vezes: descarregam-se só quando os abre
+// (Rosa, 11/out/2026: a aplicação estava lenta nos telemóveis).
+const PrecosConsulta = aPedido<{ paraAluno?: boolean }>(() => import('./PrecosConsulta').then(m => m.PrecosConsulta));
+const RecuperacaoModulosAluno = aPedido(() => import('./RecuperacaoModulos').then(m => m.RecuperacaoModulosAluno));
+const ManuaisAluno = aPedido(() => import('./ManuaisAluno').then(m => m.ManuaisAluno));
+const AvaliacaoPorUC = aPedido(() => import('./AvaliacaoPorUC').then(m => m.AvaliacaoPorUC));
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { AvaliarColegas, configGrupos } from './GruposAluno';
 import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
-import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
@@ -55,10 +61,8 @@ import { getFrasesParaCompetencia } from '../frases_subtecnicas';
 import { GuiaProducao } from './GuiaProducao';
 import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
-import { ManualCozinheiro } from './ManualCozinheiro';
 import { ManualAluno } from './ManualAluno';
 import { decisaoFardaNaAula, toleranciaNoPeriodo, diaMes } from '../regrasFarda';
-import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 import { getReferencialUC } from '../referencial811RA144';
 import {
@@ -72,7 +76,6 @@ import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
-import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
@@ -92,7 +95,6 @@ import { sumarioDoPlano } from '../sumarioAutomatico';
 import { criterioTrabalho, ehCriterioTrabalho } from '../criteriosTrabalho';
 import { DicionarioComp } from './DicionarioComp';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, COMPROMISSOS, horasEmTexto, textoCompromisso, compromissoPorCumprir, type RespostaPresenca, type IdCompromisso, type ReflexaoPresenca } from '../presencaParcial';
-import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
 // ─────────────────────────────────────────────────────────────
 // TOKENS — tudo derivado das CSS vars do projeto
