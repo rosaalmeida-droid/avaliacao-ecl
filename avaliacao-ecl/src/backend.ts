@@ -3438,6 +3438,14 @@ export function selecoesQueContam(sels: SelecaoAluno[] = getSelecoes()): Selecao
 export function ultimaResposta(alunoId: string, planoId: string, sels: SelecaoAluno[] = getSelecoes()): SelecaoAluno | undefined {
   return selecoesQueContam(sels.filter(s => s.alunoId === alunoId && s.planoAulaId === planoId))[0];
 }
+/** Todas as respostas do aluno a esta aula, a mais recente primeiro, também as
+ *  que um «responder outra vez» escondeu: servem para saber o tema que ele já
+ *  escolheu, que continua válido (Rosa, 11/out/2026). */
+export function respostasDoAlunoComAntigas(alunoId: string, planoId: string): SelecaoAluno[] {
+  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes))
+    .filter(s => !ehRegistoEspecial(s) && s.alunoId === alunoId && s.planoAulaId === planoId)
+    .sort((a: any, b: any) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
+}
 /** Quantas vezes o aluno respondeu a esta aula (o professor é avisado se for mais de uma). */
 export function vezesQueRespondeu(alunoId: string, planoId: string, sels: SelecaoAluno[] = getSelecoes()): number {
   return sels.filter(s => s.alunoId === alunoId && s.planoAulaId === planoId).length;
