@@ -1,5 +1,5 @@
 // ============================================================
-// Apps Script — Requisição ECL v6
+// Apps Script — Requisição ECL v6.2
 // Arquitectura: app → DADOS_APP → Modelo (cópia)
 //
 // O QUE MUDA EM RELAÇÃO À v5 (Rosa, out/2026)
@@ -33,6 +33,12 @@
 //    autorização (para criar o PDF e o Excel): aceite.
 //    Na primeira implementação, o Google pede autorização para enviar
 //    e-mails em seu nome: é normal, aceite.
+//
+// 7. (v6.2, Rosa, 11/out/2026) O e-mail às compras sai só quando o professor
+//    manda. A aplicação cria a requisição sem e-mail; o professor abre-a,
+//    confere, e carrega em «Enviar por e-mail às compras». Esse pedido
+//    («acao: enviarEmail») não cria nada: envia o PDF e o Excel da folha
+//    que já foi criada.
 //
 // DEPOIS DE COLAR:
 //    Implementar → Gerir implementações → editar (lápis)
@@ -139,6 +145,22 @@ function doPost(e) {
 
     var ss = abrirFolha();
 
+    // ── 1b. Enviar por e-mail uma requisição já criada (v6.2) ──
+    // O professor conferiu a requisição e manda-a às compras. Não cria nada.
+    if (dados.acao === 'enviarEmail') {
+      var folhaEmail = ss.getSheets().filter(function (f) {
+        return (dados.gid !== undefined && dados.gid !== null && String(f.getSheetId()) === String(dados.gid))
+          || (!!dados.nomeAba && f.getName() === dados.nomeAba);
+      })[0];
+      if (!folhaEmail) return resposta(false, 'Não encontrei a requisição «' + (dados.nomeAba || '') + '» no ficheiro: foi apagada ou mudou de nome?', log);
+      var temEmail = (Array.isArray(dados.emailsCompras) ? dados.emailsCompras : String(dados.emailsCompras || '').split(/[,;\s]+/))
+        .some(function (x) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(x || '').trim()); });
+      if (!temEmail) return resposta(false, 'Escreva pelo menos um e-mail das compras.', log);
+      var enviadoEm = enviarEmailCompras(dados, ss, folhaEmail, log);
+      if (!enviadoEm) return resposta(false, 'O e-mail não foi enviado. ' + log.join(' · '), log);
+      return resposta(true, 'E-mail enviado', log, { emailEnviado: enviadoEm, nomeAba: folhaEmail.getName() });
+    }
+
     // ── 2. Modelo ────────────────────────────────────────────
     var modelo = encontrarModelo(ss);
     if (!modelo) {
@@ -193,6 +215,7 @@ function doPost(e) {
       nomeAba: nomeAba,
       ingredientes: ingredientes.length,
       urlSheets: url,
+      gid: nova.getSheetId(),
       emailEnviado: emailEnviado
     });
 

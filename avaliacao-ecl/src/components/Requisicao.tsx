@@ -514,6 +514,30 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // A janela «Escolher na Makro», aberta para uma linha (índice).
   const [escolherMakro, setEscolherMakro] = useState<number | null>(null);
   const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
+  /** A última requisição criada no ficheiro: para a abrir, conferir e só depois enviar por e-mail. */
+  const [criada, setCriada] = useState<{ payload: any; url: string; gid?: number | string; nomeAba: string; enviadoA?: string } | null>(null);
+  const [msgEmail, setMsgEmail] = useState('');
+  const [aEnviarEmail, setAEnviarEmail] = useState(false);
+  /** Envia às compras, por e-mail, a requisição já criada (PDF e Excel dessa folha). Não cria outra. */
+  async function enviarPorEmail() {
+    if (!criada || aEnviarEmail) return;
+    const lista = listaEmailsCompras(emailsCompras);
+    if (!lista.length) { setMsgEmail('⚠️ Escreva pelo menos um e-mail das compras.'); return; }
+    definirEmailsCompras(emailsCompras);
+    setAEnviarEmail(true); setMsgEmail('A enviar o e-mail…');
+    try {
+      const { ingredientes, preparacao, ...dadosDoEmail } = criada.payload || {};
+      const r = await fetch('/api/enviarRequisicao', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...dadosDoEmail, acao: 'enviarEmail', gid: criada.gid, nomeAba: criada.nomeAba, emailsCompras: lista }) });
+      const j: any = await r.json().catch(() => null);
+      if (j?.ok && j?.emailEnviado) {
+        setCriada(c => c ? { ...c, enviadoA: lista.join(', ') } : c);
+        setMsgEmail('');
+      } else setMsgEmail('⚠️ O e-mail não foi enviado: ' + (j?.mensagem || 'o ficheiro das requisições não respondeu. Tente outra vez.'));
+    } catch (e) {
+      setMsgEmail('⚠️ O e-mail não foi enviado: ' + String(e));
+    } finally { setAEnviarEmail(false); }
+  }
 
   // Auto-recalcular quantidades quando o nº de doses muda (correctamente APÓS todos os useState)
   React.useEffect(() => {
@@ -806,8 +830,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // A nota que explica a soma das doses, por baixo das assinaturas.
         notaDoses,
-        // O script da folha manda logo um e-mail formal a estas pessoas.
-        emailsCompras: listaEmailsCompras(emailsCompras),
+        // O e-mail às compras já não sai ao criar: o professor confere primeiro
+        // a requisição e só depois a manda (Rosa, 11/out/2026: «se a requisição
+        // não estiver bem, estou a enviar algo errado»).
+        emailsCompras: [],
         // Ingredientes → linhas 16-58 do Sheets
         // A = fórmula (B/M7, não escrever) | B=qtReceita | C=nome | J=und | L=preço
         // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
@@ -848,10 +874,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         setMsg('⚠️ O documento não respondeu. Confirme se a requisição foi criada antes de a enviar outra vez.');
       } else {
         chegou = true;
-        setMsg(dadosResposta?.emailEnviado ? `✓ Enviado! E-mail enviado às compras (${listaEmailsCompras(emailsCompras).join(', ')}).` : '✓ Enviado!');
+        setMsg('✓ Requisição criada.');
         if (dadosResposta?.urlSheets) {
           setLinkSheets(dadosResposta.urlSheets);
         }
+        // Para a enviar por e-mail depois de conferida: a folha que o script criou.
+        setCriada({ payload, url: dadosResposta?.urlSheets || '', gid: dadosResposta?.gid, nomeAba: dadosResposta?.nomeAba || '' });
+        setMsgEmail('');
       }
     } catch (e) {
       if (String(e).includes('abort')) {
@@ -1821,7 +1850,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               style={{ ...S.inp, padding: '3px 6px', fontSize: 13, borderColor: dataIngredientes ? undefined : '#b5651d' }} /></label>
           {dataDaAula && <span><strong>Aula:</strong> {dataPT(dataDaAula)}</span>}
           <span><strong>Requisição feita em:</strong> {dataPT(hojeISO())}</span>
-          <span><strong>E-mail às compras:</strong> {listaEmailsCompras(emailsCompras).join(', ') || 'sem e-mails (escreva-os em «Dados adicionais», ao voltar)'}</span>
+          <span><strong>E-mail às compras:</strong> {listaEmailsCompras(emailsCompras).length
+            ? `${listaEmailsCompras(emailsCompras).join(', ')} (envia depois de conferir a requisição)`
+            : 'escreve-os depois de criar a requisição'}</span>
           {responsavel && <span><strong>Resp. compras:</strong> {responsavel}</span>}
           {atividade && <span><strong>Atividade:</strong> {atividade}</span>}
           <span><strong>Consumo:</strong> {Object.entries(consumo).filter(([, v]) => v).map(([k]) => k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados').join(', ') || '—'}</span>
@@ -1833,12 +1864,38 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {msg && (
         <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>
           {msg}
-          {linkSheets && (
-            <a href={linkSheets} target="_blank" rel="noreferrer"
-              style={{ display: 'block', marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'var(--sage)', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
-              📊 Abrir a requisição →
-            </a>
+        </div>
+      )}
+
+      {/* Criada: primeiro confere-se, depois envia-se às compras (Rosa, 11/out/2026). */}
+      {criada && (
+        <div className="no-print" style={{ ...S.card, border: '2px solid var(--sage)', background: '#f6faf4' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--sage)' }}>✓ A requisição foi criada no ficheiro das requisições</div>
+          <div style={{ fontSize: 13.5, marginTop: 10, lineHeight: 1.5 }}><b>1. Confira-a</b> antes de a mandar às compras.</div>
+          {criada.url && (
+            <a href={criada.url} target="_blank" rel="noreferrer"
+              style={{ display: 'inline-block', marginTop: 6, padding: '8px 14px', borderRadius: 8, background: 'var(--sage)', color: 'white', textDecoration: 'none', fontWeight: 700, fontSize: 13.5 }}>
+              📊 Abrir a requisição →</a>
           )}
+          {criada.enviadoA ? (
+            <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700, color: 'var(--sage)' }}>
+              ✓ E-mail enviado às compras ({criada.enviadoA}), com a requisição em PDF e em Excel.</div>
+          ) : criada.gid === undefined || criada.gid === null ? (
+            <div style={{ marginTop: 12, fontSize: 13, color: '#8a4a12', lineHeight: 1.5 }}>
+              Para a enviar por e-mail daqui, é preciso pôr no Apps Script da requisição a versão v6.2 do script.</div>
+          ) : (<>
+            <div style={{ fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}><b>2. Se estiver certa, envie-a</b> às compras, com a requisição em PDF e em Excel, em anexo.</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+              <input style={{ ...S.inp, flex: '1 1 260px', fontSize: 13.5 }} value={emailsCompras} type="text" inputMode="email"
+                placeholder="E-mails das compras (separados por vírgulas)"
+                onChange={e => setEmailsCompras(e.target.value)} onBlur={() => definirEmailsCompras(emailsCompras)} />
+              <button style={{ ...S.btnP, opacity: aEnviarEmail ? 0.6 : 1 }} disabled={aEnviarEmail} onClick={enviarPorEmail}>
+                {aEnviarEmail ? 'A enviar…' : '✉ Enviar por e-mail às compras'}</button>
+            </div>
+          </>)}
+          {msgEmail && <div style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: msgEmail.startsWith('⚠️') ? '#b5651d' : 'var(--sage)' }}>{msgEmail}</div>}
+          <div style={{ marginTop: 10, fontSize: 12.5, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5 }}>
+            Encontrou um erro? Corrija aqui e carregue outra vez em «Guardar e enviar a requisição»: fica criada uma requisição nova, e é essa que envia.</div>
         </div>
       )}
 
