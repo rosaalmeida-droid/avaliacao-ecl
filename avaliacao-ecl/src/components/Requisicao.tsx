@@ -48,6 +48,9 @@ interface Linha {
   isQB: boolean;
   perguntarProfessor: boolean;
   decisaoProfessor?: 'comprar' | 'produzir';
+  /** O professor tirou este produto da requisição: fica à vista, riscado, e não
+   *  vai para o documento (Rosa, 11/out/2026: «posso querer anular itens»). */
+  retirada?: boolean;
   preparacaoInfo?: { nome: string; materiasPrimas?: string[]; podeComprar: boolean }; // dados da preparação identificada
   /** Certeza da ligação à matéria-prima: 'exata', 'ambigua' ou 'nenhuma'. */
   confianca?: string;
@@ -78,7 +81,7 @@ function manterEdicoes(novas: Linha[], antigas: Linha[]): Linha[] {
     const a = porId.get(n.id);
     if (!a) return n;
     return recalc({ ...n, produto: a.produto, precoUnitario: a.precoUnitario,
-      decisaoProfessor: a.decisaoProfessor, perguntarProfessor: a.perguntarProfessor });
+      decisaoProfessor: a.decisaoProfessor, perguntarProfessor: a.perguntarProfessor, retirada: a.retirada });
   });
 }
 
@@ -481,7 +484,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       if (!s) return l;
       const qt = Number(s.quantidadeTotal);
       return recalc({ ...l, qtEncomenda: qt > 0 ? qt : l.qtEncomenda,
-        precoUnitario: s.precoUnitario != null && s.precoUnitario !== '' ? String(s.precoUnitario) : l.precoUnitario });
+        precoUnitario: s.precoUnitario != null && s.precoUnitario !== '' ? String(s.precoUnitario) : l.precoUnitario,
+        ...(s.retirada ? { retirada: true } : {}) });
     });
   });
   // O banco de empratamento chega da Internet um instante depois: os produtos
@@ -619,7 +623,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setLinhas((r.linhas || []).map((l, i) => recalc({
       id: `g${i}`, produto: l.produto, und: l.unidade, qt1pax: 0, qtReceita: 0, qtEncomenda: Number(l.quantidadeTotal) || 0,
       precoUnitario: l.precoUnitario != null ? String(l.precoUnitario).replace('.', ',') : '', precoReceita: 0, preco1pax: 0, precoEncomenda: 0,
-      fichas: [], daBD: false, avisos: [], isQB: l.unidade === 'q.b.', perguntarProfessor: false,
+      fichas: [], daBD: false, avisos: [], isQB: l.unidade === 'q.b.', perguntarProfessor: false, retirada: !!(l as any).retirada,
     } as Linha)));
     setFase('editar');
   }
@@ -657,7 +661,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       const s = porProduto.get(k);
       if (!s) return l;
       const qt = Number(s.quantidadeTotal);
-      return recalc({ ...l,
+      return recalc({ ...l, ...(s.retirada ? { retirada: true } : {}),
         ...(s.precoUnitario != null && s.precoUnitario !== '' && precoNum(String(s.precoUnitario)) > 0 ? { precoUnitario: String(s.precoUnitario), daBD: false } : {}),
         ...(mesmas && qt > 0 ? { qtEncomenda: qt } : {}) });
     }));
@@ -738,12 +742,20 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setLinhas(prev => { const n = [...prev]; n[i] = recalc({ ...n[i], qtEncomenda: v }); return n; });
   }
 
+  /** As linhas em que o professor escreveu quantidade 0 (saem ao sair do campo). */
+  const zeradasAMao = React.useRef(new Set<string>());
+  /** Tirar (ou repor) um produto da requisição. */
+  function setRetirada(i: number, retirada: boolean) {
+    setLinhas(prev => { const n = [...prev]; n[i] = { ...n[i], retirada }; return n; });
+  }
+
   function setDecisao(i: number, d: 'comprar' | 'produzir') {
     setLinhas(prev => { const n = [...prev]; n[i] = { ...n[i], decisaoProfessor: d, perguntarProfessor: false }; return n; });
   }
 
   // Totais
-  const linhasAtivas = linhas.filter(l => l.decisaoProfessor !== 'produzir');
+  // As retiradas pelo professor não vão para o documento nem contam no custo.
+  const linhasAtivas = linhas.filter(l => l.decisaoProfessor !== 'produzir' && !l.retirada);
   const totEnc = linhasAtivas.reduce((s, l) => s + l.precoEncomenda, 0);
   const qbVal = totEnc * (quebras / 100);
   const crTotal = totEnc + qbVal;
@@ -1612,8 +1624,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
       {/* Tabela ingredientes — editavel */}
       <div style={S.card}>
-        <label style={S.lbl}>Ingredientes — {linhasNormais.length} produtos · todos editaveis</label>
-        <div style={S.muted}>Produto, unidade, quantidade e preco podem ser corrigidos. Agua excluida automaticamente.</div>
+        <label style={S.lbl}>Ingredientes — {linhasNormais.filter(l => !l.retirada).length} produtos · todos editaveis
+          {linhasNormais.some(l => l.retirada) ? ` · ${linhasNormais.filter(l => l.retirada).length} retirado${linhasNormais.filter(l => l.retirada).length === 1 ? '' : 's'}` : ''}</label>
+        <div style={S.muted}>Produto, unidade, quantidade e preco podem ser corrigidos. Agua excluida automaticamente.
+          Para tirar um produto da requisição, carregue em «✕ Retirar» ou ponha a quantidade a 0.</div>
         <div style={{ overflowX: 'auto', marginTop: 10 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize:13 }}>
             <thead>
@@ -1634,6 +1648,18 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 const nomeLimpo = l.produto.replace(/\s*\([^)]*\)/g,'').trim();
                 const { mp: mpFormas } = encontrarMateriaPrimaComConfianca(nomeLimpo, getMateriasPrimasCustom());
                 const formas = mpFormas?.formasComerciais || [];
+                // Retirado pelo professor: fica à vista, riscado, para se poder repor. Não se imprime.
+                if (l.retirada) return (
+                  <tr key={l.id} className="no-print" style={{ background: '#f4f1ec', borderBottom: '1px solid var(--border)' }}>
+                    <td colSpan={7} style={{ padding: '7px 8px', fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
+                      <span style={{ textDecoration: 'line-through' }}>{l.produto}</span>
+                      <span> · retirado da requisição</span>
+                      <button type="button" onClick={() => setRetirada(i, false)}
+                        style={{ marginLeft: 10, fontSize: 12.5, padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(26,23,20,0.4)', background: '#fff', color: '#1a1714', cursor: 'pointer', fontWeight: 600 }}>
+                        ↺ Repor</button>
+                    </td>
+                  </tr>
+                );
                 return (
                   <tr key={l.id} style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '3px 4px' }}>
@@ -1651,6 +1677,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                             💡 Sugerir
                           </button>
                         )}
+                        <button type="button" className="no-print" onClick={() => setRetirada(i, true)} title="Tirar este produto da requisição"
+                          style={{ fontSize:12.5, padding: '2px 6px', borderRadius: 6, border: '1px solid rgba(192,57,43,0.5)', background: '#fff', color: '#c0392b', cursor: 'pointer', fontWeight: 600 }}>
+                          ✕ Retirar
+                        </button>
                       </div>
                       {formas.length > 0 && (
                         <div style={{ marginTop: 4 }}>
@@ -1693,7 +1723,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     </td>
                     <td style={{ padding: '3px 3px' }}>
                       <input type="number" step="0.001" value={l.qtEncomenda.toFixed(3)}
-                        onChange={e => setQtEnc(i, parseFloat(e.target.value) || 0)}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value) || 0;
+                          if (v === 0) zeradasAMao.current.add(l.id); else zeradasAMao.current.delete(l.id);
+                          setQtEnc(i, v);
+                        }}
+                        // Quantidade 0 escrita pelo professor: o produto sai da requisição
+                        // (Rosa, 11/out/2026). Uma linha que já vinha a 0 da ficha fica.
+                        onBlur={() => { if (zeradasAMao.current.has(l.id)) { zeradasAMao.current.delete(l.id); setRetirada(i, true); } }}
                         style={{ ...S.inp, width: 65, textAlign: 'right', fontSize:13 }} />
                     </td>
                     <td style={{ padding: '3px 3px', position: 'relative' }}>
@@ -1757,12 +1794,20 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <div style={S.card}>
           <label style={S.lbl}>Ingredientes q.b. — vão na requisição como q.b., sem peso nem custo</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-            {linhasQB.map(l => (
-              <div key={l.id} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize:13 }}>
-                <span style={{ fontWeight: 600 }}>{l.produto}</span>
-                <span style={S.muted}> · {fQ(l.qtEncomenda, l.und)}</span>
-              </div>
-            ))}
+            {linhasQB.map(l => {
+              const i = linhas.indexOf(l);
+              return (
+                <div key={l.id} className={l.retirada ? 'no-print' : undefined} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize:13,
+                  display: 'flex', alignItems: 'center', gap: 6, opacity: l.retirada ? 0.55 : 1 }}>
+                  <span style={{ fontWeight: 600, textDecoration: l.retirada ? 'line-through' : 'none' }}>{l.produto}</span>
+                  {!l.retirada && <span style={S.muted}> · {fQ(l.qtEncomenda, l.und)}</span>}
+                  <button type="button" className="no-print" onClick={() => setRetirada(i, !l.retirada)}
+                    title={l.retirada ? 'Repor na requisição' : 'Tirar da requisição'}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 13, padding: '0 2px',
+                      color: l.retirada ? '#1a1714' : '#c0392b' }}>{l.retirada ? '↺ Repor' : '✕'}</button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1827,7 +1872,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               : (reqAberta.current as any)?.eventoId ? { eventoId: (reqAberta.current as any).eventoId, orcamentoId: (reqAberta.current as any).orcamentoId } : {}),
             planoAulaId: planoSel?.id || '', turmaId: planoSel?.turmaId || evento?.turmaId || turmaId,
             dataAula: planoSel?.data || evento?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
-            linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
+            linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.retirada ? 0 : l.precoEncomenda, obs: '', ...(l.retirada ? { retirada: true } : {}) })),
             custoTotal: crTotal, estado: chegou ? 'enviada' : 'rascunho',
             // As doses de cada ficha: ao reabrir, as quantidades corrigidas voltam se forem as mesmas.
             ...({ paxPorFicha, dataIngredientes, dataRequisicao: hojeISO() } as any),

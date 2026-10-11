@@ -716,6 +716,8 @@ export interface LinhaRequisicao {
   custoTotal?: number;
   materiaPrimaId?: string;
   obs?: string;
+  /** O professor tirou este produto da requisição (não vai para o documento). */
+  retirada?: boolean;
 }
 
 export interface RequisicaoAula {
