@@ -15,7 +15,7 @@ import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '.
 import { AvaliarColegas, configGrupos } from './GruposAluno';
 import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
-import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
+import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
 import { DesafioAltaPerformance } from './AltaPerformance';
@@ -1223,6 +1223,44 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     publicada: !!publicadaDaUC,
   } : null;
 
+  // «A minha nota»: o mesmo ecrã no Início e no Percurso. O do Início mostrava
+  // só as aulas validadas, sem as que contam 0 nem a conta (Rosa, 11/out/2026:
+  // o aluno via 5 e as aulas com 10 e 10, e não percebia porquê).
+  const ecraDaMinhaNota = () => (
+    <>
+      <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
+        detalhe={detalheNota}
+        aulas={ucAtual
+          // (Rosa, 5/out/2026) Todas as aulas que fazem a média, com o peso de
+          // cada uma e as que contam 0 por falta de autoavaliação: antes só
+          // apareciam as validadas (3 de 7), e a média não batia certo.
+          ? contasDaNotaDoAluno(aluno.id, aluno.turmaId, ucAtual).aulas
+          : historialUC.filter(h => h.nota20 != null && !h.evento)
+            .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
+            .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo, data: h.data, nota20: h.nota20 as number }))}
+        competenciasPorAvaliar={porAvaliar}
+        notaPossivel={null} />
+            {/* No fim da UC (nota publicada): como os colegas de grupo o veem.
+        Sem nomes, sem notas, só com 2 ou mais colegas (Rosa, out/2026). */}
+            {publicadaDaUC && ucAtual && (() => {
+      // Calculado no aparelho do professor e publicado com a nota: o
+      // telemóvel do aluno não tem (nem deve ter) o que cada colega disse.
+      const r = publicadaDaUC.colegas;
+      if (!r || (!r.forte.length && !r.melhorar.length)) return null;
+      return (
+        <div style={{ margin: '12px 16px', background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1.5px solid rgba(107,63,160,0.3)' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>O que os teus colegas de grupo veem em ti</div>
+          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 8px', lineHeight: 1.5 }}>
+            Não conta para a nota. É para pensares nas tuas atitudes: às vezes os outros não nos veem como nós nos vemos.
+          </div>
+          {r.forte.length > 0 && <div style={{ fontSize: 14.5, marginBottom: 6 }}>👍 Os teus colegas acham que {r.forte.join('; ')}.</div>}
+          {r.melhorar.length > 0 && <div style={{ fontSize: 14.5 }}>🌱 Para melhorar: {r.melhorar.join('; ')}.</div>}
+        </div>
+      );
+            })()}
+    </>
+  );
+
   return (
     <div style={{ minHeight:'100vh', background:T.cream, paddingBottom:72 }}>
 
@@ -1513,24 +1551,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               />
             )}
 
-            {destino === 'nota' && (
-              <EcraMinhaNota
-                ucId={ucAtual}
-                ucNome={ucNomeOficial}
-                nota={notaProgressiva}
-                aulas={historialUC
-                  .filter(h => h.nota20 != null)
-                  .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
-                  .map(h => ({
-                    numero: h.numeroAula ?? 0,
-                    titulo: h.titulo,
-                    data: h.data,
-                    nota20: h.nota20 as number,
-                  }))}
-                competenciasPorAvaliar={porAvaliar}
-                notaPossivel={null}
-              />
-            )}
+            {destino === 'nota' && ecraDaMinhaNota()}
 
             {destino === 'atividades' && (
               <EcraAtividades
@@ -1701,38 +1722,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 anteriores={(aulaDeHojeAtitudinal || blocoAvaliar === 'atitudes') ? atitudesAnterioresDoAluno : undefined}
                 blocos={aulaDeHojeAtitudinal ? ['atitudes'] : undefined} />
             )}
-            {destino === 'nota' && (
-              <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
-                detalhe={detalheNota}
-                aulas={ucAtual
-                  // (Rosa, 5/out/2026) Todas as aulas que fazem a média, com o peso de
-                  // cada uma e as que contam 0 por falta de autoavaliação: antes só
-                  // apareciam as validadas (3 de 7), e a média não batia certo.
-                  ? contasDaNotaDoAluno(aluno.id, aluno.turmaId, ucAtual).aulas
-                  : historialUC.filter(h => h.nota20 != null && !h.evento)
-                    .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
-                    .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo, data: h.data, nota20: h.nota20 as number }))}
-                competenciasPorAvaliar={porAvaliar}
-                notaPossivel={null} />
-            )}
-            {/* No fim da UC (nota publicada): como os colegas de grupo o veem.
-                Sem nomes, sem notas, só com 2 ou mais colegas (Rosa, out/2026). */}
-            {destino === 'nota' && publicadaDaUC && ucAtual && (() => {
-              // Calculado no aparelho do professor e publicado com a nota: o
-              // telemóvel do aluno não tem (nem deve ter) o que cada colega disse.
-              const r = publicadaDaUC.colegas;
-              if (!r || (!r.forte.length && !r.melhorar.length)) return null;
-              return (
-                <div style={{ margin: '12px 16px', background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1.5px solid rgba(107,63,160,0.3)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>O que os teus colegas de grupo veem em ti</div>
-                  <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 8px', lineHeight: 1.5 }}>
-                    Não conta para a nota. É para pensares nas tuas atitudes: às vezes os outros não nos veem como nós nos vemos.
-                  </div>
-                  {r.forte.length > 0 && <div style={{ fontSize: 14.5, marginBottom: 6 }}>👍 Os teus colegas acham que {r.forte.join('; ')}.</div>}
-                  {r.melhorar.length > 0 && <div style={{ fontSize: 14.5 }}>🌱 Para melhorar: {r.melhorar.join('; ')}.</div>}
-                </div>
-              );
-            })()}
+            {destino === 'nota' && ecraDaMinhaNota()}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
             {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta paraAluno /></div>}
             {destino === 'dicionario' && <div style={{ padding:'4px 14px 24px' }}><DicionarioComp perfil="aluno" turmaId={aluno.turmaId} /></div>}
@@ -3460,19 +3450,25 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const fardaIncompletaRegisto = getHistoricoAvaliacoes().some((r: any) =>
     r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01' && Number(r.nota) < 5);
   // Trabalho sobre o manual: o tema (conteúdo) que o aluno escolheu.
-  // Num trabalho que continua o da aula anterior, vem já escolhido o tema
-  // que o aluno disse nessa aula (Rosa, out/2026); pode sempre mudar.
-  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(() => {
-    const de = (triagemDoPlano(plano) as any)?.continuaDe;
-    if (!de) return null;
-    const sel = getSelecoes().filter(s => s.alunoId === aluno.id && s.planoAulaId === de)
-      .sort((a: any, b: any) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')))[0];
-    for (const a of (sel?.autoavaliacoes || [])) {
-      const cap = capituloDoCampo(a.competenciaId);
-      if (cap) return cap.capitulo.n;
+  // Num trabalho que continua o da aula anterior, o tema é o que o aluno disse
+  // nessa aula e fica logo assumido: o aluno não volta a responder ao tema
+  // (Rosa, 11/out/2026: «para o aluno não ter de andar sempre a responder»).
+  const [temaDaAnterior] = useState<number | null>(() => {
+    // Vai à aula anterior; se o aluno não respondeu lá, à de antes (o mesmo trabalho).
+    let de = (triagemDoPlano(plano) as any)?.continuaDe;
+    for (let n = 0; de && n < 6; n++) {
+      for (const sel of respostasDoAlunoComAntigas(aluno.id, de))
+        for (const a of (sel?.autoavaliacoes || [])) {
+          const cap = capituloDoCampo(a.competenciaId);
+          if (cap) return cap.capitulo.n;
+        }
+      de = (triagemDoPlano(getPlanosAula().find(x => x.id === de)) as any)?.continuaDe;
     }
     return null;
   });
+  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(temaDaAnterior);
+  // No trabalho de grupo, o tema assumido também fica marcado no grupo.
+  useEffect(() => { if (temaDaAnterior != null) marcarTemaNoGrupo(plano.id, aluno.id, temaDaAnterior); }, []);
   const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano) });
   // Esteve numa atividade do mesmo dia: responde só às partes do plano da
   // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
@@ -4127,7 +4123,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     ...(presencaParcial ? [...PERGUNTAS_PRESENCA.map(q => ({ id: 'pres_' + q.id, tipo: 'presenca' as const, atiId: q.id })),
       { id: 'compromisso', tipo: 'compromisso' as const }] : []),
     // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
-    ...(regras.escolheTema && partes.conhecimentos ? [{ id: 'tema', tipo: 'tema' as const }] : []),
+    // (Sem este passo quando o tema vem da aula anterior: fica assumido.)
+    ...(regras.escolheTema && partes.conhecimentos && temaDaAnterior == null ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
     ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
@@ -4333,6 +4330,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
 
   /** Uma linha do ecrã de rever. */
   const linhasRever: { nome: string; resposta: string; nota: number | null; passo: number }[] = [];
+  if (regras.escolheTema && partes.conhecimentos && temaDaAnterior != null) {
+    const t = regras.temasPossiveis.find(x => x.capitulo.n === temaDaAnterior)?.capitulo;
+    const primeira = passos.findIndex(x => x.tipo === 'comp');
+    if (t) linhasRever.push({ nome: 'O teu tema', resposta: `${t.n}. ${t.titulo} (o mesmo da aula anterior)`, nota: null, passo: Math.max(0, primeira) });
+  }
   passos.forEach((p, i) => {
     if (p.tipo === 'tema') {
       const t = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo;
