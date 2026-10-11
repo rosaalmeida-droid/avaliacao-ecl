@@ -15,6 +15,7 @@ import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento, passar
 import { BotaoWhatsApp, mensagemInscricoes } from './AvisarWhatsApp';
 import { modulosAtivos } from '../cronograma';
 import { EventosWizard } from './EventosWizard';
+import { RegistoHorasExtra } from './RegistoHorasExtra';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   getTurmas, gravarEvento, apagarEvento, lerEventosLocais, sincronizarEventos, proximoNumeroEvento,
@@ -122,6 +123,8 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
   const [verTodos, setVerTodos] = useState(!turmaId);
   // Eventos do ecrã antigo: ficavam só neste aparelho. Continuam à vista.
   const [verAntigos, setVerAntigos] = useState(false);
+  // O registo das horas dos alunos em atividades extra, fora do horário (Rosa, 7/out/2026).
+  const [verHoras, setVerHoras] = useState(false);
   const antigos = useMemo(() => { try { return JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]').length as number; } catch { return 0; } }, []);
   const eventos = useMemo(() => lerEventosLocais<EventoECL>().filter(e => e.versao === 4)
     // Um evento gravado por uma versão anterior pode não ter todos os campos
@@ -144,6 +147,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
     </div>
   );
 
+  if (verHoras) return fundo(<RegistoHorasExtra turmaId={turmaId} onVoltar={() => setVerHoras(false)} />);
   if (verAntigos) {
     return fundo(<>
       <button onClick={() => setVerAntigos(false)} style={{ ...botao(), marginBottom: 12 }}>← Voltar aos eventos</button>
@@ -199,6 +203,12 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
           <span style={{ display: 'block', fontSize: 14, color: C.bordeauxClaro, marginTop: 2 }}>Evento externo ou interno, concurso ou outra atividade.</span>
         </span>
       </button>
+
+      {!semAvaliacao && (
+        <button onClick={() => setVerHoras(true)} style={{ ...botao(), width: '100%', marginTop: 10, justifyContent: 'flex-start', textAlign: 'left' }}>
+          ⏱ Registo de horas extra dos alunos (noite, fim de semana, fora do horário)
+        </button>
+      )}
 
       <div style={{ ...rotulo, display: 'flex', alignItems: 'center' }}>
         <span style={{ flex: 1 }}>Próximos eventos</span>
