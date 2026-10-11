@@ -16,6 +16,7 @@ import type { PlanoAula } from '../types';
 import {
   addOrUpdatePlanoAula, getPlanosAula, getFichasProducao, getAlunos, getSelecoes, contextoDoPlano,
   perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula, alunosDoPlano, atitudesNoPlanoDaTurma,
+  getPlanosAulaPorTurma,
 } from '../backend';
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
@@ -27,7 +28,7 @@ import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoD
 import { conhecimentosDaAula } from '../compatECL';
 import { sumarioDoPlano, ehAtividadeComServico } from '../sumarioAutomatico';
 import { janelaConfirmar } from './janelaConfirmar';
-import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
+import { capituloDoCampo, rotuloConteudo, proximoConteudo, indicadoresDoConteudo } from '../bancoManuais';
 import { anoDaTurma as anoPeloNomeDaTurma } from '../cronograma';
 
 const C = {
@@ -274,6 +275,13 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // próximo do manual) deixava os alunos com um só tema. Sem nada marcado,
     // escolhem entre todos; o professor marca, se quiser restringir.
     if ('modo' in parcial && escolheTema(nova) && !escolheTema(valor)) novo.conhecimentosProf = [];
+    // Passou a teórica ou mista aqui: traz o próximo conteúdo da UC, como quando se
+    // escolhe teórica ao criar o plano (Rosa, 11/out/2026). Só se ainda não houver conteúdos.
+    if ('tipo' in parcial && (nova.tipo === 'teorico' || nova.tipo === 'misto') && !escolheTema(nova) && !atual.tipoEvento
+      && !(atual.conhecimentosProf || []).length && !((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'))) {
+      const prox = proximoConteudo(getPlanosAulaPorTurma(atual.turmaId), atual.turmaId, atual.ucId);
+      if (prox) novo.conhecimentosProf = indicadoresDoConteudo(prox.ficheiro, prox.capitulo);
+    }
     // Trabalho de grupo: o professor faz os grupos no plano (Rosa, 6/out/2026).
     if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
     addOrUpdatePlanoAula(novo);

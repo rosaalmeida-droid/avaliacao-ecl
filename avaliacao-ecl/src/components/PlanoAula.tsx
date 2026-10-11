@@ -2,7 +2,7 @@ import { eventosParaPlanos } from '../eventos/modelo';
 import { getReferencialUC } from '../referencial811RA144';
 import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor } from '../backend';
 import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
-import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
+import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, obrigatoriasDaTriagem, type TipoAula, type TriagemAula } from '../contextoAula';
 import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { SumarioAula } from './SumarioAula';
 import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
@@ -75,6 +75,15 @@ const TIPOS_ATIVIDADE = [
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
   'Buffet','Evento externo','Concurso','Atividade fora da escola','Outro',
 ];
+
+/** O tipo de aula que o nome escolhido no passo 3 já diz. Escolher «Aula teórica»
+ *  mudava só o nome: o plano ficava prático (com técnicas, farda e registos) até
+ *  se mudar no passo seguinte (Rosa, 11/out/2026). «Como é a aula» pode sempre mudar. */
+const TIPO_DO_NOME: Record<string, 'pratico' | 'misto' | 'teorico' | 'atitudinal'> = {
+  'Aula prática': 'pratico', 'Aula mista': 'misto', 'Aula teórica': 'teorico', 'Dinâmica de grupo — atitudes': 'atitudinal',
+  'Almoço pedagógico': 'pratico', 'Jantar pedagógico': 'pratico', 'Brunch': 'pratico', 'Pequeno-almoço': 'pratico',
+  'Coffee break': 'pratico', 'Serviço real à carta': 'pratico', 'Catering': 'pratico', 'Buffet': 'pratico',
+};
 
 // COMP_PERM e COMP_OPC removidos — sistema de avaliação antigo substituído por OBR/SUB/APP/KNW/ATI
 
@@ -1175,8 +1184,6 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       const modulosT = modulosDaTurma(turmaId);
       const ucSelE: any = modulosT.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
       const tiradas = new Set<string>(x.compRemovidas || []);
-      if (dados.comFarda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
-      if (dados.comRegistos) tiradas.delete('OBR_02'); else tiradas.add('OBR_02');
       const alt: any = {
         data: dados.data, horaInicio: dados.horaInicio, horaFim: dados.horaFim,
         titulo: dados.titulo.trim() || x.titulo, ucId: dados.ucId, ucNome: ucSelE?.nome || x.ucNome || '',
@@ -1196,6 +1203,11 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         alt.triagemAula = { ...t0, tipo: tp, cozinham: coz, onde: coz ? 'cozinha' : (t0.onde === 'cozinha' ? 'sala' : (t0.onde || 'sala')),
           trabalho: t0.trabalho || (tp === 'teorico' ? 'turma' : 'grupos'), servico: !!t0.servico };
         if (tp === 'atitudinal') { delete alt.triagemAula.modo; delete alt.triagemAula.fases; delete alt.triagemAula.continuaDe; }
+        // A farda e os registos acompanham o novo tipo (já não há caixas no passo 3).
+        const ob = obrigatoriasDaTriagem(alt.triagemAula as TriagemAula);
+        if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
+        if (ob.registos) tiradas.delete('OBR_02'); else tiradas.add('OBR_02');
+        alt.compRemovidas = [...tiradas];
       }
       const novo = atualizarPlano(x.id, alt);
       try { onGuardado?.(); } catch (e) { console.error(e); }
@@ -1237,7 +1249,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Guardar tipoPlanAula no plano
     (p as any).tipoPlanAula = dados.tipoPlanAula;
     (p as any).tipoAtividade = dados.tipoAtividade;
-    const tiradas = [...(dados.comFarda ? [] : ['OBR_01']), ...(dados.comRegistos ? [] : ['OBR_02'])];
+    // A farda e os registos pelo tipo de aula, com a mesma regra de «Como é a aula».
+    const tpCriar = dados.tipoPlanAula as TipoAula;
+    const cozCriar = tpCriar === 'pratico' || tpCriar === 'misto';
+    const obCriar = obrigatoriasDaTriagem((ehAtividadeExtra(dados, turmaId) ? triagemDaAtividade(dados.tipoAtividade)
+      : { tipo: tpCriar, cozinham: cozCriar, onde: cozCriar ? 'cozinha' : 'sala', trabalho: 'grupos', servico: false }) as TriagemAula);
+    const tiradas = [...(obCriar.farda ? [] : ['OBR_01']), ...(obCriar.registos ? [] : ['OBR_02'])];
     if (tiradas.length) (p as any).compRemovidas = tiradas;
     // O professor já disse o tipo de aula: fica como triagem (o resto pode
     // mudar no plano). Numa teórica ou mista, o plano traz já o próximo
@@ -1539,6 +1556,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             const novo = e.target.value;
             if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo), modoParticipacao: tipoEventoDe(novo) ? 'inscricao' : 'turma' }));
             setD('tipoAtividade', novo);
+            if (TIPO_DO_NOME[novo]) setD('tipoPlanAula', TIPO_DO_NOME[novo]);
           }}>
             {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Atividade extra (visita, feira, outra)' : t}</option>)}
           </select>
@@ -1572,16 +1590,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               {' '}Podes mudar as atitudes no plano.
             </div>
           )}
-          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {([['comFarda', 'Farda e higiene pessoal'], ['comRegistos', 'Registos (KitchenFlow / HACCP)']] as const).map(([k, t]) => (
-              <label key={k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 10,
-                border: '1px solid rgba(26,23,20,0.12)', fontSize: 13.5, cursor: 'pointer', background: (dados as any)[k] ? '#fff' : '#fdf0e6' }}>
-                <input type="checkbox" checked={(dados as any)[k]} onChange={e => setDados(p => ({ ...p, [k]: e.target.checked }))} />
-                <span><b>{t}</b><br /><span style={{ color: 'rgba(26,23,20,0.6)' }}>
-                  {(dados as any)[k] ? 'Obrigatório — conta nesta aula' : 'Fora desta aula — o aluno não é confrontado com isto'}</span></span>
-              </label>
-            ))}
-          </div>
+          {/* A farda e os registos seguem o tipo de aula (prática e mista: sim; teórica:
+              não; atitudes: no passo seguinte). As exceções mudam-se em «Como é a
+              aula» (Rosa, 11/out/2026: perguntava-se duas vezes). */}
           {/* As faltas e os atrasos contam? Antes só se perguntava nos eventos;
               numa aula que já passou aparecia uma janela escondida ao guardar
               (Rosa, out/2026). */}
@@ -1686,8 +1697,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             ['Unidade', (() => { const m: any = modulosDaTurma(turmaId).find(x => x.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId); return dados.ucId ? `${dados.ucId}${m?.nome ? ' — ' + m.nome : ''}` : '— (falta escolher)'; })(), 2],
             [ehAtividadeExtra(dados, turmaId) ? 'Atividade' : 'Aula', tipoEventoDe(dados.tipoAtividade) ? nomeDoTipoAtividade(dados.tipoAtividade)
               : `${({ pratico: 'Prática', misto: 'Mista', teorico: 'Teórica', atitudinal: 'Atitudinal' } as Record<string, string>)[dados.tipoPlanAula]} · ${dados.tipoAtividade}`, 3],
-            ['Farda', dados.comFarda ? 'avalia-se' : 'não se avalia', 3],
-            ['Registos (HACCP)', dados.comRegistos ? 'avaliam-se' : 'não se avaliam', 3],
+            ['Farda', (alvo ? !((alvo as any).compRemovidas || []).includes('OBR_01') : dados.comFarda) ? 'avalia-se' : 'não se avalia', 4],
+            ['Registos (HACCP)', (alvo ? !((alvo as any).compRemovidas || []).includes('OBR_02') : dados.comRegistos) ? 'avaliam-se' : 'não se avaliam', 4],
             ['Faltas e atrasos', (dados as any).faltasContam ? 'contam' : 'não contam', 3],
             ...(tipoEventoDe(dados.tipoAtividade) ? [['Participam', dados.modoParticipacao === 'inscricao' ? 'quem se inscrever' : 'a turma toda', 3]] : []),
             ...(alvo && !tipoEventoDe(dados.tipoAtividade) ? (() => {
