@@ -497,9 +497,11 @@ export function notaDaUCComoNaPauta(alunoId: string, turmaId: string, ucId: stri
  * Na pauta, só a nota final é inteira; depois de publicada, conta a publicada.
  * As regras (negativa, recuperação) continuam com notaDaUCComoNaPauta.
  */
-export function notaDaUCComDecimas(alunoId: string, turmaId: string, ucId: string): number | null {
+export function notaDaUCComDecimas(alunoId: string, turmaId: string, ucId: string,
+  /** A conta com as notas de hoje, mesmo depois de publicada (para mostrar a diferença). */
+  ignorarPublicada = false): number | null {
   try {
-    const pub = getNotaFinalPublicadaUC(alunoId, ucId);
+    const pub = ignorarPublicada ? null : getNotaFinalPublicadaUC(alunoId, ucId);
     if (pub) return pub.nota;
     const produtos = produtosDaUC(turmaId, ucId);
     if (produtos.length) {

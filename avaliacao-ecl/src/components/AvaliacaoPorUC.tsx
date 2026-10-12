@@ -156,8 +156,15 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         // (Auditoria 5/out/2026) Sempre a conta da pauta, já durante a UC:
         // as aulas em falta ou sem autoavaliação contam 0.
         : !alunoId ? (ucJaFechada(turmaId, ucAlvo) ? notaDaPautaUC(aluno.id, turmaId, ucAlvo)
-          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo), comDecimas: !getNotaFinalPublicadaUC(aluno.id, ucAlvo) } as any)
+          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo), comDecimas: !getNotaFinalPublicadaUC(aluno.id, ucAlvo),
+              atribuida: !!getNotaFinalPublicadaUC(aluno.id, ucAlvo) } as any)
         : getPropostaFinalUC(aluno.id, ucAlvo) ? notaFinalPublicadaComoPauta(aluno.id, ucAlvo) : null;
+      // (Rosa, 12/out/2026: «altero a autoavaliação e a nota não muda») A nota
+      // publicada só muda quando se publica outra vez. O professor vê a de hoje ao lado.
+      if (pauta && !alunoId && ucAlvo && getNotaFinalPublicadaUC(aluno.id, ucAlvo)) {
+        const hoje = notaDaUCComDecimas(aluno.id, turmaId, ucAlvo, true);
+        if (hoje !== null && Math.round(hoje) !== Math.round(Number(pauta.nota))) (pauta as any).notaDeHoje = hoje;
+      }
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
@@ -436,7 +443,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                     {emRecuperacao > 0 && <span style={{ color: '#c0392b', marginLeft: 6 }}>· {emRecuperacao} em recuperação</span>}
                   </div>
                 </div>
-                {mediaGeral > 0 && (
+                {(mediaGeral > 0 || (pauta as any)?.notaDeHoje != null) && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta && !(pauta as any).comDecimas ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
@@ -450,6 +457,12 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                         color: pauta.resultado === 'Módulo em atraso' ? '#c0392b' : 'var(--sage)' }}
                         title={`Da pauta oficial: Competente ${pauta.cp} · TOTAL ${String(Math.round(pauta.total * 100) / 100).replace('.', ',')} · ${pauta.atribuida ? 'classificação atribuída pelo professor' : 'sugestão da pauta'}`}>
                         {pauta.resultado}{pauta.atribuida ? '' : ' · sugestão'}
+                      </div>
+                    )}
+                    {(pauta as any)?.notaDeHoje != null && (
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#8a4a12', marginTop: 2, maxWidth: 110, lineHeight: 1.3 }}
+                        title="A nota publicada não muda sozinha. Para a atualizar: Pauta da UC → «Usar as notas de hoje» → «Atualizar as notas publicadas».">
+                        publicada · hoje daria {String((pauta as any).notaDeHoje).replace('.', ',')}
                       </div>
                     )}
                   </div>

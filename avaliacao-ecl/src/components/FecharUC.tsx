@@ -91,14 +91,26 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
     const bonus = provisoria ? 0 : (bonusDaPauta(l.alunoId, notaDoCompetente(l, produtos) ?? 0, turmaId, ucId)?.bonus || 0);
     const escrita = classifEscrita[l.alunoId];
     const n = escrita !== undefined && escrita !== '' ? Number(escrita.replace(',', '.')) : NaN;
-    const nota = !isNaN(n) && n >= 0 && n <= 20 ? Math.round(n) : publicada ? publicada.nota : sugestao;
+    const escritaValida = !isNaN(n) && n >= 0 && n <= 20;
+    const nota = escritaValida ? Math.round(n) : publicada ? publicada.nota : sugestao;
     const erro = erroClassificacao(nota, c.cp, bonus);
-    return [l.alunoId, { c, sugestao, nota, erro, publicada, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
+    // (Rosa, 12/out/2026: «altero a autoavaliação e a nota não muda») A nota
+    // publicada fica até se publicar outra vez. Mostra-se quando as notas de
+    // hoje já dão outra, para o professor decidir.
+    const mudou = !escritaValida && !!publicada && sugestao !== null && publicada.nota !== sugestao;
+    return [l.alunoId, { c, sugestao, nota, erro, publicada, mudou, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
   })), [linhas, produtos, totalAtividades, classifEscrita]);
   const classificacoes = Object.fromEntries(escolhidas.map(l => [l.alunoId, contas[l.alunoId]?.nota ?? null]));
   const comAlinea = escolhidas.filter(l => String(classificacaoComNota(contas[l.alunoId].nota)).endsWith('a)'));
   const negativas = comAlinea.length;
   const naoCorrespondem = escolhidas.filter(l => contas[l.alunoId].avisos.length > 0);
+  const mudaram = escolhidas.filter(l => contas[l.alunoId].mudou);
+  const usarNotaDeHoje = (ids: string[]) => setClassifEscrita(m => {
+    const t = { ...m };
+    ids.forEach(id => { const sug = contas[id]?.sugestao; if (sug !== null && sug !== undefined) t[id] = String(sug); });
+    return t;
+  });
+  const diaCurto = (iso?: string) => iso ? String(iso).slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '';
   const foraDaFaixa = escolhidas.filter(l => contas[l.alunoId].erro);
   const [versaoPub, setVersaoPub] = useState(0);
   void versaoPub;
@@ -241,6 +253,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             [`${produtos.length} produto${produtos.length === 1 ? '' : 's'} avaliado${produtos.length === 1 ? '' : 's'}`, '#f7f5f2'],
             [`${negativas} com negativa a)`, negativas ? '#fdf0ef' : '#f7f5f2'],
             ...(naoCorrespondem.length ? [[`${naoCorrespondem.length} classificaç${naoCorrespondem.length === 1 ? 'ão' : 'ões'} a rever`, '#fdf0ef']] : []),
+            ...(mudaram.length ? [[`${mudaram.length} com a nota publicada diferente da de hoje`, '#fdf0e6']] : []),
             [`${semProposta.length} sem proposta do aluno`, semProposta.length ? '#fdf0e6' : '#eef4eb'],
           ].map(([txt, cor]) => (
             <span key={txt} style={{ padding: '6px 12px', borderRadius: 20, background: cor,
@@ -398,7 +411,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             </thead>
             <tbody>
               {escolhidas.map(l => {
-                const { c, sugestao, nota, avisos } = contas[l.alunoId];
+                const { c, sugestao, nota, avisos, publicada, mudou } = contas[l.alunoId];
                 const cel = classificacaoComNota(nota);
                 const neg = String(cel).endsWith('a)');
                 return (
@@ -417,7 +430,8 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
                       <td style={{ ...td, background: '#ccffff', fontWeight: 700, whiteSpace: 'nowrap' }}>{c.resultado}</td>
                       <td style={td}>{l.proposta ?? '—'}</td>
                       <td style={{ ...td, whiteSpace: 'nowrap', background: avisos.length ? '#fdf0ef' : undefined }} onClick={e => e.stopPropagation()}>
-                        <input value={classifEscrita[l.alunoId] ?? (sugestao ?? '')} inputMode="numeric"
+                        {/* A caixa mostra a nota que vai ser publicada (antes mostrava a sugestão e publicava a antiga). */}
+                        <input value={classifEscrita[l.alunoId] ?? (nota ?? '')} inputMode="numeric"
                           onChange={e => setClassifEscrita(m => ({ ...m, [l.alunoId]: e.target.value }))}
                           title={sugestao !== null ? `Sugestão: ${sugestao}` : ''}
                           style={{ width: 38, padding: '4px 3px', textAlign: 'center', fontWeight: 800, fontSize: 14,
@@ -427,6 +441,19 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
                         {avisos.length > 0 && <span title={avisos.join(' ')} style={{ marginLeft: 3, color: '#c0392b', fontWeight: 900 }}>!</span>}
                       </td>
                     </tr>
+                    {mudou && publicada && (
+                      <tr>
+                        <td colSpan={2 + nProd + 9} style={{ ...td, textAlign: 'left', background: '#fdf0e6', color: '#8a4a12', fontSize: 12.5, padding: '5px 10px' }}>
+                          {l.numero}. {l.nome}: publicada{publicada.publicadaEm ? ` a ${diaCurto(publicada.publicadaEm)}` : ''} com {publicada.nota}.
+                          Com as notas validadas até hoje, a sugestão é {sugestao}.
+                          <button onClick={() => usarNotaDeHoje([l.alunoId])}
+                            style={{ marginLeft: 8, border: 'none', background: 'transparent', color: '#8a4a12', fontWeight: 800,
+                              cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', fontSize: 12.5 }}>
+                            Usar {sugestao}
+                          </button>
+                        </td>
+                      </tr>
+                    )}
                     {avisos.length > 0 && (
                       <tr>
                         <td colSpan={2 + nProd + 9} style={{ ...td, textAlign: 'left', background: '#fdf0ef', color: '#8e2418', fontSize: 12.5, padding: '5px 10px' }}>
@@ -522,6 +549,20 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
               Cada aluno vê a sua nota final da UC (a CLASSIF. ATRIBUÍDA) depois de a publicares.
               Se alterar uma nota na pauta, publique outra vez e o aluno passa a ver a nota atualizada.
             </div>
+            {mudaram.length > 0 && (
+              <div style={{ margin: '0 0 10px', padding: '10px 12px', borderRadius: 10, background: '#fdf0e6', border: '1px solid #e0b27a',
+                fontSize: 13.5, color: '#8a4a12', lineHeight: 1.5 }}>
+                <b>{mudaram.length} {mudaram.length === 1 ? 'aluno tem' : 'alunos têm'} a nota publicada diferente da de hoje</b>
+                {' '}({mudaram.map(l => `${l.numero}. ${String(l.nome).split(' ')[0]} ${contas[l.alunoId].publicada?.nota} → ${contas[l.alunoId].sugestao}`).join(' · ')}).
+                {' '}A nota publicada não muda sozinha quando se altera uma validação. Para a mudar: «Usar as notas de hoje» e depois «Atualizar as notas publicadas».
+                <div style={{ marginTop: 8 }}>
+                  <button onClick={() => usarNotaDeHoje(mudaram.map(l => l.alunoId))}
+                    style={{ ...botao(false), flex: '0 1 auto', padding: '9px 14px' }}>
+                    Usar as notas de hoje ({mudaram.length})
+                  </button>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => { if (publicarNotas()) alert('Notas finais publicadas. Os alunos já as veem na aplicação.'); }}
                 style={{ ...botao(true), flex: '0 1 auto', padding: '12px 18px' }}>
