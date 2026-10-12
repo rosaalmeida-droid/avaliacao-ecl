@@ -385,6 +385,19 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           </div>
         </div>
 
+        {/* A farda conta? Pergunta-se sempre, logo a seguir ao tipo (Rosa, 12/out/2026:
+            numa aula prática de arrumação a farda não foi pedida, e contou). */}
+        {definida && (
+          <Q n={n++} titulo="A farda conta nesta aula?"
+            ajuda={valor.farda === undefined
+              ? 'Responda antes de avançar. Se não pediu aos alunos para virem de farda, escolha «Não»: ninguém é avaliado nem perde nada por isso.'
+              : valor.farda ? 'Os alunos dizem à entrada se têm a farda completa, e a farda entra na nota da aula.'
+              : 'Ninguém é avaliado na farda nesta aula, nem perde nada por não a ter.'}>
+            <Opcao ativo={valor.farda === true} onClick={() => gravar({ farda: true })}>Sim, os alunos têm de vir de farda</Opcao>
+            <Opcao ativo={valor.farda === false} onClick={() => gravar({ farda: false })}>Não, a farda não foi pedida</Opcao>
+          </Q>
+        )}
+
         {/* 3.º ano: a maior parte das aulas é para a PAP (Rosa, out/2026). Vai para o sumário. */}
         {definida && ehPAP && (
           <Q n={n++} titulo="É uma aula de PAP (Prova de Aptidão Profissional)?" ajuda="Pode escolher mais do que um. Vai para o sumário.">
@@ -431,10 +444,6 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           <Q n={n++} titulo="Onde é?">
             <Opcao ativo={valor.onde !== 'fora'} onClick={() => gravar({ onde: 'sala' })}>Na escola</Opcao>
             <Opcao ativo={valor.onde === 'fora'} onClick={() => gravar({ onde: 'fora' })}>Fora da escola (visita, evento)</Opcao>
-          </Q>
-          <Q n={n++} titulo="Avalia-se a farda?">
-            <Opcao ativo={ob.farda} onClick={() => gravar({ farda: true })}>Sim</Opcao>
-            <Opcao ativo={!ob.farda} onClick={() => gravar({ farda: false })}>Não</Opcao>
           </Q>
         </>)}
 

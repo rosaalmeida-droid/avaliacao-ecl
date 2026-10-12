@@ -2,7 +2,7 @@ import { eventosParaPlanos } from '../eventos/modelo';
 import { getReferencialUC } from '../referencial811RA144';
 import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor } from '../backend';
 import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
-import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, obrigatoriasDaTriagem, type TipoAula, type TriagemAula } from '../contextoAula';
+import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, obrigatoriasDaTriagem, fardaRespondida, type TipoAula, type TriagemAula } from '../contextoAula';
 import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { SumarioAula } from './SumarioAula';
 import { ConhecimentosDoProfessor, DuasPartesDaAulaMista, ehAulaMista } from './ConhecimentosDoProfessor';
@@ -1657,9 +1657,13 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           <PassoComoEAula plano={alvo} onPlanoActualizado={aoMudarPlano} />
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn btn-secondary" onClick={() => setPasso(3)} style={{ flex: 1 }}>← Anterior</button>
-            <button className="btn btn-primary" disabled={!triagemDoPlano(alvo)} onClick={() => setPasso(5)}
-              style={{ flex: 2, fontSize: 15, padding: '13px', opacity: triagemDoPlano(alvo) ? 1 : 0.5 }}>Seguinte →</button>
+            {/* Só avança com o tipo e a resposta à «A farda conta?» (Rosa, 12/out/2026). */}
+            <button className="btn btn-primary" disabled={!fardaRespondida(triagemDoPlano(alvo))} onClick={() => setPasso(5)}
+              style={{ flex: 2, fontSize: 15, padding: '13px', opacity: fardaRespondida(triagemDoPlano(alvo)) ? 1 : 0.5 }}>Seguinte →</button>
           </div>
+          {triagemDoPlano(alvo) && !fardaRespondida(triagemDoPlano(alvo)) && (
+            <div style={{ fontSize: 13.5, color: '#8e2418', fontWeight: 700, marginTop: 6 }}>Falta dizer se a farda conta nesta aula.</div>
+          )}
           {/* O plano já ficou gravado no passo 3: pode sair e acabar depois (Rosa, out/2026). */}
           <button type="button" onClick={onVoltar} style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid rgba(26,23,20,0.18)',
             background: '#fff', color: 'rgba(26,23,20,0.7)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

@@ -7,7 +7,7 @@
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
-import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
+import { contextoDaAula, pesoNoModulo, pedeFardaEHigiene, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
 import { planoNumDiaSemAulas, almocoNoDia } from './horarios';
@@ -4742,8 +4742,9 @@ export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucI
     if (aberturaTardia(p.id) && !decisao) return;
     if (!pres || pres.presente === false) { faltas++; return; }
     if (atrasoConta(pres, p.id)) atrasos++;
-    // Aula atitudinal não tem farda — não desconta.
-    if (!pres.fardamentoOk && (p as any).tipoPlanAula !== 'atitudinal') fardaIncompleta++;
+    // Aula atitudinal não tem farda — não desconta. Nem a aula em que o
+    // professor disse que a farda não conta (Rosa, 12/out/2026).
+    if (!pres.fardamentoOk && (p as any).tipoPlanAula !== 'atitudinal' && pedeFardaEHigiene(p)) fardaIncompleta++;
   });
 
   const pontualidade = Math.max(0, 0.5 - atrasos * DESCONTO_POR_ATRASO);
@@ -7661,7 +7662,7 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const ids = new Set(planos.map(p => p.id));
   // A farda só tira o bónus se a atividade conta faltas; senão conta só como
   // atitude (apresentação pessoal), escolha do professor ao criar a atividade.
-  const idsOficiais = new Set(planos.filter((p: any) => p.contaAssiduidade !== false).map(p => p.id));
+  const idsOficiais = new Set(planos.filter((p: any) => p.contaAssiduidade !== false && pedeFardaEHigiene(p)).map(p => p.id));
   if (getPresencas().some(r => r.alunoId === alunoId && idsOficiais.has(r.planoAulaId) && r.fardamentoOk === false))
     return { conta: false, motivo: 'Foi sem farda.', fator: 0 };
   const val = getValidacoes().filter(v => v.alunoId === alunoId && ids.has(v.planoAulaId || ''))
@@ -10808,7 +10809,8 @@ export function faltasDaAulaParaESchooling(p: PlanoAula): Pick<AulaParaESchoolin
   const pres = getPresencas().filter(x => x.planoAulaId === p.id);
   const aberta = !!getSessaoAula(p.id)?.abertaEm;
   const faltas: AlunoESch[] = [], atrasos: AlunoESch[] = [], material: AlunoESch[] = [];
-  const exigeFarda = (p as any).exigeFarda !== false && (p as any).tipoPlanAula !== 'atitudinal' && (p as any).tipoPlanAula !== 'teorico';
+  // A farda em falta só vai para a eSchooling numa aula em que a farda conta.
+  const exigeFarda = (p as any).exigeFarda !== false && (p as any).tipoPlanAula !== 'atitudinal' && (p as any).tipoPlanAula !== 'teorico' && pedeFardaEHigiene(p);
   let decididas = 0;
   for (const a of alunos) {
     const quem = { alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}` };

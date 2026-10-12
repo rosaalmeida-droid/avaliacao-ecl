@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.0';
+var VERSAO = 'ECL único v27.1';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2340,7 +2340,9 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       var faltouX = !!x && (decX === 'falta_presenca' || (!decX && (x.presente === false || x.presente === 'false') && !tardiaX));
       if (faltouX) casos.push('Faltou');
       if (atrasoContaAqui(x, p)) casos.push(decX === 'falta_atraso' ? 'Falta de atraso (declarada pelo professor)' : 'Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
-      if (x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
+      // (v27.1) Só numa aula em que a farda conta: o professor diz no plano (Rosa, 12/out/2026).
+      var fardaConta = (p.compRemovidas || []).indexOf('OBR_01') < 0;
+      if (fardaConta && x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
       if (p.tipoEvento) casos.push(atvContaComoAula_(p, d.planos) ? 'Atividade obrigatória fora das horas da aula: dá bónus (até +0,5); quem faltou perde 0,5. ' + transpostaDe_(p, d.planos) : 'Atividade extra: conta como bónus');
       if (s && p.pedirDeNovoEm && s.versaoPlano && String(s.versaoPlano) < String(p.pedirDeNovoEm)) casos.push('Respondeu à versão antiga do plano');
       auto.forEach(function (q) { if (q.nivel === 'nop') casos.push('Sem oportunidade: ' + nomeC(q.competenciaId)); });

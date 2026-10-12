@@ -3474,7 +3474,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Como é a aula (o professor diz no plano): só se pergunta o que faz
   // sentido hoje. As perguntas que não se fazem ficam «não se aplica».
   const ctxAula = contextoDoPlano(plano);
-  const fardaIncompletaRegisto = getHistoricoAvaliacoes().some((r: any) =>
+  const fardaIncompletaRegisto = pedeFardaEHigiene(plano) && getHistoricoAvaliacoes().some((r: any) =>
     r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01' && Number(r.nota) < 5);
   // Trabalho sobre o manual: o tema (conteúdo) que o aluno escolheu.
   // Num trabalho que continua o da aula anterior, o tema é o que o aluno disse

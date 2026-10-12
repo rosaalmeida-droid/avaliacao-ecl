@@ -420,7 +420,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     }
     return { competenciaId: 'OBR_01', nivel: 'professor', nota: 5, semDeclaracao: true };
   })();
-  const autoDoAluno: any[] = [...(selecao.autoavaliacoes || []), ...(fardaSintetica ? [fardaSintetica] : [])];
+  // Numa aula em que a farda não conta (o professor disse no plano), a farda da
+  // entrada não aparece nem pesa: não tira as técnicas, nem pede tolerância,
+  // mesmo que o aluno a tenha declarado antes da mudança (Rosa, 12/out/2026).
+  const fardaContaAqui = (() => { const pl: any = getPlanosAula().find(p => p.id === selecao.planoAulaId); return !pl || pedeFardaEHigiene(pl); })();
+  const autoDoAluno: any[] = [...(selecao.autoavaliacoes || []).filter((a: any) => fardaContaAqui || a.competenciaId !== 'OBR_01'),
+    ...(fardaSintetica ? [fardaSintetica] : [])];
   const [notasProf, setNotasProf] = useState<Record<string, number>>(() => {
     const inicial: Record<string, number> = {};
     autoDoAluno.forEach((auto: any) => {
