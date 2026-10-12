@@ -85,3 +85,9 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 43. **Numa atividade cujas atitudes ficam no plano da turma, o «+1» das atitudes dos anos anteriores também fica nesse plano** (não aparece na validação da atividade). A mensagem de falta diz em que competências falta a nota do professor.
 44. **A atividade ligada a uma aula que entretanto foi arquivada passa para a aula desse dia que está em uso.** E nunca aparece o n.º interno do plano (157…): mesmo um plano arquivado diz a posição na UC.
 45. **O professor só valida o que se perguntou ao aluno.** Quando o aluno não respondeu às atitudes e aos 5 C (atividade cujas atitudes ficam no plano da turma, ou o professor tirou as atitudes), a validação não mostra as perguntas CL, CR e CO («o aluno diz que não aconteceu») nem o «+1» das atitudes. A resposta do aluno passa a dizer «não se perguntou», distinto de «não aconteceu».
+
+## Perguntas e notas (12/out/2026)
+50. **«Não aconteceu» no Consciente ou no Criativo: a pergunta seguinte é a que o aluno respondeu há mais tempo** (ou nunca respondeu). Antes era sempre a mesma («Vieste preparado?», «Usaste o que sabias?»), aula após aula.
+51. **A pergunta do Consciente e do Criativo de cada aula fica fixada na 1.ª gravação do plano.** É a mesma em todos os telemóveis e não muda quando se criam ou apagam outros planos da turma (antes, na mesma aula, uns alunos tinham uma pergunta e outros outra). O professor pode trocá-la no plano, como antes.
+52. **A nota «se a unidade acabasse hoje» não conta 0 nas aulas à espera da validação do professor.** Essas aulas aparecem em «Como chegaste a esta nota» como «à espera da validação». As faltas e as aulas sem resposta contam 0. A pauta oficial não muda.
+53. **Numa aula prática ou mista sem registos de higiene e segurança alimentar** (por exemplo, só arrumação do material), o professor responde «Não» em «Como é a aula»: os registos do KitchenFlow não se pedem nem contam.

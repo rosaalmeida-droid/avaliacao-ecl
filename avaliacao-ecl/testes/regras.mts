@@ -21,6 +21,8 @@ const ev = await import('../src/eventosAvaliacao');
 const c = await import('../src/contextoAula');
 const rp = await import('../src/rotuloPlano');
 const pa = await import('../src/perguntas_atitudes');
+const t5 = await import('../src/triagem5c');
+const pu = await import('../src/pautaUC');
 
 let falhas = 0, total = 0;
 function regra(nome: string, fn: () => void) {
@@ -175,6 +177,50 @@ regra('35a. O plano conta de 1 dentro da UC da turma; o n.º interno não aparec
   const r = rp.rotuloDoPlano(b.getPlanosAula().find(x => x.id === 'b'));
   igual(r.includes('157'), false, 'sem o n.º interno:');
   igual(/Plano de Aula 2\b/.test(r), true, 'é o 2.º da UC1 (' + r + '):');
+});
+
+regra('50. «Não aconteceu» no Consciente: a pergunta seguinte não é sempre a mesma', () => {
+  const primeira = t5.perguntaSeguinte('co', ['co04'], true, []).id;
+  const segunda = t5.perguntaSeguinte('co', ['co04'], true, [primeira]).id;
+  const terceira = t5.perguntaSeguinte('co', ['co04'], true, [primeira, segunda]).id;
+  igual(new Set([primeira, segunda, terceira]).size, 3, `três aulas, três perguntas (${primeira}, ${segunda}, ${terceira}):`);
+  igual(t5.perguntaSeguinte('co', ['co04'], true, [primeira, segunda, terceira]).id, primeira, 'depois volta à mais antiga:');
+  igual(t5.SO_AULA_PRATICA.has(t5.perguntaSeguinte('cr', ['cr03'], true, []).id), false, 'numa teórica, nada sobre a cozinha:');
+  igual(!!t5.perguntaSeguinte('cr', ['cr03'], true, []).semOcasiao, false, 'a seguinte não tem «não aconteceu»:');
+});
+
+regra('51. A pergunta do Consciente e do Criativo fica fixada na 1.ª gravação do plano', () => {
+  const p = (id: string, data: string) => ({ id, turmaId: 't', ucId: 'UC1', data, estado: 'publicado', tipoPlanAula: 'pratico', titulo: 'Aula' } as any);
+  b.addOrUpdatePlanoAula(p('p3', '2026-10-03'));
+  const antes = { co: b.perguntaCODaAula('p3'), cr: b.perguntaCRDaAula('p3') };
+  igual(b.getPlanosAula().find(x => x.id === 'p3')?.rotacao5C, antes, 'fica guardada no plano:');
+  // Criam-se aulas mais antigas: a posição muda, a pergunta não.
+  b.addOrUpdatePlanoAula(p('p1', '2026-10-01'));
+  b.addOrUpdatePlanoAula(p('p2', '2026-10-02'));
+  igual({ co: b.perguntaCODaAula('p3'), cr: b.perguntaCRDaAula('p3') }, antes, 'a mesma depois de outros planos:');
+  igual(b.perguntaCODaAula('p1') === b.perguntaCODaAula('p2') && b.perguntaCRDaAula('p1') === b.perguntaCRDaAula('p2'), false, 'aulas seguidas com perguntas diferentes:');
+  // O professor escolhe outra: manda a dele.
+  b.addOrUpdatePlanoAula({ ...b.getPlanosAula().find(x => x.id === 'p3'), perguntaCO: 'co16' } as any);
+  igual(b.perguntaCODaAula('p3'), 'co16', 'a do professor:');
+  // Uma aula prática com uma pergunta só da cozinha que passa a teórica: fixa-se outra.
+  const pr: any = { ...p('p9', '2026-10-09'), rotacao5C: { co: 'co08', cr: 'cr01' } };
+  b.addOrUpdatePlanoAula({ ...pr, tipoPlanAula: 'teorico', triagemAula: { tipo: 'teorico', cozinham: false, onde: 'sala', trabalho: 'individual', servico: false } });
+  const fixa = b.getPlanosAula().find(x => x.id === 'p9')?.rotacao5C;
+  igual(t5.SO_AULA_PRATICA.has(fixa!.co) || t5.SO_AULA_PRATICA.has(fixa!.cr), false, 'na teórica, nada sobre a cozinha:');
+});
+
+regra('52. A nota de hoje não conta 0 nas aulas à espera da validação', () => {
+  const produtos: any[] = [{ peso: 50, planosIds: ['a'] }, { peso: 25, planosIds: ['b'] }, { peso: 25, planosIds: ['c'] }];
+  const l: any = { produtos: [16, null, 0] };
+  igual(pu.notaDoCompetenteDeHoje(l, produtos), 10.7, 'a aula por validar fica de fora, a falta conta 0:');
+  igual(pu.notaDoCompetente(l, produtos), 8, 'a pauta oficial não muda:');
+});
+
+regra('53. Aula prática sem registos de higiene: os registos do KitchenFlow saem', () => {
+  const t: any = { tipo: 'pratico', cozinham: true, onde: 'cozinha', trabalho: 'grupos', servico: false };
+  igual(c.obrigatoriasDaTriagem(t), { farda: true, registos: true }, 'sem resposta, há registos:');
+  igual(c.obrigatoriasDaTriagem({ ...t, registos: false }), { farda: true, registos: false }, 'com «Não»:');
+  igual(c.obrigatoriasDaTriagem({ ...t, tipo: 'teorico', registos: true }).registos, false, 'na teórica nunca:');
 });
 
 // 4. Um plano eliminado noutro aparelho: neste, as notas dele também saem.

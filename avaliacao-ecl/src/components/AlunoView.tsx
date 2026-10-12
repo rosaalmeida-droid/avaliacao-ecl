@@ -78,7 +78,7 @@ import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './Pla
 import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
@@ -4970,7 +4970,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         const escolher = (v: number | 'sem') => {
           if (v === 'sem') {
             const vistas = [...antes, idDe(q.chave, triagem)];
-            const nova = perguntaSeguinte(q.chave, vistas, !ctxAula.producao);
+            const nova = perguntaSeguinte(q.chave, vistas, !ctxAula.producao, perguntas5CDoAluno(aluno.id, q.chave, plano.id));
             setTriagem(t => ({ ...t, [q.chave]: null, [campoId]: nova.id, semAntes: { ...(t.semAntes || {}), [q.chave]: vistas } }));
             return;
           }

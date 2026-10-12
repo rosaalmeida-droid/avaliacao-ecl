@@ -453,11 +453,16 @@ export const CL_AULA: PerguntaCO = {
  * sempre (não tem «não aconteceu»), do mesmo C — assim há sempre resposta
  * e o professor não tem de responder por ele (Rosa, set/2026).
  */
-export function perguntaSeguinte(chave: ChaveTriagem, jaVistas: string[], soTeoria = false): PerguntaTriagem & { id: string } {
+export function perguntaSeguinte(chave: ChaveTriagem, jaVistas: string[], soTeoria = false, jaRespondidas: string[] = []): PerguntaTriagem & { id: string } {
   if (chave === 'cl') return soTeoria ? CL_AULA : CL_SEMPRE;
   const banco = BANCOS[chave].banco.filter(q => !jaVistas.includes(q.id) && (!soTeoria || !SO_AULA_PRATICA.has(q.id)));
   const sempre = banco.filter(q => !q.semOcasiao);
-  const q = sempre[jaVistas.length % Math.max(1, sempre.length)] || banco[0];
+  // A que o aluno nunca respondeu, ou respondeu há mais tempo (jaRespondidas vai
+  // da aula mais antiga para a mais recente). Antes era sempre a 2.ª da lista:
+  // «Vieste preparado?» e «Usaste o que sabias?» saíam aula após aula a quem
+  // dizia «não aconteceu» (Rosa, 12/out/2026: «perguntas muito repetitivas»).
+  const vez = (id: string) => jaRespondidas.lastIndexOf(id);
+  const q = sempre.reduce<typeof sempre[number] | undefined>((m, x) => !m || vez(x.id) < vez(m.id) ? x : m, undefined) || banco[0];
   // Por segurança: a seguinte nunca tem «não aconteceu».
   return { ...q, semOcasiao: '', semOcasiaoSimples: '' };
 }

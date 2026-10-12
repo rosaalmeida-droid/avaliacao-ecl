@@ -6,7 +6,7 @@
 
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
-import { bancoDe, perguntaDoCiclo } from './triagem5c';
+import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, pedeFardaEHigiene, fardaIncompletaNaPresenca, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
@@ -2741,6 +2741,17 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   // professor não chegavam aos alunos (Rosa, set/2026).
   p = { ...p, atualizadoEm: new Date().toISOString() } as PlanoAula;
   const all = getPlanosAula();
+  // A pergunta da rotação do Consciente e do Criativo fica fixada já, na 1.ª
+  // gravação (perguntaDaAula): igual em todos os aparelhos e para sempre.
+  // Volta a fixar-se se a aula passou a teórica e a fixada era só da cozinha.
+  try {
+    const soDaCozinha = (id?: string) => !!id && SO_AULA_PRATICA.has(id);
+    const passouATeorica = () => (soDaCozinha(p.rotacao5C?.co) || soDaCozinha(p.rotacao5C?.cr)) && !contextoDoPlano(p).producao;
+    if (!(p as any).tipoEvento && (!p.rotacao5C || passouATeorica())) {
+      const comEste = [...all.filter(x => x.id !== p.id), p];
+      p = { ...p, rotacao5C: { co: perguntaDaRotacao('co', p, comEste), cr: perguntaDaRotacao('cr', p, comEste) } } as PlanoAula;
+    }
+  } catch (e) { console.error(e); }
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
@@ -9864,12 +9875,43 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
   const escolhida = plano?.[chave === 'co' ? 'perguntaCO' : 'perguntaCR'];
   if (escolhida && bancoDe(chave).banco.some(q => q.id === escolhida)) return escolhida;
   if (!plano) return perguntaDoCiclo(chave, 0).id;
+  // A da rotação, fixada na 1.ª gravação do plano. Antes contava-se de novo em
+  // cada aparelho, pelos planos que lá estavam: na mesma aula, uns alunos
+  // tinham uma pergunta e outros outra (3.º ACP, 25/9, 1/10, 10/10).
+  const fixa = plano.rotacao5C?.[chave];
+  const soTeoria = !contextoDoPlano(plano).producao;
+  if (fixa && bancoDe(chave).banco.some(q => q.id === fixa) && !(soTeoria && SO_AULA_PRATICA.has(fixa))) return fixa;
+  return perguntaDaRotacao(chave, plano, getPlanosAula());
+}
+/** A pergunta da rotação pela posição da aula entre as aulas da turma (os
+ *  eventos não contam), da mais antiga para a mais recente. */
+function perguntaDaRotacao(chave: 'co' | 'cr', plano: any, todos: PlanoAula[]): string {
   const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
-  const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
+  const aulas = todos.filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
     .sort((a, b) => ordem(a).localeCompare(ordem(b)));
   // Sem cozinhar (aula teórica, atitudinal, visita) não saem perguntas sobre a cozinha e os pratos.
   const soTeoria = !contextoDoPlano(plano).producao;
-  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId)), soTeoria).id;
+  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === plano.id)), soTeoria).id;
+}
+/** As perguntas do Consciente (ou do Criativo) a que o aluno já respondeu,
+ *  da aula mais antiga para a mais recente, sem a desta aula. Serve para a
+ *  pergunta que vem depois de «não aconteceu» não ser sempre a mesma. */
+export function perguntas5CDoAluno(alunoId: string, chave: 'cl' | 'co' | 'cr', semPlanoId?: string): string[] {
+  if (chave === 'cl') return [];
+  const campo = chave === 'co' ? 'coId' : 'crId';
+  const datas = new Map(getPlanosAula().map(p => [p.id, String(p.data || '').slice(0, 10)]));
+  return load<any>(KEYS.selecoes)
+    .filter(s => s.alunoId === alunoId && String(s.planoAulaId || '').startsWith(PREFIXO_TRIAGEM)
+      && s.planoAulaId !== PREFIXO_TRIAGEM + (semPlanoId || ''))
+    .map(s => {
+      const t = s.autoavaliacoes?.[0];
+      const r = (t?.aluno || t?.professor) as Triagem5C | undefined;
+      const pid = String(s.planoAulaId).slice(PREFIXO_TRIAGEM.length);
+      return { id: String((r as any)?.[campo] || ''), quando: `${datas.get(pid) || ''} ${s.criadaEm || ''}` };
+    })
+    .filter(x => x.id)
+    .sort((a, b) => a.quando.localeCompare(b.quando))
+    .map(x => x.id);
 }
 /** Como é esta aula (cozinha, produção, equipas): a triagem do professor,
  *  ou, sem ela, o que se deduz do plano e dos grupos formados. */
