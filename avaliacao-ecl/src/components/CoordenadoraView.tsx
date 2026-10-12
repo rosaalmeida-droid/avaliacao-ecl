@@ -5,6 +5,7 @@ import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
 import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, lerTelemoveisDaTurma, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico, atrasoConta } from '../backend';
 import { Aluno } from '../types';
+import { fardaIncompletaNaPresenca } from '../contextoAula';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
 import { Card, Button, Field, Badge } from './ui';
@@ -149,6 +150,12 @@ function PresencasTab() {
     });
     return mapa;
   }, [presencas]);
+  // Os planos, para saber se a farda contava em cada aula (uma leitura só).
+  const planoDaPresenca = React.useMemo(() => {
+    const m = new Map<string, PlanoAula>();
+    new Set(presencas.map((r: RegistoPresenca) => r.turmaId)).forEach(t => getPlanosAulaPorTurma(String(t || ''), true).forEach(p => m.set(p.id, p)));
+    return m;
+  }, [presencas]);
 
   const nomeAluno = (id: string) => alunos.find(a => a.id === id)?.nome || id;
 
@@ -280,7 +287,7 @@ function PresencasTab() {
                         ⚠ {porAluno[r.alunoId].filter((h: RegistoPresenca) => atrasoConta(h, h.planoAulaId)).length} atrasos
                       </span>
                       <span style={{ color: '#dc2626' }}>
-                        👔 {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.fardamentoOk === false).length} fardamento incompleto
+                        👔 {porAluno[r.alunoId].filter((h: RegistoPresenca) => fardaIncompletaNaPresenca(h, planoDaPresenca.get(h.planoAulaId))).length} fardamento incompleto
                       </span>
                     </div>
                   </div>

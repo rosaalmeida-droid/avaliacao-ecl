@@ -227,6 +227,20 @@ export function pedeFardaEHigiene(plano: any): boolean {
   return tipo === 'pratico' || tipo === 'misto' || tipo === 'atitudinal_obr';
 }
 
+/**
+ * A farda estava incompleta nesta presença? (Rosa, 12/out/2026: na aula
+ * atitudinal de 29/09 o Aldmir aparecia «sem farda completa»). Só numa aula
+ * em que a farda conta, e só se o aluno a declarou à entrada (ou o professor
+ * a marcou). Uma presença sem essa informação (marcada pelo professor, ou
+ * numa aula em que a farda não se pergunta) fica com «farda: não» por
+ * omissão, e isso não quer dizer que faltasse a farda.
+ */
+export function fardaIncompletaNaPresenca(r: any, plano: any): boolean {
+  if (!r || (plano && !pedeFardaEHigiene(plano))) return false;
+  if (r.fardaDeclarada) return (r.fardaEmFalta || []).length > 0;
+  return !!r.horaEntrada && (r.fardamentoOk === false || r.fardamentoOk === 'false');
+}
+
 /** Os alunos cozinham nesta aula (bancada do grupo, circuito do sujo e do limpo)? */
 export function cozinhamNaAula(plano: any): boolean {
   return contextoDaAula(plano).producao;

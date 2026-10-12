@@ -7,12 +7,16 @@
 // nota.» Aparece por baixo de cada aula, em «Como chegaste a esta nota»
 // (aluno), nas Notas da UC (professor) e na folha impressa.
 // ============================================================
-import { getPresencas, getPlanosAula, validacaoDaAula, fracaoDosBlocos } from './backend';
+import { getPresencas, getPlanosAula, validacaoDaAula, fracaoDosBlocos, atrasoConta } from './backend';
 import { ATITUDES_DETALHADAS } from './compatECL';
 import { decisaoFardaNaAula } from './regrasFarda';
 import { compromissoPorCumprir, textoCompromisso, horasDoAlunoNaAula } from './presencaParcial';
+import { fardaIncompletaNaPresenca } from './contextoAula';
+import { criterioTrabalho } from './criteriosTrabalho';
 
-const nomeAtitude = (id: string) => ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || id;
+// O critério do trabalho «Preparação: aproveitar o tempo da aula» também conta
+// nas atitudes (ATI-P-F-…): aparece pelo nome, e não pelo código (Rosa, 12/out/2026).
+const nomeAtitude = (id: string) => ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || criterioTrabalho(id)?.nome || id;
 
 /** As frases do que aconteceu nesta aula a este aluno. Vazio numa aula sem nada a assinalar. */
 export function ocorrenciasDaAula(alunoId: string, planoAulaId: string): string[] {
@@ -27,11 +31,14 @@ export function ocorrenciasDaAula(alunoId: string, planoAulaId: string): string[
   if (b) out.push(`Esteve em ${b.esteve} de ${b.total} tempos: a nota conta ${b.esteve}/${b.total}`);
   else if (h) out.push(`Esteve em ${h.blocosEsteve} de ${h.blocosTotal} tempos da aula`);
   if (r?.decisaoProfessor === 'falta_atraso') out.push(`Falta de atraso${r.horaEntrada ? ` (entrou às ${String(r.horaEntrada).slice(0, 5)})` : ''}`);
-  else if (r?.atrasado && r?.horaEntrada && !b && !h) out.push(`Chegou atrasado (entrou às ${String(r.horaEntrada).slice(0, 5)})`);
+  // O atraso só quando conta: com «sem falta» decidido pelo professor, ou numa
+  // aula aberta depois do dia, não (o Aldmir a 28/09; Rosa, 12/out/2026).
+  else if (r?.horaEntrada && !b && !h && atrasoConta(r, planoAulaId)) out.push(`Chegou atrasado (entrou às ${String(r.horaEntrada).slice(0, 5)})`);
 
   // Farda.
   const emFalta: string[] = r?.fardaEmFalta || [];
-  const semFardaNaEntrada = r?.fardaDeclarada ? emFalta.length > 0 : (!!r?.horaEntrada && r?.fardamentoOk === false);
+  // Só numa aula em que a farda conta (numa atitudinal não se pergunta).
+  const semFardaNaEntrada = fardaIncompletaNaPresenca(r, plano);
   if (semFardaNaEntrada || v?.semFarda || v?.fardaPerdoada) {
     const falta = emFalta.length ? ` (faltava: ${emFalta.join(', ')})` : '';
     const d = decisaoFardaNaAula(alunoId, planoAulaId).decisao;
