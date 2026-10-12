@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.3';
+var VERSAO = 'ECL único v27.4';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -144,7 +144,8 @@ var FOLHAS = {
 /** Registos especiais que viajam como autoavaliações (v12). */
 // (v26.8) Também os registos COLAB|, AJUDA| e ALTAPERF|, como na aplicação:
 // não são autoavaliações de aulas e não entram nas folhas de leitura.
-var PREFIXOS_ESPECIAIS = ['UCFINAL|', 'TRIAGEM|', 'UCNOTA|', 'COLAB|', 'AJUDA|', 'ALTAPERF|'];
+// (v27.4) E RECUPAULA|: o aluno pede para recuperar uma aula a que faltou.
+var PREFIXOS_ESPECIAIS = ['UCFINAL|', 'TRIAGEM|', 'UCNOTA|', 'COLAB|', 'AJUDA|', 'ALTAPERF|', 'RECUPAULA|'];
 /** Inofensiva: mostra no registo o estado do Sheets. É a primeira função
  *  do ficheiro, para ser a que o editor escolhe por omissão. */
 function verEstado() {

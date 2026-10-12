@@ -18,7 +18,8 @@ import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeG
 import { atitudeEmPalavrasSimples } from '../atitudesSimples';
 import { JanelaAutoavaliacoesEmFalta } from './JanelaAutoavaliacoesEmFalta';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, faltasQueContamNaNota, bonusPorAtividade, type BonusDaAtividade,
-  recuperacoesDeAulasPorFazer, recuperacaoDaAula } from '../backend';
+  recuperacoesDeAulasPorFazer, recuperacaoDaAula, aulasFaltadasParaRecuperar } from '../backend';
+import { RecuperarAulasAluno } from './RecuperarAulasAluno';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
 import { DesafioAltaPerformance } from './AltaPerformance';
@@ -1049,6 +1050,8 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const ucsDoAluno = [...new Set(planos.map(p => p.ucId).filter(Boolean) as string[])];
   const recuperacoesPendentes = ucsDoAluno
     .filter(ucId => situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId).precisa).length;
+  // As aulas a que faltou e ainda não recuperou (Rosa, 12/out/2026).
+  const aulasARecuperar = aulasFaltadasParaRecuperar(aluno.id, aluno.turmaId).filter(x => x.e.estado !== 'recuperada').length;
 
   // Avisos calculados a partir do estado real — presenças, registos,
   // prazos e inscrições. Nunca texto guardado à mão.
@@ -1217,9 +1220,27 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             + (r.oQueFazer && r.automatica ? ` O professor pediu: ${r.oQueFazer}${/[.!?]$/.test(r.oQueFazer) ? '' : '.'}` : '')
             + (r.prazo ? ` Até ${dm(r.prazo)}.` : '');
         }).join(' ') + ' Até lá, esta aula conta 0 na tua nota da UC.',
-        destino: (auto.length > 0 ? 'autoavaliar_pendente' : 'nota') as any,
+        destino: (auto.length > 0 ? 'autoavaliar_pendente' : 'recuperacoes') as any,
         urgente: true,
         obrigatorio: true,
+      });
+    }
+    // Aulas a que faltou e que pode pedir para recuperar: o aluno é que se
+    // propõe (Rosa, 12/out/2026). A teórica abre logo; as outras precisam do
+    // aval do professor.
+    const podePedir = aulasFaltadasParaRecuperar(aluno.id, aluno.turmaId).filter(x => x.e.estado === 'pode_pedir' || x.e.estado === 'recusada');
+    if (podePedir.length > 0) {
+      const dmp = (d: string) => `${String(d).slice(8, 10)}/${String(d).slice(5, 7)}`;
+      const teoricas = podePedir.filter(x => x.e.estado === 'pode_pedir' && x.e.automatica).length;
+      av.push({
+        id: 'recuperar_aulas',
+        titulo: podePedir.length === 1 ? `Podes recuperar a aula de ${dmp(podePedir[0].plano.data)}` : `Podes recuperar ${podePedir.length} aulas a que faltaste`,
+        detalhe: 'Faltaste e ' + (podePedir.length === 1 ? 'essa aula conta' : 'cada uma conta') + ' 0 na tua nota da UC. '
+          + (teoricas === podePedir.length ? (podePedir.length === 1 ? 'É teórica: podes recuperá-la já.' : 'São teóricas: podes recuperá-las já.')
+            : teoricas > 0 ? 'As teóricas recuperas já; as outras pedes ao professor.'
+            : 'Pede ao professor: se ele aceitar, diz-te o que fazer.'),
+        destino: 'recuperacoes',
+        urgente: true,
       });
     }
 
@@ -1661,7 +1682,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               </div>
             )}
 
-            {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
+            {destino === 'recuperacoes' && <><RecuperarAulasAluno aluno={aluno} onAutoavaliar={p => setPlanoAtivo(p)} /><RecuperacaoModulosAluno aluno={aluno} /></>}
 
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
           </div>
@@ -1745,8 +1766,10 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   ? `${aulasPorAutoavaliar.current.length} aula${aulasPorAutoavaliar.current.length > 1 ? 's' : ''} à espera da tua autoavaliação` : 'não tens aulas por autoavaliar'],
                 ['avaliar', 'As minhas competências', porAvaliar > 0
                   ? `${porAvaliar} ainda por avaliar` : 'todas já avaliadas'],
-                ['recuperacoes', 'Recuperações', recuperacoesPendentes > 0
-                  ? `${recuperacoesPendentes} por recuperar` : 'nada em atraso'],
+                ['recuperacoes', 'Recuperações', [
+                  recuperacoesPendentes > 0 ? `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''} por recuperar` : '',
+                  aulasARecuperar > 0 ? `${aulasARecuperar} aula${aulasARecuperar > 1 ? 's' : ''} a que faltaste` : '',
+                ].filter(Boolean).join(' · ') || 'nada em atraso'],
                 ['atividades', 'Atividades e concursos', atividadesAbertas > 0
                   ? `${atividadesAbertas} aberta${atividadesAbertas > 1 ? 's' : ''}` : 'oportunidades'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
@@ -1794,7 +1817,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 blocos={aulaDeHojeAtitudinal ? ['atitudes'] : undefined} />
             )}
             {destino === 'nota' && ecraDaMinhaNota()}
-            {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
+            {destino === 'recuperacoes' && <><RecuperarAulasAluno aluno={aluno} onAutoavaliar={p => setPlanoAtivo(p)} /><RecuperacaoModulosAluno aluno={aluno} /></>}
             {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta paraAluno /></div>}
             {destino === 'dicionario' && <div style={{ padding:'4px 14px 24px' }}><DicionarioComp perfil="aluno" turmaId={aluno.turmaId} /></div>}
             {destino === 'manual_utilizador' && <ManualAluno />}

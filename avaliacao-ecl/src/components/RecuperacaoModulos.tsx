@@ -65,7 +65,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
         Recuperação de Módulos
       </div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Aqui podes recuperar as aulas a que faltaste, sem teres de repetir tudo do início.
+        Quando faltas a 10% ou mais das horas de uma UC, ou a acabas sem positiva, recuperas aqui o módulo, sem teres de repetir tudo do início.
       </div>
 
       {/* Quatro separadores em grelha 2×2: no telemóvel partiam-se em três linhas desiguais. */}

@@ -15,7 +15,7 @@ import {
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
   getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos, decidirFardaNaPresenca,
   recuperacaoDaAula, notaDaAulaRecuperada, recuperacaoEhAutomatica, pedirRecuperacaoDaAula, darNotaDaRecuperacaoDaAula,
-  cancelarRecuperacaoDaAula, ultimaResposta,
+  cancelarRecuperacaoDaAula, ultimaResposta, pedidoDeRecuperacaoPendente, estadoDaRecuperacaoDaAula, recusarRecuperacaoDaAula,
 } from '../backend';
 import { janelaConfirmar } from './janelaConfirmar';
 import { decisaoFardaNaAula, toleranciaNoPeriodo, diaMes } from '../regrasFarda';
@@ -377,47 +377,43 @@ const f1 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
 
 /**
  * Recuperar uma aula a que o aluno faltou (Rosa, 12/out/2026), para qualquer
- * aluno, com ou sem 10% de faltas. Na aula teórica é automática: o aluno
- * autoavalia-se nela e o professor valida. Nas outras, o professor diz o que
- * o aluno tem de fazer e dá a nota. A nota substitui o 0 só desta aula; a
- * falta conta na mesma nas horas.
+ * aluno, com ou sem 10% de faltas. É o aluno que se propõe, no telemóvel: na
+ * aula teórica a recuperação abre logo (autoavalia-se nos conhecimentos e o
+ * professor valida); nas outras, o pedido espera aqui pelo aval do professor,
+ * que diz o que o aluno tem de fazer e depois dá a nota. O professor também a
+ * pode abrir sem pedido. A nota substitui o 0 só desta aula; a falta conta na
+ * mesma nas horas.
  */
 function RecuperarAula({ alunoId, plano, professor, onValidar, onMudou }: {
   alunoId: string; plano: any; professor: string;
   onValidar?: (alunoId: string) => void; onMudou: () => void;
 }) {
   const r = recuperacaoDaAula(alunoId, plano.id);
+  const pedido = pedidoDeRecuperacaoPendente(alunoId, plano.id);
+  const est = estadoDaRecuperacaoDaAula(alunoId, plano);
   const automatica = r ? r.automatica : recuperacaoEhAutomatica(plano);
   const nota = notaDaAulaRecuperada(alunoId, plano.id);
   const [aberto, setAberto] = useState(false);
-  const [oQueFazer, setOQueFazer] = useState(r?.oQueFazer || '');
+  const [aRecusar, setARecusar] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [oQueFazer, setOQueFazer] = useState(r?.oQueFazer || pedido?.texto || '');
   const [prazo, setPrazo] = useState(r?.prazo || daquiA(7));
   const [notaTxt, setNotaTxt] = useState(typeof r?.nota === 'number' ? f1(r.nota) : '');
   const [aMudarNota, setAMudarNota] = useState(false);
   const verde = C.verde;
   const caixa: React.CSSProperties = { marginTop: 7, padding: '10px 11px', borderRadius: 8, border: `1px solid ${verde}`, background: C.verdeSuave, fontSize: 12.5, lineHeight: 1.45, color: C.tinta };
-  const bt = (cheio: boolean): React.CSSProperties => ({ padding: '8px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    border: `1.5px solid ${verde}`, background: cheio ? verde : '#fff', color: cheio ? '#fff' : verde });
+  const bt = (cheio: boolean, cor = verde): React.CSSProperties => ({ padding: '8px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+    border: `1.5px solid ${cor}`, background: cheio ? cor : '#fff', color: cheio ? '#fff' : cor });
   const campo: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 9px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'inherit', fontSize: 13, background: '#fff' };
+  const link = (cor: string): React.CSSProperties => ({ background: 'none', border: 'none', padding: 0, color: cor, fontSize: 12.5, fontWeight: 700,
+    textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' });
 
-  if (!r && !aberto) {
-    return (
-      <button onClick={() => setAberto(true)} style={{ marginTop: 7, width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
-        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', border: `1px solid ${C.border}`, background: '#fff', color: verde }}>
-        Recuperar esta aula
-        <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.suave, marginTop: 2 }}>
-          {automatica ? 'Aula teórica: o aluno autoavalia-se nos conhecimentos desta aula e o professor valida.' : 'Diga o que o aluno tem de fazer e, depois, dê a nota.'}
-          {' '}A nota substitui o 0 desta aula. A falta conta na mesma nas horas.
-        </span>
-      </button>
-    );
-  }
-
-  if (!r || aberto) {
+  // O formulário: abrir sem pedido, aceitar o pedido do aluno, ou mudar o que foi pedido.
+  if (aberto) {
     const podePedir = automatica || oQueFazer.trim().length > 0;
     return (
       <div style={caixa}>
-        <b>Recuperar esta aula</b>
+        <b>{pedido ? 'Aceitar o pedido' : r ? 'Mudar a recuperação' : 'Recuperar esta aula'}</b>
         <div style={{ color: C.suave, marginTop: 2 }}>
           {automatica ? 'Aula teórica: o aluno estuda o trabalho da aula e autoavalia-se só nos conhecimentos (as atitudes de uma aula em que não esteve não se avaliam). O professor valida.'
             : 'Aula com prática ou atitudes: só o professor pode avaliar o que o aluno fez.'}
@@ -436,18 +432,70 @@ function RecuperarAula({ alunoId, plano, professor, onValidar, onMudou }: {
           <button disabled={!podePedir} onClick={() => {
             pedirRecuperacaoDaAula(alunoId, plano.id, { oQueFazer, prazo }, professor);
             setAberto(false); onMudou();
-          }} style={{ ...bt(true), opacity: podePedir ? 1 : 0.5 }}>{r ? 'Guardar' : 'Pedir a recuperação'}</button>
-          <button onClick={() => { setAberto(false); setOQueFazer(r?.oQueFazer || ''); }} style={bt(false)}>Cancelar</button>
+          }} style={{ ...bt(true), opacity: podePedir ? 1 : 0.5 }}>{pedido ? 'Aceitar e avisar o aluno' : r ? 'Guardar' : 'Abrir a recuperação'}</button>
+          <button onClick={() => { setAberto(false); setOQueFazer(r?.oQueFazer || pedido?.texto || ''); }} style={bt(false)}>Voltar</button>
         </div>
       </div>
+    );
+  }
+
+  // O aluno pediu (aula com prática ou atitudes): à espera do aval do professor.
+  if (pedido) {
+    return (
+      <div style={{ ...caixa, borderColor: C.cobre, background: C.cobreSuave }}>
+        <b>O aluno pediu para recuperar esta aula</b>
+        <span style={{ color: C.suave }}> · em {dm(pedido.em)}</span>
+        {pedido.texto && <div style={{ marginTop: 3 }}>Propõe: «{pedido.texto}»</div>}
+        <div style={{ color: C.suave, marginTop: 3 }}>Só com o seu aval: diga o que tem de fazer e até quando, ou não aceite.</div>
+        {aRecusar ? (
+          <div style={{ marginTop: 8 }}>
+            <label style={{ display: 'block', fontWeight: 700 }}>
+              Porquê? (o aluno vê; opcional)
+              <textarea value={motivo} onChange={ev => setMotivo(ev.target.value)} rows={2} style={{ ...campo, marginTop: 4, resize: 'vertical' }} />
+            </label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+              <button onClick={() => { recusarRecuperacaoDaAula(alunoId, plano.id, motivo, professor); setARecusar(false); setMotivo(''); onMudou(); }}
+                style={bt(true, '#C0392B')}>Não aceitar</button>
+              <button onClick={() => setARecusar(false)} style={bt(false)}>Voltar</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => { setOQueFazer(pedido.texto || ''); setAberto(true); }} style={bt(true)}>Aceitar</button>
+            <button onClick={() => setARecusar(true)} style={bt(false, '#C0392B')}>Não aceitar</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!r) {
+    return (
+      <>
+        {est.estado === 'recusada' && (
+          <div style={{ marginTop: 7, fontSize: 12, color: C.suave }}>
+            {est.r.recusada ? 'Pedido do aluno não aceite' : 'Recuperação cancelada'} em {dm(est.r.atualizadoEm)}{est.r.motivo ? `: ${est.r.motivo}` : ''}. O aluno pode pedir outra vez.
+          </div>
+        )}
+        <button onClick={() => setAberto(true)} style={{ marginTop: 7, width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', border: `1px solid ${C.border}`, background: '#fff', color: verde }}>
+          Recuperar esta aula
+          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.suave, marginTop: 2 }}>
+            {automatica ? 'Aula teórica: o aluno pode abri-la sozinho no telemóvel; autoavalia-se nos conhecimentos e o professor valida.'
+              : 'O aluno pede no telemóvel e o professor dá o aval; ou abra já aqui, dizendo o que tem de fazer.'}
+            {' '}A nota substitui o 0 desta aula. A falta conta na mesma nas horas.
+          </span>
+        </button>
+      </>
     );
   }
 
   const respondeu = !!ultimaResposta(alunoId, plano.id);
   return (
     <div style={caixa}>
-      <b>{nota !== null ? `✓ Aula recuperada: ${f1(nota)}/20` : 'Recuperação pedida'}</b>
+      <b>{nota !== null ? `✓ Aula recuperada: ${f1(nota)}/20` : automatica ? (r.pedidaPeloAluno ? 'Recuperação aberta pelo aluno' : 'Recuperação aberta') : 'Recuperação aceite'}</b>
       <span style={{ color: C.suave }}> · em {dm(r.pedidaEm)}{r.prazo ? `, até ${dm(r.prazo)}` : ''}</span>
+      {r.mensagemDoAluno && <div style={{ marginTop: 3, color: C.suave }}>O aluno propôs: «{r.mensagemDoAluno}»</div>}
       {r.oQueFazer && <div style={{ marginTop: 3 }}>{r.oQueFazer}</div>}
       {automatica ? (
         nota === null && (
@@ -475,16 +523,14 @@ function RecuperarAula({ alunoId, plano, professor, onValidar, onMudou }: {
         <button onClick={() => setAMudarNota(true)} style={{ ...bt(false), display: 'block', marginTop: 6 }}>Mudar a nota</button>
       )}
       <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => setAberto(true)} style={{ background: 'none', border: 'none', padding: 0, color: verde, fontSize: 12.5, fontWeight: 700,
-          textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Mudar o pedido</button>
+        <button onClick={() => { setOQueFazer(r.oQueFazer || ''); setAberto(true); }} style={link(verde)}>Mudar o que pediu</button>
         <button onClick={async () => {
           const ok = await janelaConfirmar({ titulo: 'Cancelar a recuperação desta aula?',
             texto: nota !== null ? `A nota da recuperação (${f1(nota)}) deixa de contar e a aula volta a contar 0.` : 'A aula continua a contar 0.',
             sim: 'Cancelar a recuperação', nao: 'Voltar', perigo: true });
           if (!ok) return;
           cancelarRecuperacaoDaAula(alunoId, plano.id, professor); setOQueFazer(''); setNotaTxt(''); onMudou();
-        }} style={{ background: 'none', border: 'none', padding: 0, color: '#C0392B', fontSize: 12.5, fontWeight: 700,
-          textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar a recuperação</button>
+        }} style={link('#C0392B')}>Cancelar a recuperação</button>
       </div>
     </div>
   );
