@@ -6473,8 +6473,11 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
 /** Horas da UC que já foram dadas: planos publicados de aulas que já aconteceram. */
 export function horasDadasDaUC(turmaId: string, ucId: string): number {
   const hoje = new Date().toISOString().slice(0, 10);
+  // Só as aulas: as atividades e os eventos (fora do horário, ou só de alguns
+  // alunos) não são horas da UC, nem os planos num dia sem aulas. Contavam, e
+  // a UFCD 16 aparecia com 47,5 h dadas quando ia na hora 29 (Rosa, 12/out/2026).
   return getPlanosAula()
-    .filter(p => p.ucId === ucId && p.turmaId === turmaId
+    .filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento && !planoNumDiaSemAulas(p)
       && (p.estado === 'publicado' || p.estado === 'realizada')
       && aulaJaAconteceu(p, hoje))
     .reduce((s, p) => s + horasDoPlano(p), 0);
