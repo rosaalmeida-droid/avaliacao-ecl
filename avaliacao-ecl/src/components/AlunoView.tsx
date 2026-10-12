@@ -83,7 +83,7 @@ import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } fro
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
-import { notaDaUCComoNaPauta, notaDaUCComDecimas } from '../pautaUC';
+import { notaDaUCComDecimas } from '../pautaUC';
 import { pedeFardaEHigiene, cozinhamNaAula } from '../contextoAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
@@ -1028,11 +1028,12 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // Durante a UC, só a média das aulas em /20 (com as faltas a 0). Os níveis
   // da pauta (2 a 6) e os 5 C só entram no fecho, na pauta (Rosa, set/2026);
   // depois de publicada, conta a nota final publicada.
-  const publicadaDaUC = ucAtual ? getNotaFinalPublicadaUC(aluno.id, ucAtual) : null;
   // (Auditoria 5/out/2026) A nota de hoje é a conta da pauta: as aulas em
   // falta ou sem autoavaliação contam 0. Assim o aluno não é iludido.
-  const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
-    : ucAtual ? { final: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual) } : null;
+  // (Rosa, 12/out/2026) A pauta publicada é outra coisa: não muda a nota que o aluno vê.
+  const notaDaUC = ucAtual ? { final: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual, true) } : null;
+  // Da publicação só se usa o que os colegas de grupo veem no aluno (vai com ela).
+  const publicadaDaUC = ucAtual ? getNotaFinalPublicadaUC(aluno.id, ucAtual) : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
   const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
@@ -1249,9 +1250,11 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     bonusTotal: calcUC.bonusParticipacao,
     teto: calcUC.limitadaPorTeto,
     motivoTeto: calcUC.motivoTeto || '',
-    // A mesma nota da UC que o aluno vê no resto da aplicação (a da pauta).
-    final: notaDaUCComoNaPauta(aluno.id, aluno.turmaId, ucAtual) ?? calcUC.final,
-    publicada: !!publicadaDaUC,
+    // A mesma nota da UC que o aluno vê no resto da aplicação (a de hoje; a
+    // pauta publicada não a muda — Rosa, 12/out/2026).
+    final: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual, true) ?? calcUC.final,
+    publicada: false,
+    contaDeAgora: notaDaUCComDecimas(aluno.id, aluno.turmaId, ucAtual, true),
   } : null;
 
   // «A minha nota»: o mesmo ecrã no Início e no Percurso. O do Início mostrava
@@ -4065,7 +4068,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {(() => {
           // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
           // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
-          const n = plano.ucId ? notaDaUCComDecimas(aluno.id, aluno.turmaId, plano.ucId) : null;
+          const n = plano.ucId ? notaDaUCComDecimas(aluno.id, aluno.turmaId, plano.ucId, true) : null;
           if (n == null) return null;
           const nota20 = n;
           return (

@@ -4,8 +4,8 @@
 // os alunos veem»). As aulas, cada uma com o seu peso, as faltas, a média,
 // o bónus de cada atividade e a nota da UC (a da pauta).
 // ============================================================
-import { notaFinalUC, aulasDaNotaUC, getPlanosFaltadosPorUC, bonusPorAtividade, getNotaFinalPublicadaUC } from './backend';
-import { notaDaUCComoNaPauta, notaDaUCComDecimas } from './pautaUC';
+import { notaFinalUC, aulasDaNotaUC, getPlanosFaltadosPorUC, bonusPorAtividade } from './backend';
+import { notaDaUCComDecimas } from './pautaUC';
 import { posicaoNaUC } from './rotuloPlano';
 import { getPlanosAula } from './backend';
 import type { AulaNota } from './components/EcraNotaAtividades';
@@ -29,15 +29,13 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
     bonusTotal: calc.bonusParticipacao,
     teto: calc.limitadaPorTeto,
     motivoTeto: calc.motivoTeto || '',
-    // A mesma nota da UC que se vê no resto da aplicação (a da pauta).
-    final: notaDaUCComoNaPauta(alunoId, turmaId, ucId) ?? calc.final,
-    publicada: !!getNotaFinalPublicadaUC(alunoId, ucId),
-    // A conta de agora: a média das aulas com o bónus (e os tetos), arredondada.
-    // Sem nota publicada, é a nota da pauta (que já soma o bónus).
-    // Com décimas (Rosa, 6/out/2026): só a nota final publicada é inteira.
-    contaDeAgora: getNotaFinalPublicadaUC(alunoId, ucId)
-      ? (calc.final == null ? null : Math.round(calc.final * 10) / 10)
-      : notaDaUCComDecimas(alunoId, turmaId, ucId),
+    // A nota que o aluno vê é a da aplicação, com as notas de hoje. A pauta
+    // publicada é outra coisa e não muda o que se vê aqui (Rosa, 12/out/2026:
+    // «a pauta não devia alterar a nota do aluno quando se vê»).
+    final: notaDaUCComDecimas(alunoId, turmaId, ucId, true) ?? calc.final,
+    publicada: false,
+    // Com décimas (Rosa, 6/out/2026).
+    contaDeAgora: notaDaUCComDecimas(alunoId, turmaId, ucId, true),
   };
   return { aulas, detalhe, nota: detalhe.final };
 }
