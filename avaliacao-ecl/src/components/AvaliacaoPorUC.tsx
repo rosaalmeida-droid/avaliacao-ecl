@@ -156,14 +156,15 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         // (Auditoria 5/out/2026) Sempre a conta da pauta, já durante a UC:
         // as aulas em falta ou sem autoavaliação contam 0.
         : !alunoId ? (ucJaFechada(turmaId, ucAlvo) ? notaDaPautaUC(aluno.id, turmaId, ucAlvo)
-          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo), comDecimas: !getNotaFinalPublicadaUC(aluno.id, ucAlvo),
-              atribuida: !!getNotaFinalPublicadaUC(aluno.id, ucAlvo) } as any)
+          // (Rosa, 12/out/2026: «a pauta é uma parte diferente») Durante a UC, a nota de
+          // hoje, como o aluno a vê; a pauta publicada aparece por baixo, à parte.
+          : { nota: notaDaUCComDecimas(aluno.id, turmaId, ucAlvo, true), comDecimas: true, atribuida: false, semResultado: true } as any)
         : getPropostaFinalUC(aluno.id, ucAlvo) ? notaFinalPublicadaComoPauta(aluno.id, ucAlvo) : null;
       // (Rosa, 12/out/2026: «altero a autoavaliação e a nota não muda») A nota
       // publicada só muda quando se publica outra vez. O professor vê a de hoje ao lado.
-      if (pauta && !alunoId && ucAlvo && getNotaFinalPublicadaUC(aluno.id, ucAlvo)) {
-        const hoje = notaDaUCComDecimas(aluno.id, turmaId, ucAlvo, true);
-        if (hoje !== null && Math.round(hoje) !== Math.round(Number(pauta.nota))) (pauta as any).notaDeHoje = hoje;
+      if (pauta && !alunoId && ucAlvo && !ucJaFechada(turmaId, ucAlvo)) {
+        const pub = getNotaFinalPublicadaUC(aluno.id, ucAlvo);
+        if (pub) (pauta as any).pautaPublicada = { nota: pub.nota, em: pub.publicadaEm, resultado: pub.resultado };
       }
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
@@ -422,7 +423,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       ) : (
         dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima, ucAlvo }) => {
           const aberto = vistaAluno === aluno.id;
-          const { emoji, cor } = labelNota(mediaGeral);
+          const { emoji } = labelNota(mediaGeral);
+          // A nota está em /20: negativa a vermelho, positiva a azul (a cor vinha da
+          // escala de 1 a 5 e um 3,4 aparecia a verde, um 4,1 a azul).
+          const cor = mediaGeral < 9.5 ? '#c0392b' : '#0369a1';
           return (
             <div key={aluno.id} className="aluno-card" data-aluno-id={aluno.id}
               style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
@@ -443,7 +447,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                     {emRecuperacao > 0 && <span style={{ color: '#c0392b', marginLeft: 6 }}>· {emRecuperacao} em recuperação</span>}
                   </div>
                 </div>
-                {(mediaGeral > 0 || (pauta as any)?.notaDeHoje != null) && (
+                {(mediaGeral > 0 || (pauta as any)?.pautaPublicada) && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta && !(pauta as any).comDecimas ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
@@ -452,19 +456,23 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                         : 'Sem decomposição disponível — aguarda a próxima validação do professor'}>
                       /20 {porCategoriaUltima ? 'ⓘ' : ''}
                     </div>
-                    {pauta && (
+                    {pauta && !(pauta as any).semResultado && (
                       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2,
                         color: pauta.resultado === 'Módulo em atraso' ? '#c0392b' : 'var(--sage)' }}
                         title={`Da pauta oficial: Competente ${pauta.cp} · TOTAL ${String(Math.round(pauta.total * 100) / 100).replace('.', ',')} · ${pauta.atribuida ? 'classificação atribuída pelo professor' : 'sugestão da pauta'}`}>
                         {pauta.resultado}{pauta.atribuida ? '' : ' · sugestão'}
                       </div>
                     )}
-                    {(pauta as any)?.notaDeHoje != null && (
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#8a4a12', marginTop: 2, maxWidth: 110, lineHeight: 1.3 }}
-                        title="A nota publicada não muda sozinha. Para a atualizar: Pauta da UC → «Usar as notas de hoje» → «Atualizar as notas publicadas».">
-                        publicada · hoje daria {String((pauta as any).notaDeHoje).replace('.', ',')}
-                      </div>
-                    )}
+                    {(pauta as any)?.pautaPublicada && (() => {
+                      const pp = (pauta as any).pautaPublicada;
+                      const dia = String(pp.em || '').slice(0, 10).split('-').reverse().slice(0, 2).join('/');
+                      return (
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(26,23,20,0.55)', marginTop: 2, maxWidth: 120, lineHeight: 1.3 }}
+                          title="A pauta é à parte: não muda a nota que o aluno vê. Para a atualizar: Pauta da UC → «Usar as notas de hoje» → «Atualizar as notas publicadas».">
+                          pauta de {dia}: {pp.nota}{pp.nota < 10 ? ' a)' : ''}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
                 <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
