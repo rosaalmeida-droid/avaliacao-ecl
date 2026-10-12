@@ -21,7 +21,8 @@ const SIMPLES: Record<string, string> = {
   'ATI-012': 'Aceitar mudanças de planos e adaptar-te sem amuar.',
   'ATI-013': 'Querer aprender: perguntar, aceitar correções e experimentar.',
   'ATI-014': 'Não desperdiçar: aproveitar sobras, poupar água e energia, separar o lixo.',
-  'ATI-015': 'Cumprir as regras da escola e da cozinha, mesmo quando ninguém está a ver.',
+  // Rosa, 12/out/2026: respeitar não é o mesmo que concordar.
+  'ATI-015': 'Cumprir as regras e as ordens do professor, mesmo quando não concordas ou não percebes porquê. Respeitar não é o mesmo que concordar: muitas vezes há razões que não se veem.',
   'ATI-016': 'Cumprir as regras de higiene da comida: mãos, temperaturas, superfícies e validades.',
   'ATI-017': 'Trabalhar sem te magoares nem magoar ninguém: facas, calor, chão e postura.',
   'ATI-018': 'Tratar bem os outros: não gozar, não ofender, pensar em como se sentem.',

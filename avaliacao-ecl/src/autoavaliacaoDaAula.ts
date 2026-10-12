@@ -49,6 +49,9 @@ export interface RegrasAutoavaliacao {
   atitudesDaAula: string[];
   /** As atitudes que o aluno pode escolher numa aula prática ou teórica. */
   atitudesParaEscolher: string[];
+  /** A ATI-015 está nas atitudes da aula só por ser a vez da pergunta da
+   *  hierarquia (uma aula em cada três): não é uma atitude escolhida para a aula. */
+  atitudeDaHierarquia: boolean;
   atitudesPermitidas: string[];
   /** Há o passo «escolhe uma atitude». */
   escolheAtitude: boolean;
@@ -188,7 +191,7 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const mudouAsSugeridas = evento && (marcadasNoPlano.length !== sugeridas.length || marcadasNoPlano.some(id => !sugeridas.includes(id)));
   const escolhidasNaAtividade = semAtitudes && mudouAsSugeridas
     ? marcadasNoPlano.filter(id => !ATITUDES_FIXAS_EVENTO.includes(id)) : [];
-  const atitudesDaAula = semAtitudes ? escolhidasNaAtividade : (!ehAtitudinal
+  const atitudesBase = semAtitudes ? escolhidasNaAtividade : (!ehAtitudinal
     ? [...new Set([
         ...(evento ? ATITUDES_FIXAS_EVENTO.filter(id => !compRemovidas.includes(id) && temPerguntas(id)) : []),
         ...(opts.fardaIncompleta && temPerguntas('ATI-003') ? ['ATI-003'] : []),
@@ -196,17 +199,22 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     : marcadasNoPlano.length ? marcadasNoPlano
     : idsDoTrimestre.filter(id => !compRemovidas.includes(id) && temPerguntas(id))
   ).filter(aplicavel);
+  // Uma aula em cada três: o respeito pela hierarquia (Rosa, 12/out/2026),
+  // a todos, além da atitude que cada um escolhe.
+  const atitudeDaHierarquia = !evento && !semAtitudes && !!ctx.hierarquia && temPerguntas('ATI-015')
+    && !compRemovidas.includes('ATI-015') && !atitudesBase.includes('ATI-015');
+  const atitudesDaAula = atitudeDaHierarquia ? [...atitudesBase, 'ATI-015'] : atitudesBase;
 
   const atitudesPermitidas = opcoesDeEscolhaDoAluno(ano);
   const atitudesDoPlano = ((p.compAdicionadas || []) as string[]).filter(id => id.startsWith('ATI-'));
   const atitudesParaEscolher = semAtitudes ? [] : [...new Set([...atitudesDoPlano, ...idsDoTrimestre])]
-    .filter(id => atitudesPermitidas.includes(id) && !compRemovidas.includes(id) && aplicavel(id))
+    .filter(id => atitudesPermitidas.includes(id) && !compRemovidas.includes(id) && aplicavel(id) && !atitudesDaAula.includes(id))
     .slice(0, MAX_ATITUDES_PARA_ESCOLHER);
 
   return {
     ctx, tipoPlanAula, ehAtitudinal, manual,
     subIds, appIds, recursoIds, conhecimentos, tecnicasNaAtividade, semAtitudes,
-    atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
+    atitudesDaAula, atitudeDaHierarquia, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
     tecEvento: p.tipoEvento === 'evento',
     // O CL tem sempre possibilidade de avaliação (Rosa, auditoria 5/out/2026):
@@ -342,7 +350,9 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
 
   for (const id of R.atitudesDaAula)
     ecras.push({ tipo: 'atitude', rotulo: 'Atitude', nome: nomeAti(id), perguntas: perguntasQueSeFazem(id),
-      porque: evento ? (R.semAtitudes ? 'escolhida por ti para esta atividade' : 'atitude dos eventos') : R.ehAtitudinal ? 'marcada no plano' : 'farda incompleta', c: 'cp' });
+      porque: evento ? (R.semAtitudes ? 'escolhida por ti para esta atividade' : 'atitude dos eventos')
+        : id === 'ATI-015' && R.atitudeDaHierarquia ? 'uma aula em cada três: o respeito pela hierarquia'
+        : R.ehAtitudinal ? 'marcada no plano' : 'farda incompleta', c: 'cp' });
   if (R.escolheAtitude) {
     ecras.push({ tipo: 'escolhe', rotulo: 'Atitude', nome: `Escolhe 1: ${R.atitudesParaEscolher.map(nomeAti).join(' · ')}`,
       perguntas: R.atitudesParaEscolher.flatMap(perguntasQueSeFazem), porque: 'do trimestre e do plano', c: 'cp' });

@@ -9512,7 +9512,23 @@ export function contextoDoPlano(plano: any): ContextoAula {
   // Grupos ligados no plano pelo professor, ou formados pelos alunos nesta aula.
   let temGrupos = !!plano?.gruposAlunos?.ativo;
   try { temGrupos = temGrupos || (!!plano?.id && gruposDaAula(plano.id).length > 0); } catch { /* */ }
-  return contextoDaAula(plano, temGrupos);
+  return { ...contextoDaAula(plano, temGrupos), hierarquia: vezDaHierarquia(plano) };
+}
+/** Uma aula em cada três da turma (a 3.ª, a 6.ª…) pergunta pelo respeito
+ *  pela hierarquia (Rosa, 12/out/2026): «ainda há alunos que não perceberam
+ *  a diferença entre concordar e respeitar». Contam os planos de aula da
+ *  turma, por ordem de data; as atividades e os eventos não contam. Só a
+ *  partir de 12/out/2026: as aulas que já passaram ficam como estavam. */
+const INICIO_HIERARQUIA = '2026-10-12';
+export function vezDaHierarquia(plano: any): boolean {
+  if (!plano?.id || !plano.turmaId || plano.tipoEvento) return false;
+  if (String(plano.data || '').slice(0, 10) < INICIO_HIERARQUIA) return false;
+  const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
+  const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento
+    && p.estado !== 'arquivado' && p.estado !== 'anulado' && !p.eliminado)
+    .sort((a, b) => ordem(a).localeCompare(ordem(b)));
+  const i = aulas.findIndex(p => p.id === plano.id);
+  return i >= 0 && i % 3 === 2;
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
 export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);

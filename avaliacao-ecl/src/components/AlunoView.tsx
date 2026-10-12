@@ -4126,11 +4126,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const atitudesSugeridas = regras.atitudesParaEscolher;
   const opcoesAtitude = !partes.atitudes ? [] : ATITUDES.filter(a =>
     (verTodasAtitudes ? atitudesPermitidas.includes(a.id) : atitudesSugeridas.includes(a.id))
-    && !compRemovidas.includes(a.id) && aplicavel(a.id));
+    && !compRemovidas.includes(a.id) && aplicavel(a.id) && !atitudesDaAula.includes(a.id));
   // Numa aula prática sem atitudes marcadas pelo professor, a atitude que o
   // aluno escolhe é a única avaliada. Era opcional: dava para enviar com
   // «Nenhuma escolhida» e a aula ficava sem atitudes (25% da nota iam para o resto).
-  const atitudeObrigatoria = !ehAtitudinal && atitudesDaAula.filter(id => id !== 'ATI-003').length === 0 && opcoesAtitude.length > 0;
+  // A da hierarquia (uma aula em cada três) não substitui a que o aluno escolhe.
+  const atitudeObrigatoria = !ehAtitudinal && atitudesDaAula.filter(id => id !== 'ATI-003' && !(id === 'ATI-015' && regras.atitudeDaHierarquia)).length === 0 && opcoesAtitude.length > 0;
   const atitudeRespondida = !!atitudeEscolhida && atiOk(atitudeEscolhida);
   // «Não tive oportunidade» em TODAS as técnicas de uma aula prática ou mista:
   // alguma coisa o aluno fez. Escreve o quê, e o professor dá a nota a isso

@@ -261,7 +261,9 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
   const pap = aulaDePAP(t);
   const ano = (anoDaTurma(plano.turmaId) || 1) as 1 | 2 | 3;
   // O que o aluno avalia nesta aula — as mesmas regras do telemóvel do aluno.
-  const R = regrasDaAutoavaliacao(plano, fichas, { ctx: contextoDoPlano(plano), ano, temaEscolhido: null });
+  // O sumário é da aula, não de um aluno: basta um aluno apresentar para a
+  // apresentação oral e os seus critérios constarem (Rosa, 12/out/2026).
+  const R = regrasDaAutoavaliacao(plano, fichas, { ctx: contextoDoPlano(plano), ano, temaEscolhido: null, apresentacaoOral: 'hoje' });
   const tipo = t ? tipoDe(t) : R.tipoPlanAula.replace('_obr', '');
   const linhas: string[] = [];
 
@@ -339,7 +341,8 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
 
   // 4. As atitudes, quando são elas que se avaliam (aula de atitudes, atividade).
   // Os nomes vêm das atitudes do referencial; se não houver nenhum, não se escreve a linha («atitudes .»).
-  const nomesAtitudes = R.atitudesDaAula.map(id => ATITUDES.find(a => a.id === id)?.nome || ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || (() => { try { const n = nomeCompetencia(id); return n && n !== id ? n : ''; } catch { return ''; } })())
+  // A da hierarquia (uma aula em cada três) é uma pergunta de rotina, não o que a aula trabalha.
+  const nomesAtitudes = R.atitudesDaAula.filter(id => !(id === 'ATI-015' && R.atitudeDaHierarquia)).map(id => ATITUDES.find(a => a.id === id)?.nome || ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || (() => { try { const n = nomeCompetencia(id); return n && n !== id ? n : ''; } catch { return ''; } })())
     .filter(Boolean).map(x => minuscula(String(x)));
   if ((R.ehAtitudinal || p.tipoEvento) && nomesAtitudes.length) {
     const nomes = nomesAtitudes;
