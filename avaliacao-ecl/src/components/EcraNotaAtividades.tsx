@@ -86,6 +86,12 @@ export function EcraMinhaNota({
     : null;
 
   const fmt = (n: number) => n.toFixed(1).replace('.', ',').replace(',0', '');
+  // A média só das aulas já avaliadas, cada uma com o seu peso (Rosa, 12/out/2026:
+  // «deve também aparecer ao aluno a nota das aulas avaliadas, média»). As aulas
+  // por responder ficam de fora desta média, mas contam 0 na nota da UC.
+  const pesoTotal = comNota.reduce((s, a) => s + (a.peso ?? 1), 0);
+  const mediaAvaliadas = pesoTotal > 0 ? Math.round(comNota.reduce((s, a) => s + a.nota20 * (a.peso ?? 1), 0) / pesoTotal * 10) / 10 : null;
+  const porResponder = aulas.filter(a => a.semResposta).length;
   // O bónus em centésimas (0,45), sem zeros a mais.
   const fmt2 = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
@@ -122,6 +128,19 @@ export function EcraMinhaNota({
           <div style={{ fontSize: 13.5, color: C.suave, marginTop: 12 }}>
             {detalhe?.publicada ? 'nota final publicada pelo professor' : 'se a unidade acabasse hoje'}
           </div>
+
+          {mediaAvaliadas != null && (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1.5px solid #E6E1EA' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15, color: C.tinta, fontWeight: 600 }}>Média das aulas avaliadas</span>
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.tinta }}>{fmt(mediaAvaliadas)}</span>
+              </div>
+              <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
+                {comNota.length === 1 ? '1 aula' : `${comNota.length} aulas`}
+                {porResponder > 0 ? ` · ${porResponder === 1 ? '1 aula por responder conta' : `${porResponder} aulas por responder contam`} 0 na nota da UC até te autoavaliares` : ''}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Barras: vê-se a linha a subir sem ter de comparar números. */}
