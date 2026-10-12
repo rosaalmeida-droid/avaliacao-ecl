@@ -18,7 +18,7 @@ import { EventosWizard } from './EventosWizard';
 import { RegistoHorasExtra } from './RegistoHorasExtra';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  getTurmas, gravarEvento, apagarEvento, lerEventosLocais, sincronizarEventos, proximoNumeroEvento,
+  getTurmas, gravarEvento, apagarEvento, oQueSaiComOEvento, lerEventosLocais, sincronizarEventos, proximoNumeroEvento,
   getFichasProducao, getRequisicoes, getPlanosAula, eventoForaDoHorario, modoParticipacao, inscritosNoEvento, participantesDoEvento,
   addOrUpdatePlanoAula,
 } from '../backend';
@@ -30,7 +30,7 @@ import {
   MOMENTOS, nomeMomento, TIPOS_EVENTO, SERVICOS, NIVEIS, ESTILOS, PUBLICOS, NECESSIDADES, OUTRAS_AREAS,
   eventoNovo, classificar, perguntasAoCliente, perguntasEmFalta, tarefasDoEvento, dataDaTarefa, hojeISO,
   proximaAcao, preparacao, pendenciasDoLocal, precisaVisita, pronto, textoPerguntas, pedidoMenuIA, eFora,
-  faltaNoPedido, faltaNoServico,
+  faltaNoPedido, faltaNoServico, turmasQueVao,
 } from '../eventos/modelo';
 
 // ── Aparência (a mesma do Início do professor) ─────────────────
@@ -182,7 +182,8 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
       onApagar={() => { apagarEvento(ev.id); setAberto(null); setVersao(v => v + 1); }} />);
   }
 
-  const daTurma = (e: EventoECL) => !turmaId || e.turmasIds.includes(turmaId) || e.criadoPor === nomeProfessor;
+  // Só nas turmas que vão mesmo (Rosa, 12/out/2026); quem o criou vê-o sempre.
+  const daTurma = (e: EventoECL) => !turmaId || turmasQueVao(e).includes(turmaId) || e.criadoPor === nomeProfessor;
   const ativos = eventos.filter(e => !['fechado', 'cancelado'].includes(e.estado) && (verTodos || daTurma(e)));
   const arquivo = eventos.filter(e => ['fechado', 'cancelado'].includes(e.estado));
   // Concursos e outras atividades: só o plano de avaliação (sem catering).
@@ -587,8 +588,8 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
   const semPlano = getTurmas().map(t => t.id).filter(t => !planos.some(p => p.turmaId === t));
   // Várias turmas de uma vez (Rosa, out/2026): antes só se escolhia uma (vinha
   // a primeira, o 1.º BCR) e, criada essa, já não se podiam juntar as outras.
-  // Cada turma com a sua forma (Rosa, out/2026): uma pode ir toda (obrigatório,
-  // conta como aula) e as outras só por convite (inscrevem-se, não é obrigatório).
+  // Cada turma com a sua forma (Rosa, out/2026): uma pode ir toda (obrigatório)
+  // e as outras só por convite (inscrevem-se, não é obrigatório).
   type Modo = 'turma' | 'inscricao';
   const [modos, setModos] = useState<Record<string, Modo>>(() =>
     Object.fromEntries(e.turmasIds.filter(t => semPlano.includes(t)).map(t => [t, 'inscricao' as Modo])));
@@ -599,7 +600,7 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
       {planos.some(p => p.tipoEvento) && (<>
         <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.filter(p => p.tipoEvento).map(p => `${p.turmaId}${p0Modo(p)}`).join(', ')}.
         {' '}Os alunos autoavaliam-se na atividade. {planos.some(p => p.tipoEvento && p.modoParticipacao !== 'inscricao')
-          ? 'Para a turma que vai toda, conta como uma aula, na aula seguinte da UC; para os convidados, dá bónus.'
+          ? 'Para a turma que vai toda, é obrigatória: dá bónus, avaliado na aula seguinte da UC, e quem falta perde 0,5. Para os convidados, dá bónus.'
           : 'Dá bónus na UC dessa data.'}<br />
         {planos.filter(p => p.tipoEvento && p.modoParticipacao !== 'inscricao').map(p => (
           <button key={p.id} onClick={() => { addOrUpdatePlanoAula({ ...p, modoParticipacao: 'inscricao', estado: 'publicado' }); redesenhar(n => n + 1); }}
@@ -613,7 +614,8 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
       </>)}
       {planos.some(p => !p.tipoEvento) && (<>
         <b style={{ color: C.verde }}>✓ O evento está no plano de aula da turma</b> — {planos.filter(p => !p.tipoEvento).map(p => p.turmaId).join(', ')}.
-        {' '}Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
+        {' '}Vai a turma toda às horas de uma aula, por isso faz parte desse plano de aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
+        Se afinal foi fora do horário, abra o plano e use «Isto foi uma atividade, não uma aula».
         <br />{planos.filter(p => !p.tipoEvento).map(p => (
           <button key={p.id} onClick={() => {
             if (!confirm(`O evento deixa de ser aula obrigatória do ${p.turmaId} e passa a atividade extra: os alunos inscrevem-se e tu aceitas quem vai. Não conta faltas.\n\nContinuar?`)) return;
@@ -665,7 +667,7 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
       {escolhidas.length > 0 && e.data && (
         <div style={{ color: C.suave, fontSize: 13.5, marginBottom: 8 }}>
           {escolhidas.map(t => `${t}: ${modos[t] === 'inscricao' ? 'convite — os alunos inscrevem-se e tu aceitas quem vai; dá bónus, não conta faltas'
-            : modulosAtivos(t, e.data).length > 0 ? 'obrigatório — conta como aula (plano de aula com o evento lá dentro)'
+            : modulosAtivos(t, e.data).length > 0 ? 'obrigatório — às horas de uma aula entra nesse plano; fora delas dá bónus (quem falta perde 0,5)'
             : 'obrigatório, fora do ano letivo — atividade extra, com bónus no plano de aula seguinte da UC'}`).join(' · ')}
         </div>
       )}
@@ -792,7 +794,25 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
           </button>
         ))}
       </div>
+      {/* (Rosa, 12/out/2026) Apagar um evento criado por engano: à vista, no fim. */}
+      <div style={{ marginTop: 16 }}><BotaoApagarEvento e={e} onApagar={onApagar} /></div>
     </>
+  );
+}
+
+/** Apagar o evento: diz antes o que sai com ele (a avaliação criada para ele e os orçamentos). */
+function BotaoApagarEvento({ e, onApagar }: { e: EventoECL; onApagar: () => void }) {
+  return (
+    <button onClick={async () => {
+      const sai = oQueSaiComOEvento(e.id);
+      const texto = [
+        sai.atividades.length ? `Sai também a avaliação dos alunos criada para este evento (${sai.atividades.map((p: any) => p.turmaId).join(', ')}): sem respostas de alunos apaga-se; com respostas, vai para o arquivo.` : '',
+        sai.requisicoes ? `Sai${sai.requisicoes === 1 ? ' o orçamento (requisição)' : `m os ${sai.requisicoes} orçamentos (requisições)`} deste evento.` : '',
+        'As aulas ligadas ao evento ficam como estão.',
+        'Não se pode desfazer.',
+      ].filter(Boolean).join('\n\n');
+      if (await janelaConfirmar({ titulo: `Quer mesmo apagar o evento «${e.nome}»?`, texto, perigo: true, sim: 'Sim, apagar o evento' })) onApagar();
+    }} style={{ ...botao('perigo'), width: '100%', marginTop: 8 }}>🗑 Apagar o evento</button>
   );
 }
 
@@ -917,7 +937,7 @@ function Pedido({ e, mudar, onEditar, onApagar }: { e: EventoECL; mudar: (x: Par
         </div>
       </div>
 
-      <button onClick={async () => { if (await janelaConfirmar({ titulo: `Quer mesmo apagar o evento «${e.nome}»?`, texto: 'Não se pode desfazer.', perigo: true, sim: 'Sim, apagar o evento' })) onApagar(); }} style={{ ...botao('perigo'), width: '100%', marginTop: 8 }}>Apagar o evento</button>
+      <BotaoApagarEvento e={e} onApagar={onApagar} />
     </>
   );
 }

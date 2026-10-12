@@ -2,7 +2,7 @@ import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
 import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
-import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -585,8 +585,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     const notasFinais = montarNotasFinais();
     const naoReparou: any[] = autoavaliacoesAluno.flatMap((a: any) => (a.respIdx || []).map((v: any, q: number) =>
       v === NAO_ACONTECEU && aconteceu[`${a.competenciaId}|${q}`]
-        ? { competenciaId: a.competenciaId, q, pergunta: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento)?.[q]?.pergunta || '',
-            proxima: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento)?.[q]?.respostas[2] || '' } : null).filter(Boolean));
+        ? { competenciaId: a.competenciaId, q, pergunta: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento, planoDaSelecao ? contextoDoPlano(planoDaSelecao) : undefined)?.[q]?.pergunta || '',
+            proxima: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento, planoDaSelecao ? contextoDoPlano(planoDaSelecao) : undefined)?.[q]?.respostas[2] || '' } : null).filter(Boolean));
     // O mesmo nas perguntas dos 5 C.
     if (triagem) for (const q of perguntasDaAula(triagem.coId, triagem.crId, triagem.clId))
       if ((triagem.naoReparou || []).includes(q.chave)) {

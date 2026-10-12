@@ -146,6 +146,10 @@ export interface ContextoAula {
   servico: boolean;
   /** O professor respondeu à triagem (sem ela, o contexto é deduzido do plano). */
   definido: boolean;
+  /** Hoje é a aula (uma em cada três da turma) em que se pergunta pelo
+   *  respeito pela hierarquia: cumprir as ordens do professor, mesmo sem
+   *  concordar ou sem perceber porquê (Rosa, 12/out/2026). */
+  hierarquia?: boolean;
 }
 
 export const TEXTO_TIPO: Record<TipoAula, string> = {

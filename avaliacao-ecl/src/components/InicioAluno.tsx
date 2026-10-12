@@ -44,6 +44,8 @@ export interface AvisoAluno {
   detalhe: string;
   destino: DestinoAluno;
   urgente?: boolean;
+  /** Autoavaliação em falta ou pedida outra vez: vai para o topo do Início (Rosa, 12/out/2026). */
+  obrigatorio?: boolean;
 }
 
 const ico = (d: React.ReactNode, t = 20) => (
@@ -266,6 +268,23 @@ export function InicioAluno({
         {/* A saudação e a turma já estão no cabeçalho roxo, por cima: aqui
             repetiam-se ("Olá, Diogo" duas vezes). A UC vem no cartão da aula. */}
 
+        {/* (Rosa, 12/out/2026) As autoavaliações em falta ou pedidas outra vez
+            ficam logo no topo: se o aluno não responde, perde na nota. */}
+        {avisos.filter(a => a.obrigatorio).map(a => (
+          <button key={a.id} onClick={() => onAbrir(a.destino)} style={{
+            width: '100%', background: '#FFF4E8', border: `2px solid ${C.cobre}`, borderRadius: 16,
+            padding: '14px 15px', marginBottom: 12, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 800, letterSpacing: '0.06em',
+                textTransform: 'uppercase', color: C.cobre }}>Obrigatório</span>
+              <span style={{ display: 'block', fontSize: 16.5, fontWeight: 800, color: '#7A3F0E', marginTop: 2 }}>{a.titulo}</span>
+              <span style={{ display: 'block', fontSize: 14, color: '#8A4E15', marginTop: 3, lineHeight: 1.45 }}>{a.detalhe}</span>
+            </span>
+            <span style={{ color: C.cobre, fontSize: 24, fontWeight: 800 }}>›</span>
+          </button>
+        ))}
+
         {/* ── A AULA DE HOJE ─────────────────────────────────
             O título diz ao aluno que tudo o que está aqui é daquela
             aula. Sem isto, o que é da aula e o que é geral misturam-se. */}
@@ -404,10 +423,10 @@ export function InicioAluno({
           </div>
         )}
 
-        {avisos.length > 0 && (
+        {avisos.some(a => !a.obrigatorio) && (
           <div style={{ marginBottom: 22 }}>
             <div style={rotulo}>Avisos</div>
-            {avisos.map(a => (
+            {avisos.filter(a => !a.obrigatorio).map(a => (
               <button key={a.id} onClick={() => onAbrir(a.destino)} style={{
                 width: '100%', background: a.urgente ? C.cobreSuave : C.branco,
                 border: 'none', borderLeft: `4px solid ${a.urgente ? C.cobre : C.violeta}`,
@@ -537,7 +556,8 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '7. Aula e atividade extra', texto: [
     'Um plano de aula é a aula da turma toda e conta para a tua nota.',
     'Uma atividade extra é um evento, um concurso, uma visita ou um serviço de catering só para alguns alunos (ou durante as férias). Dá bónus.',
-    'Se a turma toda participa num evento durante o ano letivo, trata-se de um plano de aula, que conta como uma aula.',
+    'Se a turma toda participa num evento nas horas da aula, trata-se de um plano de aula, que conta como uma aula.',
+    'Se a atividade é obrigatória para a turma toda, mas fora do horário (depois das aulas, ao sábado), dá bónus (até +0,5). Quem falta perde 0,5; quem vai só parte do tempo recebe a parte proporcional.',
     '«Fora da escola» significa que decorre no exterior, e não «fora do horário das aulas».',
   ] },
   { titulo: '8. Se foste a uma atividade extra', texto: [

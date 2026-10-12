@@ -730,7 +730,7 @@ const SECCOES: Seccao[] = [
   {
     id: 'extras',
     titulo: 'Plano de aula e atividade extra',
-    resumo: 'A pergunta «Quem vai?» decide: se for a turma toda, conta como aula (fora das horas da aula, como mais uma aula, na aula desse dia ou na seguinte da UC); se forem só alguns alunos, é uma atividade extra, que dá bónus.',
+    resumo: 'A pergunta «Quem vai?» decide: se for a turma toda às horas da aula, conta como aula; fora das horas da aula, é uma atividade obrigatória que dá bónus (quem falta perde 0,5); se forem só alguns alunos, é uma atividade extra, que dá bónus.',
     conteudo: (
       <>
         <H>Dois conceitos diferentes</H>
@@ -747,7 +747,7 @@ const SECCOES: Seccao[] = [
           cabecalho={['Quem vai', 'O que é', 'Como conta']}
           linhas={[
             ['A turma toda, dentro das horas da aula', 'O plano de aula desse dia, com o evento', 'Como uma aula: as técnicas, os conhecimentos e as atitudes contam para a nota, e as faltas contam'],
-            ['A turma toda, fora das horas da aula (depois das aulas, ao sábado, nas férias ou antes do início das UC)', 'Atividade obrigatória (não se cria um plano de aula)', 'Como mais uma aula: a avaliação entra na aula desse dia ou na seguinte da mesma UC (se a UC já acabou, na aula seguinte da mesma disciplina) e na pauta. Não dá bónus nem faltas; quem não se autoavaliou conta 0'],
+            ['A turma toda, fora das horas da aula (depois das aulas, ao sábado, nas férias ou antes do início das UC)', 'Atividade obrigatória (não se cria um plano de aula)', 'Bónus até 0,5, conforme a nota da atividade, avaliado na aula desse dia ou na seguinte da mesma UC. Quem esteve só parte do tempo recebe a parte proporcional; quem faltou perde 0,5. As faltas e as horas não contam na UC'],
             ['Apenas alguns alunos (inscritos ou escolhidos pelo professor)', 'Atividade extra', 'Bónus; não há faltas'],
           ]}
         />

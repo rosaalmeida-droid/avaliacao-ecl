@@ -3817,7 +3817,10 @@ export function registarMaosLavadas(alunoId: string, planoAulaId: string, segund
   const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
   if (i < 0) return;
   const hora = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-  const marca = `Mãos lavadas às ${hora} (${segundos} s)`;
+  // (12/out/2026) Desde a lista simples, os segundos são o tempo a marcar a
+  // lista, não a lavar: já não se mostram, para não enganar o professor.
+  void segundos;
+  const marca = `Mãos lavadas às ${hora}`;
   const resto = (all[i].observacao || '').replace(MARCA_MAOS, '').trim();
   all[i] = { ...all[i], observacao: resto ? `${marca} | ${resto}` : marca };
   save(KEYS.presencas, all);
@@ -3902,6 +3905,8 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     // conta, nem uma decisão marcada antes (ex.: aula que passou a evento).
     // A presença e a farda contam só como atitudes.
     if ((plano as any).contaAssiduidade === false) return false;
+    // Fora do horário escolar: as faltas não contam (Rosa, 12/out/2026).
+    if (atividadeObrigatoriaForaDoHorario(plano)) return false;
     const registo: any = presencas.find(r => r.planoAulaId === plano.id);
     if (registo?.decisaoProfessor === 'sem_falta') return false;
     if (registo?.decisaoProfessor === 'falta_presenca') return true;
@@ -5577,7 +5582,7 @@ export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
     .catch(() => enviarNotasDaTurmaCom(turmaId, forcar, null));
 }
 function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
-  notaComoNaPauta: ((a: string, t: string, u: string) => number | null) | null): void {
+  notaComoNaPauta: ((a: string, t: string, u: string, ignorarPublicada?: boolean) => number | null) | null): void {
   try {
     if (!SHEETS_ECL_URL || !turmaId) return;
     const planos = getPlanosAula().filter(p => p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado');
@@ -5593,8 +5598,8 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
         const n = notaDaAulaValidada(validacaoDaAula(a.id, p.id, validacoes));
         if (n !== null) porAula[p.id] = Math.round(n * 10) / 10;
       });
-      // A atividade obrigatória fora das horas da aula conta como mais uma aula
-      // (Rosa, 6/out/2026): vai com a sua nota, como na aplicação (falta = 0).
+      // Atividades que contam como mais uma aula (desde 12/out/2026 nenhuma:
+      // a obrigatória fora do horário dá bónus, que vai na coluna do bónus).
       for (const l of aulasDaNotaUC(a.id, turmaId, uc)) {
         if (getPlanosAula().some((x: any) => x.id === l.planoId && x.tipoEvento)) porAula[l.planoId] = Math.round(l.nota * 10) / 10;
       }
@@ -5602,7 +5607,10 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
       linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
         media: c.base === null ? '' : Math.round(c.base * 10) / 10,
         bonus: Math.round(((c.bonusParticipacao || 0) + (c.bonusAssiduidade || 0)) * 100) / 100,
-        final: (() => { const n = notaComoNaPauta ? notaComoNaPauta(a.id, turmaId, uc) : c.final;
+        // A conta de hoje, mesmo com a pauta já publicada: a publicada tem a
+        // sua coluna no Sheets («Nota final publicada»). Mandar a publicada
+        // aqui deixava o Aldmir com média 14,3 e «Nota da UC» 5 (Rosa, 12/out/2026).
+        final: (() => { const n = notaComoNaPauta ? notaComoNaPauta(a.id, turmaId, uc, true) : c.final;
           return n === null || n === undefined ? '' : Math.round(n * 10) / 10; })(),
         faltas: getPlanosFaltadosPorUC(a.id, uc, turmaId).length,
         // As faltas em horas, sobre o total de horas da UC (a regra dos 10%),
@@ -7763,7 +7771,7 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   const { teto, motivo: motivoTeto } = tetoDaNotaUC(alunoId, turmaId, ucId);
   let limitadaPorTeto = false;
   if (nota > teto) { nota = teto; limitadaPorTeto = true; }
-  const final = Math.min(20, Math.round(nota * 10) / 10);
+  const final = Math.max(0, Math.min(20, Math.round(nota * 10) / 10));
   return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final, teto, motivoTeto };
 }
 
@@ -7777,18 +7785,28 @@ export function bonusPorAtividade(alunoId: string, turmaId: string, ucId: string
   const concursos = getPlanosAula().filter((p: any) => p.turmaId === turmaId && p.tipoEvento === 'concurso'
     && p.ucId === ucId && p.estado !== 'arquivado');
   const idsConcurso = new Set(concursos.map(p => p.id));
+  // As obrigatórias fora do horário (Rosa, 12/out/2026): bónus, ou −0,5 a quem faltou.
+  const hojeObr = new Date().toISOString().slice(0, 10);
+  const obrigatorias = (getPlanosAula() as any[]).filter(p => p.turmaId === turmaId && p.ucId === ucId
+    && atividadeObrigatoriaForaDoHorario(p) && String(p.data || '').slice(0, 10) <= hojeObr);
+  const idsObrigatorias = new Set(obrigatorias.map(p => p.id));
+  const dasObrigatorias: BonusDaAtividade[] = obrigatorias.map(p => {
+    const r = bonusDaObrigatoria(p, alunoId);
+    return { id: p.id, titulo: p.titulo || 'Atividade', data: String(p.data || '').slice(0, 10), tipo: p.tipoEvento,
+      conta: r.conta, motivo: r.motivo, valor: r.valor };
+  });
   const doConcurso = concursos.map((p: any) => {
     const r = pontosDoConcurso(p, alunoId, base);
     return r.candidatou ? { id: p.id, titulo: p.titulo || 'Concurso', data: String(p.data || '').slice(0, 10), tipo: 'concurso',
       conta: r.valor > 0, motivo: r.explicacao, valor: r.valor } : null;
   }).filter((x): x is BonusDaAtividade => !!x);
-  const outras = atividadesDoAlunoNaUC(alunoId, turmaId, ucId).filter(a => !idsConcurso.has(a.id)).map(a => {
+  const outras = atividadesDoAlunoNaUC(alunoId, turmaId, ucId).filter(a => !idsConcurso.has(a.id) && !idsObrigatorias.has(a.id)).map(a => {
     const semNota = a.tipo === 'concurso' && (base ?? 0) < B.notaMinimaConcurso;
     const r = semNota ? { conta: false, motivo: `Os concursos contam a partir de ${B.notaMinimaConcurso} valores.`, fator: 0 } : participacaoContaParaBonus(a, alunoId);
     const valor = r.conta ? Math.round((a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * r.fator * 100) / 100 : 0;
     return { id: a.id, titulo: a.titulo || 'Atividade', data: String(a.data || '').slice(0, 10), tipo: a.tipo, conta: r.conta, motivo: r.motivo, valor };
   });
-  return [...outras, ...doConcurso].sort((x, y) => x.data.localeCompare(y.data));
+  return [...outras, ...dasObrigatorias, ...doConcurso].sort((x, y) => x.data.localeCompare(y.data));
 }
 
 /**
@@ -7880,9 +7898,9 @@ export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
     if (faltados.has(p.id) || linhas.some(l => l.planoId === p.id)) continue;
     linhas.push({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota: 0, peso: pesoNoModulo(p), semResposta: true });
   }
-  // A atividade obrigatória fora das horas da aula conta como mais uma aula, na
-  // aula que a recebe. Sem autoavaliação conta 0, como as aulas (Rosa, 6/out/2026);
-  // respondida e ainda por validar, espera pelo professor.
+  // Atividades que contam como mais uma aula, na aula que as recebe (regra de
+  // 6/out/2026). Desde 12/out/2026 nenhuma: a obrigatória fora das horas da
+  // aula dá bónus (atividadeContaComoAula devolve sempre false).
   const hojeISO_ = new Date().toISOString().slice(0, 10);
   for (const r of atividadesQueContamComoAula(turmaId, ucId)) {
     if (faltados.has(r.atividade.id) || linhas.some(l => l.planoId === r.atividade.id) || r.atividade.data > hojeISO_) continue;
@@ -9497,7 +9515,23 @@ export function contextoDoPlano(plano: any): ContextoAula {
   // Grupos ligados no plano pelo professor, ou formados pelos alunos nesta aula.
   let temGrupos = !!plano?.gruposAlunos?.ativo;
   try { temGrupos = temGrupos || (!!plano?.id && gruposDaAula(plano.id).length > 0); } catch { /* */ }
-  return contextoDaAula(plano, temGrupos);
+  return { ...contextoDaAula(plano, temGrupos), hierarquia: vezDaHierarquia(plano) };
+}
+/** Uma aula em cada três da turma (a 3.ª, a 6.ª…) pergunta pelo respeito
+ *  pela hierarquia (Rosa, 12/out/2026): «ainda há alunos que não perceberam
+ *  a diferença entre concordar e respeitar». Contam os planos de aula da
+ *  turma, por ordem de data; as atividades e os eventos não contam. Só a
+ *  partir de 12/out/2026: as aulas que já passaram ficam como estavam. */
+const INICIO_HIERARQUIA = '2026-10-12';
+export function vezDaHierarquia(plano: any): boolean {
+  if (!plano?.id || !plano.turmaId || plano.tipoEvento) return false;
+  if (String(plano.data || '').slice(0, 10) < INICIO_HIERARQUIA) return false;
+  const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
+  const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento
+    && p.estado !== 'arquivado' && p.estado !== 'anulado' && !p.eliminado)
+    .sort((a, b) => ordem(a).localeCompare(ordem(b)));
+  const i = aulas.findIndex(p => p.id === plano.id);
+  return i >= 0 && i % 3 === 2;
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
 export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);
@@ -9627,12 +9661,32 @@ export function gravarEvento(ev: any): void {
   enviar(SHEETS_ECL_URL, 'evento', { evento: ev });
 }
 
+/** O que sai com o evento (para dizer ao professor antes de apagar). */
+export function oQueSaiComOEvento(id: string): { atividades: PlanoAula[]; requisicoes: number } {
+  return {
+    // Só as atividades criadas para este evento; as aulas ligadas a ele ficam.
+    atividades: getPlanosAula().filter((p: any) => p.eventoId === id && p.tipoEvento && String(p.id).startsWith(`plano_ev_${id}_`)),
+    requisicoes: getRequisicoes().filter((r: any) => r.eventoId === id).length,
+  };
+}
+
 export function apagarEvento(id: string): void {
   // Os orçamentos do evento (as requisições feitas para ele) saem também;
   // no Sheets, o script apaga-os com o evento.
   apagarRequisicoesLocais(r => (r as any).eventoId === id);
+  // (Rosa, 12/out/2026: «não consigo apagar») As atividades criadas só para
+  // este evento saem com ele: sem respostas de alunos, apagam-se; com
+  // respostas, arquivam-se. As aulas ligadas ao evento não se mexem.
+  for (const p of oQueSaiComOEvento(id).atividades) {
+    const r = resumoDoPlano(p.id);
+    if (!r.autoavaliacoes && !r.validacoes) anularPlanoAula(p.id); else arquivarPlanoAula(p.id);
+  }
   const todos = lerEventosLocais().filter((x: any) => x.id !== id);
   try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify(todos)); } catch { /* */ }
+  // Fica marcado como apagado aqui: uma sincronização feita antes de o Sheets
+  // e a base saberem já não o traz de volta.
+  const fora = load<string>(KEY_EVENTOS_ELIMINADOS);
+  if (!fora.includes(id)) save(KEY_EVENTOS_ELIMINADOS, [...fora, id]);
   enviar(SHEETS_ECL_URL, 'eliminar_evento', { id });
 }
 
@@ -9643,9 +9697,10 @@ export async function sincronizarEventos(): Promise<boolean> {
   const remotos: any[] = (json.eventos || json.dados || []).filter((e: any) => e?.id && e.versao === 4);
   // Eliminado noutro aparelho (script v24): sai daqui também, e não volta a
   // ser enviado. Antes ficava e era reenviado para sempre (auditoria out/2026).
-  const fora = new Set<string>((json.eliminados || []).map(String));
+  const fora = new Set<string>([...(json.eliminados || []).map(String), ...load<string>(KEY_EVENTOS_ELIMINADOS)]);
   const porId = new Map<string, any>(lerEventosLocais().filter((e: any) => !fora.has(String(e.id))).map((e: any) => [e.id, e]));
   for (const r of remotos) {
+    if (fora.has(String(r.id))) continue;
     const l = porId.get(r.id);
     if (!l || String(r.atualizadoEm || '') > String(l.atualizadoEm || '')) porId.set(r.id, r);
   }
@@ -10096,16 +10151,80 @@ const idInscricao = (planoId: string) => 'insc_' + planoId;
 export function eventoForaDoHorario(p: any): boolean { return !!p?.tipoEvento && TIPOS_EVENTO_PLANO.includes(p?.tipoAtividade); }
 
 /**
- * Atividade obrigatória fora das horas da aula (Rosa, 5-6/out/2026): a turma
- * toda vai, depois das aulas, num sábado, nas férias ou antes do início das UC.
- * Não é bónus: CONTA COMO MAIS UMA AULA, ligada à aula desse dia ou à seguinte
- * da mesma UC; se a UC já tiver acabado, à aula seguinte da mesma disciplina.
- * Quem não se autoavaliou conta 0. Os convidados (inscrição) e os concursos
- * continuam a ser bónus. Dentro das horas da aula, o evento entra no plano de aula.
+ * Atividade obrigatória fora das horas da aula: a turma toda vai, depois das
+ * aulas, num sábado, nas férias ou antes do início das UC. Avalia-se na aula
+ * desse dia ou na seguinte da mesma UC (aulaQueRecebeAtividade).
+ *
+ * (Rosa, 12/out/2026) Deixou de contar como mais uma aula (regra de 6/out):
+ * dá bónus de atividade (bonusDaObrigatoria). Está fora do horário escolar,
+ * por isso as faltas e as horas não contam na UC. Quem faltou perde 0,5;
+ * quem esteve só parte do tempo recebe o bónus nessa proporção.
+ * Dentro das horas da aula, o evento entra no plano de aula, como sempre.
  */
-export function atividadeContaComoAula(p: any): boolean {
+export function atividadeObrigatoriaForaDoHorario(p: any): boolean {
   return !!p?.tipoEvento && p.tipoEvento !== 'concurso' && p.estado !== 'arquivado' && !p.eliminado
     && modoParticipacao(p) === 'turma' && !p.aulaLigada && !aulaNasMesmasHoras(p);
+}
+/**
+ * «Isto foi uma atividade, não uma aula» (Rosa, 12/out/2026: «no dia 10 criei
+ * um plano de aula só porque precisava de avaliar como se fosse uma aula»).
+ * O plano passa a atividade obrigatória da turma: sem faltas nem horas na UC,
+ * com bónus avaliado na aula seguinte. As presenças marcadas ficam (dizem
+ * quem esteve). Guarda-se como era, para poder voltar atrás.
+ */
+export function passarAulaAAtividade(planoId: string, professor: string): PlanoAula | null {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  if (!p || p.tipoEvento) return null;
+  const agora = new Date().toISOString();
+  const novo: any = {
+    ...p, tipoEvento: 'evento', modoParticipacao: 'turma', contaAssiduidade: false,
+    tipoAtividade: TIPOS_EVENTO_PLANO.includes(p.tipoAtividade) ? p.tipoAtividade : 'Atividade fora da escola',
+    eraAula: { tipoAtividade: p.tipoAtividade ?? null, contaAssiduidade: p.contaAssiduidade ?? null, em: agora, por: professor },
+    atualizadoEm: agora,
+  };
+  addOrUpdatePlanoAula(novo);
+  return novo;
+}
+/** Volta a ser aula (desfaz passarAulaAAtividade). Os campos vão a null para chegar a todos os aparelhos. */
+export function voltarAtividadeAAula(planoId: string): PlanoAula | null {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  if (!p?.eraAula) return null;
+  const novo: any = {
+    ...p, tipoEvento: null, modoParticipacao: null, tipoAtividade: p.eraAula.tipoAtividade,
+    contaAssiduidade: p.eraAula.contaAssiduidade ?? true, eraAula: null, atualizadoEm: new Date().toISOString(),
+  };
+  addOrUpdatePlanoAula(novo);
+  return novo;
+}
+
+/** Já nenhuma atividade conta como aula (Rosa, 12/out/2026): todas dão bónus. */
+export function atividadeContaComoAula(_p: any): boolean {
+  return false;
+}
+
+/**
+ * O bónus de uma atividade obrigatória fora do horário, para um aluno
+ * (Rosa, 12/out/2026): faltou → −0,5; esteve → até 0,5, conforme a nota da
+ * atividade, e só a parte do tempo em que esteve. Sem registo de presença,
+ * não perde nada (o que não está registado conta a favor do aluno).
+ */
+export function bonusDaObrigatoria(p: any, alunoId: string): { valor: number; conta: boolean; motivo: string } {
+  const porEvento = BONUS_EVENTOS.porEvento;
+  const f2 = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
+  if (temFaltaMarcada(alunoId, p.id))
+    return { valor: -porEvento, conta: true, motivo: `Faltou a uma atividade obrigatória: perde ${f2(porEvento)}.` };
+  const reg: any = getPresencas().find(r => r.alunoId === alunoId && r.planoAulaId === p.id);
+  let fracao = 1;
+  if (reg?.decisaoProfessor === 'parcial') {
+    const total = horasDoPlano(p);
+    fracao = total > 0 ? Math.max(0, Math.min(1, horasDosBlocos(p, reg.horasPresentes || []) / total)) : 1;
+  }
+  if (!getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === p.id))
+    return { valor: 0, conta: false, motivo: 'Ainda não foi validado pelo professor.' };
+  const r = participacaoContaParaBonus({ id: p.id, planoId: p.id, turmaId: p.turmaId, tipo: p.tipoEvento, data: p.data, titulo: p.titulo } as any, alunoId);
+  if (!r.conta) return { valor: 0, conta: false, motivo: r.motivo };
+  const valor = Math.round(porEvento * r.fator * fracao * 100) / 100;
+  return { valor, conta: true, motivo: fracao < 1 ? `Esteve só ${Math.round(fracao * 100)}% do tempo: o bónus conta nessa parte.` : '' };
 }
 /** A aula da turma no mesmo dia e às mesmas horas da atividade (sobrepõem-se). */
 export function aulaNasMesmasHoras(atv: any): PlanoAula | undefined {
@@ -10120,7 +10239,7 @@ export function aulaNasMesmasHoras(atv: any): PlanoAula | undefined {
 export function aulaQueRecebeAtividade(atv: any): PlanoAula | undefined {
   if (!atv) return undefined;
   const dia = String(atv.data || '').slice(0, 10);
-  const aulas = getPlanosAula().filter((p: any) => p.turmaId === atv.turmaId && !p.tipoEvento && p.estado !== 'arquivado' && !p.eliminado
+  const aulas = getPlanosAula().filter((p: any) => p.id !== atv.id && p.turmaId === atv.turmaId && !p.tipoEvento && p.estado !== 'arquivado' && !p.eliminado
     && String(p.data || '').slice(0, 10) >= dia)
     .sort((a, b) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`));
   const mesmaUC = aulas.find(a => atv.ucId && a.ucId === atv.ucId);

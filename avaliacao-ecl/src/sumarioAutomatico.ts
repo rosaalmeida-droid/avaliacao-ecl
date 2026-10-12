@@ -27,7 +27,7 @@ import { triagemDoPlano, tipoDe, fasesDoTrabalho, aulaDePAP, type FaseProjeto, t
 import { capituloDoCampo } from './bancoManuais';
 import { getModulo, anoDaTurma } from './cronograma';
 import { getReferencialUC } from './referencial811RA144';
-import { contextoDoPlano, eventosAgregadosAAula, atividadeContaComoAula } from './backend';
+import { contextoDoPlano, eventosAgregadosAAula, atividadeObrigatoriaForaDoHorario } from './backend';
 import { regrasDaAutoavaliacao } from './autoavaliacaoDaAula';
 import { nomeDoTipoAtividade } from './eventosAvaliacao';
 
@@ -261,7 +261,9 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
   const pap = aulaDePAP(t);
   const ano = (anoDaTurma(plano.turmaId) || 1) as 1 | 2 | 3;
   // O que o aluno avalia nesta aula — as mesmas regras do telemóvel do aluno.
-  const R = regrasDaAutoavaliacao(plano, fichas, { ctx: contextoDoPlano(plano), ano, temaEscolhido: null });
+  // O sumário é da aula, não de um aluno: basta um aluno apresentar para a
+  // apresentação oral e os seus critérios constarem (Rosa, 12/out/2026).
+  const R = regrasDaAutoavaliacao(plano, fichas, { ctx: contextoDoPlano(plano), ano, temaEscolhido: null, apresentacaoOral: 'hoje' });
   const tipo = t ? tipoDe(t) : R.tipoPlanAula.replace('_obr', '');
   const linhas: string[] = [];
 
@@ -339,7 +341,8 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
 
   // 4. As atitudes, quando são elas que se avaliam (aula de atitudes, atividade).
   // Os nomes vêm das atitudes do referencial; se não houver nenhum, não se escreve a linha («atitudes .»).
-  const nomesAtitudes = R.atitudesDaAula.map(id => ATITUDES.find(a => a.id === id)?.nome || ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || (() => { try { const n = nomeCompetencia(id); return n && n !== id ? n : ''; } catch { return ''; } })())
+  // A da hierarquia (uma aula em cada três) é uma pergunta de rotina, não o que a aula trabalha.
+  const nomesAtitudes = R.atitudesDaAula.filter(id => !(id === 'ATI-015' && R.atitudeDaHierarquia)).map(id => ATITUDES.find(a => a.id === id)?.nome || ATITUDES_DETALHADAS.find(a => a.id === id)?.nome || (() => { try { const n = nomeCompetencia(id); return n && n !== id ? n : ''; } catch { return ''; } })())
     .filter(Boolean).map(x => minuscula(String(x)));
   if ((R.ehAtitudinal || p.tipoEvento) && nomesAtitudes.length) {
     const nomes = nomesAtitudes;
@@ -356,10 +359,10 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
   // Toda a aula de PAP deixa evidências, mesmo sem a parte escrita (Rosa, out/2026).
   if (pap) linhas.push('Registo de evidências para a PAP.');
   // O que aconteceu fora da aula e se avalia nesta: a atividade obrigatória da
-  // turma fora das horas da aula conta como mais uma aula (Rosa, 6/out/2026).
+  // turma fora das horas da aula (Rosa, 6/out/2026; dá bónus desde 12/out/2026).
   if (!p.tipoEvento) {
     try {
-      for (const ev of eventosAgregadosAAula(plano).filter(atividadeContaComoAula) as any[]) {
+      for (const ev of eventosAgregadosAAula(plano).filter(atividadeObrigatoriaForaDoHorario) as any[]) {
         const nome = semPonto(String(ev.titulo || 'Atividade').replace(/\s*[—–-]\s*\d{2}\/\d{2}\/\d{4}$/, ''));
         const dia = String(ev.data || '').slice(0, 10).split('-').reverse().slice(0, 2).join('/');
         linhas.push(`Avaliação da atividade «${nome}», realizada a ${dia}.`);

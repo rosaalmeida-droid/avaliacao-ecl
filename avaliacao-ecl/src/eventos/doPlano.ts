@@ -86,7 +86,8 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
     }
     // Fora das horas da aula (depois das aulas, sábado, férias): não se cria um
     // plano de aula (Rosa, 6/out/2026). Fica a atividade, obrigatória para a
-    // turma, e conta como mais uma aula, na aula desse dia ou na seguinte da UC.
+    // turma: dá bónus, avaliado na aula desse dia ou na seguinte da UC, e quem
+    // falta perde 0,5 (Rosa, 12/out/2026).
     const atv: any = {
       id: `plano_ev_${ev.id}_${turmaId.replace(/\W/g, '')}`, turmaId, professor,
       data: ev.data, horaInicio: ev.horaInicio || '', horaFim: ev.horaFim || '',

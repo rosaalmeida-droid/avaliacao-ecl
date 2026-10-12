@@ -255,11 +255,15 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       // O nome da atividade e o título acompanham o tipo (uma teórica chamava-se «Aula prática»).
       const nomes: Record<string, string> = { pratico: 'Aula prática', misto: 'Aula mista', teorico: 'Aula teórica', atitudinal: 'Dinâmica de grupo — atitudes' };
       const nomeNovo = nomes[tipoDe(nova)];
-      if (Object.values(nomes).includes(atual.tipoAtividade || 'Aula prática') && atual.tipoAtividade !== nomeNovo) {
+      if (Object.values(nomes).includes(atual.tipoAtividade || 'Aula prática') && atual.tipoAtividade !== nomeNovo) novo.tipoAtividade = nomeNovo;
+      // (Rosa, 12/out/2026) O título também, mesmo que o nome já estivesse certo: a
+      // aula de 12/10 era teórica e chamava-se «Aula prática — 12/10/2026». Só se o
+      // título for o automático (de qualquer tipo); um título escrito à mão fica.
+      if (nomeNovo) {
         const iso = String(atual.data || '').slice(0, 10), pt = iso.split('-').reverse().join('/');
-        const padroes = [`${atual.tipoAtividade || 'Aula prática'} — ${iso}`, `${atual.tipoAtividade || 'Aula prática'} — ${pt}`];
-        if (!atual.titulo || padroes.includes(atual.titulo)) novo.titulo = `${nomeNovo} — ${pt}`;
-        novo.tipoAtividade = nomeNovo;
+        const automaticos = Object.values(nomes).flatMap(n => [`${n} — ${iso}`, `${n} — ${pt}`]);
+        const certo = `${nomeNovo} — ${pt}`;
+        if ((!atual.titulo || automaticos.includes(atual.titulo)) && atual.titulo !== certo) novo.titulo = certo;
       }
     }
     // A farda e os registos de higiene acompanham o tipo — também numa

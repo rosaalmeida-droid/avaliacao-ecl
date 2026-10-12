@@ -411,7 +411,7 @@ export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]
 const REQUISITOS: Record<string, [Requisito[], Requisito[]]> = {
   'ATI-003': [['cozinha'], []],            // como vieste para a cozinha (farda)
   'ATI-011': [['producao'], []],           // a bancada enquanto trabalhavas
-  'ATI-015': [['cozinha'], []],            // lavar as mãos, circuito do sujo e do limpo
+  'ATI-015': [['cozinha'], []],            // lavar as mãos, circuito do sujo e do limpo (fora da cozinha: a da hierarquia)
   'ATI-016': [['producao'], ['producao']], // alimentos; lavar as mãos antes de mexer em comida
   'ATI-017': [['producao'], ['cozinha']],  // facas e lume; chão e passagens
   'ATI-002': [['producao'], []],           // o passo seguinte (da ficha)
@@ -436,6 +436,8 @@ export function perguntasAplicaveis(id: string, ctx: ContextoAula | undefined, e
   const ps = perguntasDe(id, evento, ctx);
   if (!ps) return [];
   if (!ctx || (evento && PERGUNTAS_EVENTO[id])) return ps.map(() => true);
+  // A da hierarquia e a do telemóvel fazem-se em qualquer aula.
+  if (comHierarquia(id, evento, ctx)) return ps.map(() => true);
   if (!ctx.cozinha && FORA_DA_COZINHA[id] && !(evento && PERGUNTAS_EVENTO[id])) return ps.map(() => true);
   const req = REQUISITOS[id] || [[], []];
   return ps.map((_, i) => cumpre(req[i], ctx));
@@ -507,10 +509,31 @@ const FORA_DA_COZINHA: Record<string, [PerguntaAtitude, PerguntaAtitude]> = {
   ],
 };
 
+// ── Respeito pela hierarquia (Rosa, 12/out/2026) ───────────────
+// «Ainda há alunos que não perceberam bem a diferença entre concordar e
+// respeitar: mesmo não concordando, ou não percebendo, têm de acatar a
+// ordem. Muitas vezes estão outras coisas por trás.» Entra na atitude
+// «Respeito pelas regras e normas definidas» (ATI-015: «cumpre os
+// procedimentos mesmo que discorde; respeita as hierarquias da brigada»).
+// Faz-se em vez da pergunta das regras da cozinha, que fora da cozinha não
+// aparecia, e numa aula em cada três da turma (ContextoAula.hierarquia).
+export const PERGUNTA_HIERARQUIA: PerguntaAtitude = P(
+  'Hoje, quando o professor te deu uma ordem ou uma indicação (mesmo uma de que não gostaste ou que não percebeste), o que fizeste?', [
+    'Respondi mal ou não fiz o que me pediu.',
+    'Fiz, mas a refilar ou de má vontade.',
+    'Fiz logo, mesmo sem concordar ou sem perceber porquê.',
+    'Fiz logo e bem, sem refilar; se tive dúvidas ou não concordei, falei depois com o professor, com calma.',
+  ]);
+/** A pergunta da hierarquia faz-se nesta aula (na atitude ATI-015)? */
+function comHierarquia(id: string, evento: boolean, ctx?: ContextoAula): boolean {
+  return id === 'ATI-015' && !!ctx && !(evento && PERGUNTAS_EVENTO[id]) && (!!ctx.hierarquia || !ctx.cozinha);
+}
+
 /** As perguntas desta atitude: as do evento, num evento ou concurso; fora da
  *  cozinha, as que fazem sentido fora dela; senão as de sempre. */
 export function perguntasDe(id: string, evento = false, ctx?: ContextoAula): [PerguntaAtitude, PerguntaAtitude] | undefined {
   if (evento && PERGUNTAS_EVENTO[id]) return PERGUNTAS_EVENTO[id];
+  if (comHierarquia(id, evento, ctx)) return [PERGUNTA_HIERARQUIA, PERGUNTAS_ATITUDES[id][1]];
   if (ctx && !ctx.cozinha && FORA_DA_COZINHA[id]) return FORA_DA_COZINHA[id];
   return PERGUNTAS_ATITUDES[id];
 }
