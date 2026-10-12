@@ -16,6 +16,7 @@ import { AvaliarColegas, configGrupos } from './GruposAluno';
 import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
 import { atitudeEmPalavrasSimples } from '../atitudesSimples';
+import { JanelaAutoavaliacoesEmFalta } from './JanelaAutoavaliacoesEmFalta';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
@@ -1037,6 +1038,10 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // prazos e inscrições. Nunca texto guardado à mão.
   /** As aulas cuja autoavaliação falta (para o aviso abrir logo a primeira). */
   const aulasPorAutoavaliar = React.useRef<PlanoAula[]>([]);
+  // Cada aula por autoavaliar e porquê, para a janela de entrada (Rosa, 12/out/2026).
+  const motivoPorAutoavaliar = React.useRef<Record<string, string>>({});
+  // A janela aparece sempre que o aluno abre a aplicação, até responder; «Agora não» fecha-a.
+  const [janelaPendentesFechada, setJanelaPendentesFechada] = useState(false);
   const avisosCalculados: AvisoAluno[] = (() => {
     const av: AvisoAluno[] = [];
     const hojeISO = new Date().toISOString().slice(0, 10);
@@ -1087,9 +1092,13 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           + 'Enquanto não voltares a responder, conta a resposta anterior.',
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
+        obrigatorio: true,
       });
     }
     aulasPorAutoavaliar.current = [...deNovo, ...reabertas];
+    motivoPorAutoavaliar.current = {};
+    deNovo.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'o professor pediu para responderes outra vez'; });
+    reabertas.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'o professor reabriu a tua autoavaliação'; });
     if (deNovo.length > 0) {
       av.push({
         id: 'responder_de_novo',
@@ -1099,6 +1108,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
+        obrigatorio: true,
       });
     }
 
@@ -1121,7 +1131,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     // para uma atividade passada.
     const atividadesPorAvaliar = getPlanosAula().filter((p: any) => p.turmaId === aluno.turmaId && eventoForaDoHorario(p)
       && p.estado === 'publicado' && String(p.data || '').slice(0, 10) <= hojeAceite
-      && participantesDoEvento(p).includes(aluno.id) && !ultimaResposta(aluno.id, p.id));
+      && participantesDoEvento(p).includes(aluno.id) && !ultimaResposta(aluno.id, p.id)
+      // Quem faltou à atividade não se autoavalia nela (Rosa, 12/out/2026).
+      && !temFaltaMarcada(aluno.id, p.id));
     if (atividadesPorAvaliar.length > 0) {
       const dia = (p: any) => new Date(String(p.data).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
       av.push({
@@ -1134,8 +1146,10 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         }).join(' ') + ' Autoavalia-te: leva 2 minutos e conta para a tua nota.',
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
+        obrigatorio: true,
       });
       aulasPorAutoavaliar.current = [...atividadesPorAvaliar, ...(aulasPorAutoavaliar.current || [])];
+      atividadesPorAvaliar.forEach((p: any) => { motivoPorAutoavaliar.current[p.id] = 'estiveste nesta atividade e ainda não te autoavaliaste'; });
     }
 
     // Autoavaliação submetida que ainda não se sabe se chegou ao professor
@@ -1155,6 +1169,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     const idsSemAuto = new Set(planosSemAutoavaliacao(aluno.id, aluno.turmaId).map(p => p.id));
     const semAuto = planosOrdenados.filter(p => idsSemAuto.has(p.id));
     aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.includes(p))];
+    semAuto.forEach(p => { if (!motivoPorAutoavaliar.current[p.id]) motivoPorAutoavaliar.current[p.id] = 'ainda não te autoavaliaste: conta 0'; });
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
@@ -1162,6 +1177,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua autoavaliação. Enquanto não te autoavaliares, cada uma conta 0 na tua nota da UC. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
+        obrigatorio: true,
       });
     }
 
@@ -1445,6 +1461,16 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             <CartaoNotasFinais key={versaoFinal} aluno={aluno}
               ucNome={id => (modulosDaTurmaAluno(aluno.turmaId).find((m: any) => m.id === id) as any)?.nome || id} />
           </>
+        )}
+        {/* (Rosa, 12/out/2026) Logo à entrada: as autoavaliações em falta ou pedidas
+            outra vez. Não prende o aluno: «Agora não» deixa-o usar a aplicação,
+            e a janela volta da próxima vez que a abrir, até responder. */}
+        {aba === 'inicio' && !destino && !janelaPendentesFechada && aulasPorAutoavaliar.current.length > 0 && (
+          <JanelaAutoavaliacoesEmFalta
+            aulas={aulasPorAutoavaliar.current.map(p => ({ id: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10),
+              motivo: motivoPorAutoavaliar.current[p.id] || 'ainda não te autoavaliaste' }))}
+            onResponder={() => { setJanelaPendentesFechada(true); const p = aulasPorAutoavaliar.current[0]; if (p) setPlanoAtivo(p); }}
+            onFechar={() => setJanelaPendentesFechada(true)} />
         )}
         {aba === 'inicio' && !destino && (
           <InicioAluno
