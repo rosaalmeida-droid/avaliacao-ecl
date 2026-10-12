@@ -13,6 +13,7 @@
 // do período, fica logo «sem prática».
 // ============================================================
 import { getPresencas, getPlanosAula, getValidacoes } from './backend';
+import { pedeFardaEHigiene } from './contextoAula';
 
 export type DecisaoFarda = 'tolerancia' | 'sem_pratica';
 
@@ -30,9 +31,16 @@ export function periodoDe(dataISO: string): { n: number; inicio: string; fim: st
 }
 
 const dataDoPlano = (planoAulaId: string) => String(getPlanosAula().find(p => p.id === planoAulaId)?.data || '').slice(0, 10);
+/** A farda conta nesta aula? (o professor responde no plano; Rosa, 12/out/2026) */
+const fardaContaNaAula = (planoAulaId: string) => {
+  const p = getPlanosAula().find(x => x.id === planoAulaId);
+  return !p || pedeFardaEHigiene(p);
+};
 
-/** O aluno disse à entrada (ou o professor marcou) que a farda não estava completa. */
+/** O aluno disse à entrada (ou o professor marcou) que a farda não estava completa.
+ *  Numa aula em que a farda não conta, nunca. */
 export function fardaEmFaltaNaAula(alunoId: string, planoAulaId: string): boolean {
+  if (!fardaContaNaAula(planoAulaId)) return false;
   const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
   if (!r) return false;
   if (r.fardaDeclarada) return (r.fardaEmFalta || []).length > 0;
@@ -43,7 +51,8 @@ export function fardaEmFaltaNaAula(alunoId: string, planoAulaId: string): boolea
 export function toleranciaNoPeriodo(alunoId: string, dataISO: string, excluirPlanoId?: string): { planoAulaId: string; data: string } | null {
   const per = periodoDe(dataISO);
   if (!per) return null;
-  const dentro = (id: string) => { const d = dataDoPlano(id); return id !== excluirPlanoId && d >= per.inicio && d <= per.fim; };
+  // Uma tolerância dada numa aula em que, afinal, a farda não conta, não se gasta.
+  const dentro = (id: string) => { const d = dataDoPlano(id); return id !== excluirPlanoId && d >= per.inicio && d <= per.fim && fardaContaNaAula(id); };
   const ids = new Set<string>();
   getPresencas().forEach((r: any) => { if (r.alunoId === alunoId && r.decisaoFarda === 'tolerancia' && dentro(r.planoAulaId)) ids.add(r.planoAulaId); });
   // As tolerâncias dadas na validação, antes de haver esta decisão na aula.
@@ -55,6 +64,7 @@ export function toleranciaNoPeriodo(alunoId: string, dataISO: string, excluirPla
 /** O que vale nesta aula: a decisão do professor; sem ela, «sem prática» se o
  *  aluno não tem farda e já usou a tolerância do período; senão, por decidir (null). */
 export function decisaoFardaNaAula(alunoId: string, planoAulaId: string): { decisao: DecisaoFarda | null; automatica: boolean } {
+  if (!fardaContaNaAula(planoAulaId)) return { decisao: null, automatica: false };
   const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
   if (r?.decisaoFarda === 'tolerancia' || r?.decisaoFarda === 'sem_pratica') return { decisao: r.decisaoFarda, automatica: false };
   if (fardaEmFaltaNaAula(alunoId, planoAulaId) && toleranciaNoPeriodo(alunoId, dataDoPlano(planoAulaId), planoAulaId))

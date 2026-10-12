@@ -18,7 +18,10 @@ export type TipoAula = 'pratico' | 'misto' | 'teorico' | 'atitudinal';
 export interface TriagemAula {
   /** Prática, mista, teórica ou atitudinal (sem ele, deduz-se de «cozinham»). */
   tipo?: TipoAula;
-  /** Numa aula atitudinal: avalia-se a farda? (prática e mista: sempre; teórica: nunca). */
+  /** A farda conta nesta aula? O professor responde sempre (Rosa, 12/out/2026:
+   *  numa aula prática de arrumação a farda não foi pedida e contou). Sem
+   *  resposta (planos antigos): prática e mista sim, teórica não, atitudinal
+   *  se for na cozinha. */
   farda?: boolean;
   /** Onde é a aula: na cozinha da escola, numa sala, ou fora da escola (visita, evento). */
   onde: OndeAula;
@@ -264,9 +267,15 @@ export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtu
  *  se o professor quiser. Os registos do KitchenFlow só quando se cozinha. */
 export function obrigatoriasDaTriagem(t: TriagemAula): { farda: boolean; registos: boolean } {
   const tipo = tipoDe(t);
-  if (tipo === 'pratico' || tipo === 'misto') return { farda: true, registos: true };
-  if (tipo === 'teorico') return { farda: false, registos: false };
+  // A resposta do professor à «A farda conta?» manda, em qualquer tipo de aula.
+  if (tipo === 'pratico' || tipo === 'misto') return { farda: t.farda ?? true, registos: true };
+  if (tipo === 'teorico') return { farda: t.farda ?? false, registos: false };
   return { farda: t.farda ?? t.onde === 'cozinha', registos: false };
+}
+
+/** O professor já disse se a farda conta nesta aula? */
+export function fardaRespondida(t: TriagemAula | null | undefined): boolean {
+  return typeof t?.farda === 'boolean';
 }
 
 // ── Peso de cada aula na nota do módulo ───────────────────────
