@@ -563,6 +563,10 @@ export async function confirmarPinAluno(alunoId: string, pin: string): Promise<R
   if (!j?.ok) return 'semRede';
   if (j.semPin || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';
   if (j.bloqueado) return 'bloqueado';
+  // O email da escola que o aluno já deu (script v27.2): não se volta a pedir (Rosa, 12/out/2026).
+  if (j.entrou && typeof j.email === 'string' && RE_EMAIL_ESCOLA.test(j.email.trim())) {
+    try { localStorage.setItem(chaveEmail(alunoId), j.email.trim().toLowerCase()); } catch { /* volta a pedir */ }
+  }
   return j.entrou ? 'entrou' : 'errado';
 }
 
@@ -10731,6 +10735,21 @@ const chaveEmail = (alunoId: string) => 'ecl_email_aluno_' + alunoId;
 
 export function emailDoAluno(alunoId: string): string {
   try { return localStorage.getItem(chaveEmail(alunoId)) || ''; } catch { return ''; }
+}
+/** O aluno já deu o email noutro telemóvel (o Sheets diz que sim, sem o mostrar). */
+const chaveRegistado = (alunoId: string) => 'ecl_email_aluno_registado_' + alunoId;
+export function emailRegistadoNoutroAparelho(alunoId: string): boolean {
+  try { return !!localStorage.getItem(chaveRegistado(alunoId)); } catch { return false; }
+}
+/** Pergunta ao Sheets se o aluno já deu o email (script v27.2). Com um script
+ *  antigo ou sem rede, responde «não» e o ecrã do email aparece, como antes. */
+export async function emailJaRegistadoNoSheets(alunoId: string): Promise<boolean> {
+  try {
+    const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'tem_email_aluno', alunoId }, 5000);
+    const sim = !!(j?.ok && j.temEmail);
+    if (sim) try { localStorage.setItem(chaveRegistado(alunoId), new Date().toISOString()); } catch { /* */ }
+    return sim;
+  } catch { return false; }
 }
 /** Os alunos do 1.º ano ainda não sabem o email da escola (Rosa, 6/out/2026):
  *  podem adiar, e a aplicação volta a pedir passados 7 dias. */

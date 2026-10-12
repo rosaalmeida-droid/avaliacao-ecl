@@ -46,7 +46,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, fracaoDosBlocos, notaSeEstivesseATodaAula, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, idiomaDoAluno, colegasPorAvaliar, partesDaAulaDoAluno } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, pedidoParaOAluno, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, notaSeTivesseFarda, notaSeContasseAFarda, fracaoDosBlocos, notaSeEstivesseATodaAula, toleranciasDaFarda, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade, temFaltaMarcada, emailAdiadoHaPouco, emailRegistadoNoutroAparelho, emailJaRegistadoNoSheets, idiomaDoAluno, colegasPorAvaliar, partesDaAulaDoAluno } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -645,7 +645,17 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
 
 /** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
 export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
-  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id) || emailAdiadoHaPouco(props.aluno.id));
+  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id) || emailAdiadoHaPouco(props.aluno.id)
+    || emailRegistadoNoutroAparelho(props.aluno.id));
+  // Sem email neste telemóvel: primeiro pergunta-se ao Sheets se o aluno já o deu
+  // (Rosa, 12/out/2026: «não é preciso perguntar o mail se já o temos»).
+  const [aVerEmail, setAVerEmail] = React.useState(() => !temEmailInicial(props.aluno.id));
+  React.useEffect(() => {
+    if (!aVerEmail) return;
+    let vivo = true;
+    emailJaRegistadoNoSheets(props.aluno.id).then(sim => { if (!vivo) return; if (sim) setTemEmail(true); setAVerEmail(false); });
+    return () => { vivo = false; };
+  }, [props.aluno.id]);
   // Aluno que só fala inglês: o ecrã dele traduz-se para inglês (Rosa, 6/out/2026).
   // Lê-se do aparelho a cada 5 s: quando o professor liga ou desliga, chega sozinho.
   const [ingles, setIngles] = React.useState(() => idiomaDoAluno(props.aluno.id) === 'en');
@@ -654,9 +664,13 @@ export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
     return () => clearInterval(t);
   }, [props.aluno.id]);
   React.useEffect(() => { ligarTraducaoIngles(ingles); return () => ligarTraducaoIngles(false); }, [ingles]);
+  if (!temEmail && aVerEmail) return (
+    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(26,23,20,0.6)', fontSize: 16 }}>A entrar…</div>
+  );
   if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
   return <AlunoViewInterno {...props} />;
 }
+const temEmailInicial = (alunoId: string) => !!emailDoAluno(alunoId) || emailAdiadoHaPouco(alunoId) || emailRegistadoNoutroAparelho(alunoId);
 
 function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
@@ -1604,7 +1618,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 </div>
                 {/* O email da escola pode mudar-se (o 1.º ano ainda não o sabe — Rosa, 6/out/2026). */}
                 <div style={{ background:'#fff', borderRadius:16, padding:'12px 16px', marginTop:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                  <span style={{ flex:1, minWidth:180, fontSize:14.5 }}>O teu email da escola: <b>{emailDoAluno(aluno.id) || 'ainda não puseste'}</b></span>
+                  <span style={{ flex:1, minWidth:180, fontSize:14.5 }}>O teu email da escola: <b>{emailDoAluno(aluno.id) || (emailRegistadoNoutroAparelho(aluno.id) ? 'já está registado na escola' : 'ainda não puseste')}</b></span>
                   <button onClick={() => setMudarEmail(true)} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #6B3FA0', background:'#fff', color:'#6B3FA0', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit' }}>
                     {emailDoAluno(aluno.id) ? 'Mudar o email' : 'Pôr o email'}
                   </button>
