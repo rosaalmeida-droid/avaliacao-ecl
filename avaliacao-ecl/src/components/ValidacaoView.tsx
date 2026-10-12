@@ -783,6 +783,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Esteve só {String(pa.horasEsteve).replace('.', ',')} de {String(pa.horasAula).replace('.', ',')} horas ({pa.esteve.join(', ') || 'nenhum tempo'}).
             Confirme que só avalia o que ele fez nesse tempo.
           </div>) : null; })()}
+        {/* Aula com apresentação oral: o que o aluno disse (Rosa, 12/out/2026). */}
+        {(selecao as any).apresentacaoOral && (
+          <div style={{ marginTop: 6, fontSize: 14, color: '#f0b470', fontWeight: 700 }}>
+            Apresentação oral: {(selecao as any).apresentacaoOral === 'hoje' ? 'diz que apresentou hoje (responde sobre a apresentação).'
+              : (selecao as any).apresentacaoOral === 'antes' ? 'diz que já apresentou noutra aula (responde sobre o que observou).'
+              : 'diz que ainda não apresentou (responde sobre o que observou).'}
+          </div>
+        )}
         {/* As perguntas de quem só esteve parte da aula: a 1.ª escolha diz muito (Rosa, 6/out/2026). */}
         {reflexaoPresenca && (
           <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.08)' }}>

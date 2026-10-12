@@ -116,6 +116,19 @@ export const CRITERIOS_FORMATO: Record<string, CriterioTrabalho[]> = {
       'Faltam muitos produtos.', 'Falta algum produto.',
       'Está completa e entreguei a tempo.', 'Está completa, a tempo, e verifiquei o que já havia no economato.']),
   ],
+  // Quem não apresentou nessa aula (ou já tinha apresentado) observa as
+  // apresentações dos colegas para corrigir o seu trabalho (Rosa, 12/out/2026).
+  observar: [
+    c('observar', 'bem', 'Observar os colegas: o que fizeram bem', [
+      'Não estive atento às apresentações.', 'Estive atento, mas não sei dizer o que correu bem.',
+      'Sei dizer uma coisa que um colega fez bem.', 'Sei dizer o que fizeram bem e vou usá-lo na minha apresentação.']),
+    c('observar', 'corrigir', 'Observar os colegas: o que vou corrigir no meu trabalho', [
+      'Não pensei no meu trabalho.', 'Pensei, mas não sei o que mudar.',
+      'Sei uma coisa que vou corrigir no meu trabalho.', 'Já anotei o que vou corrigir e porquê.']),
+    c('observar', 'perguntar', 'Observar os colegas: notas e perguntas', [
+      'Não tomei notas nem fiz perguntas.', 'Tomei algumas notas.',
+      'Tomei notas e fiz uma pergunta a um colega.', 'Fiz uma pergunta que ajudou o colega a explicar melhor.']),
+  ],
   grupo: [
     c('grupo', 'parte', 'Trabalho de grupo: a minha parte', [
       'Não fiz a minha parte.', 'Fiz a minha parte, mas com ajuda ou atrasado.',
@@ -132,7 +145,7 @@ export function criteriosDasFases(fases: string[], emGrupo: boolean): CriterioTr
   for (const f of fases) {
     if (f === 'investigacao') out.push(...de('preparar', ['pesquisa']));
     else if (f === 'desenvolvimento') out.push(...de('preparar', ['material']));
-    else if (f === 'receita' || f === 'menu' || f === 'requisicao') out.push(...de(f));
+    else if (f === 'receita' || f === 'menu' || f === 'requisicao' || f === 'observar') out.push(...de(f));
     else if (f.startsWith('apres_')) out.push(...de(f.slice(6)));
   }
   // O tempo da aula, nas fases de trabalho (não nas apresentações).
