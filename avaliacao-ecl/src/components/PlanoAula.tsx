@@ -1098,6 +1098,30 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
   }, [dados.data, dados.tipoAtividade, turmaId, trocarUC]);
 
+  // «Isto foi uma atividade, não uma aula»: no passo 3 (onde se diz quem vai) e no fim.
+  const botaoFoiAtividade = () => planoExistente && !(planoExistente as any).tipoEvento ? (
+          <button onClick={async () => {
+            const aula: any = aulaQueRecebeAtividade(planoExistente);
+            const dia = (iso: string) => `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}`;
+            if (!await janelaConfirmar({
+              titulo: 'Isto foi uma atividade, não uma aula?',
+              texto: 'O plano passa a atividade obrigatória da turma, fora do horário escolar:\n'
+                + '• as faltas e as horas deixam de contar na UC;\n'
+                + '• quem esteve recebe um bónus até 0,5, conforme a nota da atividade (quem esteve só parte do tempo, nessa proporção);\n'
+                + '• quem faltou perde 0,5;\n'
+                + `• avalia-se na aula seguinte da UC${aula ? ` (${dia(aula.data)})` : ''}.\n\n`
+                + 'As presenças que já marcou ficam: é por elas que a aplicação sabe quem esteve. Pode voltar atrás.',
+              nao: 'Não, é uma aula', sim: 'Sim, foi uma atividade',
+            })) return;
+            passarAulaAAtividade(planoExistente.id, nomeProfessor || '');
+            onGuardado?.();
+            onVoltar();
+          }} style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid #6B3FA0',
+            background: '#fff', color: '#6B3FA0', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            🏅 Isto foi uma atividade, não uma aula
+          </button>
+  ) : null;
+
   function guardar(forcar = false, continuar = false) {
     // Um clique, um plano. Sem isto, cliques repetidos criavam cópias.
     if (aCriar.current) return;
@@ -1562,6 +1586,15 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           </select>
           {tipoEventoDe(dados.tipoAtividade) && !ehAtividadeExtra(dados, turmaId) && (() => {
             const a: any = aulaAsMesmasHoras(dados, turmaId);
+            // A «aula às mesmas horas» é este mesmo plano: é ele a aula. Se foi fora do
+            // horário escolar (o catering de sábado), passa-se a atividade aqui (Rosa, 12/out/2026).
+            if (planoExistente && a && a.id === planoExistente.id) return (
+              <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
+                📘 Este plano é uma <b>aula da turma</b> ({String(a.data).slice(8, 10)}/{String(a.data).slice(5, 7)}, {a.horaInicio}–{a.horaFim}): conta para a nota como uma aula, com faltas.
+                Se foi fora do horário escolar (depois das aulas, ao sábado), toque em «Isto foi uma atividade, não uma aula».
+                {botaoFoiAtividade()}
+              </div>
+            );
             return (
               <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
                 📘 A turma toda, às horas da aula{a ? ` de ${String(a.data).slice(8, 10)}/${String(a.data).slice(5, 7)} (${a.horaInicio}–${a.horaFim})` : ''}: o evento faz parte
@@ -1779,28 +1812,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           </div>
         )}
         {/* (Rosa, 12/out/2026) Uma aula que afinal foi uma atividade fora do horário (ex.: o catering de sábado). */}
-        {planoExistente && !(planoExistente as any).tipoEvento && (
-          <button onClick={async () => {
-            const aula: any = aulaQueRecebeAtividade(planoExistente);
-            const dia = (iso: string) => `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}`;
-            if (!await janelaConfirmar({
-              titulo: 'Isto foi uma atividade, não uma aula?',
-              texto: 'O plano passa a atividade obrigatória da turma, fora do horário escolar:\n'
-                + '• as faltas e as horas deixam de contar na UC;\n'
-                + '• quem esteve recebe um bónus até 0,5, conforme a nota da atividade (quem esteve só parte do tempo, nessa proporção);\n'
-                + '• quem faltou perde 0,5;\n'
-                + `• avalia-se na aula seguinte da UC${aula ? ` (${dia(aula.data)})` : ''}.\n\n`
-                + 'As presenças que já marcou ficam: é por elas que a aplicação sabe quem esteve. Pode voltar atrás.',
-              nao: 'Não, é uma aula', sim: 'Sim, foi uma atividade',
-            })) return;
-            passarAulaAAtividade(planoExistente.id, nomeProfessor || '');
-            onGuardado?.();
-            onVoltar();
-          }} style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid #6B3FA0',
-            background: '#fff', color: '#6B3FA0', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            🏅 Isto foi uma atividade, não uma aula
-          </button>
-        )}
+        {botaoFoiAtividade()}
         {planoExistente && (planoExistente as any).eraAula && (
           <button onClick={async () => {
             if (!await janelaConfirmar({ titulo: 'Voltar a ser aula?', texto: 'O plano volta a ser uma aula: as faltas e as horas voltam a contar na UC, e deixa de dar bónus.',
