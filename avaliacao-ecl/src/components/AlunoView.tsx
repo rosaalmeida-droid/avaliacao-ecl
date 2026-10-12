@@ -75,10 +75,10 @@ import {
 } from './InicioAluno';
 import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
-import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, type Triagem5C } from '../triagem5c';
+import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, concretizar, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno, contextoPerguntas5C } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
@@ -3827,7 +3827,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
     ...(regras.clSempre ? { clId: CL_SEMPRE.id } : regras.clAula ? { clId: CL_AULA.id } : {}),
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
-  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId);
+  // As perguntas com o plano do aluno lá dentro: o prato, o guião, o tema e o
+  // que fez noutras aulas (Rosa, 12/out/2026: «Vieste preparado como?»).
+  const temaTitulo = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo.titulo;
+  const ctx5C = React.useMemo(() => contextoPerguntas5C(plano, fichas, aluno.id, temaTitulo), [plano.id, fichas.map(f => f.id).join(), aluno.id, temaTitulo]);
+  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId).map(q => concretizar(q, ctx5C));
+  const textosTriagem = Object.fromEntries(perguntasTriagem.map(q => [q.chave, q.pergunta]));
   // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.
   const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null;
   const triagemCompleta = triagemFeita('cl') && triagemFeita('cr') && triagemFeita('co');
@@ -3917,7 +3922,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
         texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
     ];
-    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora,
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, textos: textosTriagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora,
       // A versão do plano a que o aluno respondeu: se o professor o mudar
       // depois, sabe-se que esta resposta é da versão anterior.
       versaoPlano:String((plano as any).atualizadoEm || ''),
@@ -3928,7 +3933,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       ...(presencaParcial ? { reflexaoPresenca: { ...presencaParcial, respostas: Object.values(respPres),
         ...(compromisso ? { compromisso } : {}) } as ReflexaoPresenca } : {})} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
-      { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
+      { ...triagem, textos: textosTriagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
     setSubmetido(true); setModalConfirmar(false); onConcluido();
   }
@@ -4978,7 +4983,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         };
         const voltarAtras = () => setTriagem(t => ({ ...t, [q.chave]: null, [campoId]: antes[antes.length - 1],
           semAntes: { ...(t.semAntes || {}), [q.chave]: antes.slice(0, -1) } }));
-        const anterior = antes.length ? perguntaPorId(antes[antes.length - 1]) : undefined;
+        const anteriorBase = antes.length ? perguntaPorId(antes[antes.length - 1]) : undefined;
+        const anterior = anteriorBase && concretizar(anteriorBase, ctx5C);
         return (
           <div>
             {anterior && (

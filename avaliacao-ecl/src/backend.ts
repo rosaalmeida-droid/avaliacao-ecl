@@ -6,9 +6,9 @@
 
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
-import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA } from './triagem5c';
+import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA, type ContextoPerguntas5C } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, pedeFardaEHigiene, fardaIncompletaNaPresenca, type ContextoAula } from './contextoAula';
-import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
+import { manualDaUC, proximoConteudo, indicadoresDoConteudo, capituloDoCampo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
 import { planoNumDiaSemAulas, almocoNoDia } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
@@ -9892,6 +9892,51 @@ function perguntaDaRotacao(chave: 'co' | 'cr', plano: any, todos: PlanoAula[]): 
   // Sem cozinhar (aula teórica, atitudinal, visita) não saem perguntas sobre a cozinha e os pratos.
   const soTeoria = !contextoDoPlano(plano).producao;
   return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === plano.id)), soTeoria).id;
+}
+/** O plano e a experiência do aluno para as perguntas do Consciente e do
+ *  Criativo (concretizar): o prato ou o tema de hoje, o guião ou a ficha que
+ *  havia para ler, e uma técnica de uma aula anterior (a mais recente que
+ *  correu bem e a que o professor viu correr menos bem). Só as aulas antes desta contam: a
+ *  pergunta não muda depois de o aluno responder. */
+export function contextoPerguntas5C(plano: any, fichasDoAluno?: { nomePrato?: string; textoGuia?: string }[], alunoId?: string, temaTitulo?: string): ContextoPerguntas5C {
+  if (!plano) return {};
+  // Sem as fichas: as do grupo do aluno (se o professor deu uma ao grupo) ou as do plano.
+  const fichaDoGrupo = alunoId ? grupoDoAluno(plano.id, alunoId)?.fichaId : undefined;
+  const fichas = fichasDoAluno || getFichasPorPlano(plano.id).filter(f => !fichaDoGrupo || f.id === fichaDoGrupo);
+  const producao = contextoDoPlano(plano).producao;
+  const c: ContextoPerguntas5C = { teorica: !producao };
+  const pratos = [...new Set(fichas.map(f => String(f.nomePrato || '').trim()).filter(Boolean))].slice(0, 2).map(n => `«${n}»`);
+  const nomes = pratos.join(' e ');
+  const temGuiao = fichas.some(f => String(f.textoGuia || '').trim());
+  // O capítulo do manual: o tema que o aluno escolheu, ou o conteúdo do plano.
+  const capitulo = temaTitulo || ((plano.conhecimentosProf || []) as any[])
+    .map(k => capituloDoCampo(String(k?.id || ''))?.capitulo.titulo).find(Boolean);
+  if (producao && pratos.length) {
+    c.aFazer = `a fazer ${nomes}`; c.oQue = nomes;
+    c.paraLer = temGuiao ? { longo: `o guião de ${nomes}`, curto: 'o guião' } : { longo: `a ficha técnica de ${nomes}`, curto: 'a ficha técnica' };
+    c.ondeProcurar = temGuiao ? 'no guião' : 'na ficha técnica';
+  } else if (capitulo) {
+    c.aFazer = `no trabalho sobre «${capitulo}»`; c.oQue = `«${capitulo}»`;
+    c.paraLer = { longo: `o capítulo do manual sobre «${capitulo}»`, curto: 'o capítulo do manual' };
+    c.ondeProcurar = 'no manual';
+  }
+  if (alunoId && producao) {
+    const dia = String(plano.data || '').slice(0, 10);
+    const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+    const datas = new Map(getPlanosAula().map(x => [x.id, String(x.data || '').slice(0, 10)]));
+    const dataDe = (r: RegistoAvaliacao) => datas.get(r.planoAulaId) || String(r.data || '').slice(0, 10);
+    const tecnicas = getHistoricoAvaliacoes()
+      .filter(r => r.alunoId === alunoId && r.planoAulaId !== plano.id
+        && /^(SUB|APP)-/.test(r.microcompetenciaId) && r.microcompetenciaId !== 'SUB-OUTRA' && dataDe(r) && dataDe(r) < dia)
+      .sort((a, b) => dataDe(b).localeCompare(dataDe(a)));
+    const nome = (r: RegistoAvaliacao) => nomeCompetencia(r.microcompetenciaId);
+    // O exemplo: uma técnica que fez (validada ou não); o erro: só o que o professor validou.
+    const bem = tecnicas.find(r => r.nota >= 3 && nome(r) !== r.microcompetenciaId);
+    const mal = tecnicas.find(r => r.validadoPor !== 'aluno' && r.nota <= 2 && nome(r) !== r.microcompetenciaId);
+    if (bem) c.aprendido = { nome: nome(bem), data: dm(dataDe(bem)) };
+    if (mal) c.erro = { nome: nome(mal), data: dm(dataDe(mal)) };
+  }
+  return c;
 }
 /** As perguntas do Consciente (ou do Criativo) a que o aluno já respondeu,
  *  da aula mais antiga para a mais recente, sem a desta aula. Serve para a

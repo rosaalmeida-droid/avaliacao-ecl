@@ -223,6 +223,26 @@ regra('53. Aula prática sem registos de higiene: os registos do KitchenFlow sae
   igual(c.obrigatoriasDaTriagem({ ...t, tipo: 'teorico', registos: true }).registos, false, 'na teórica nunca:');
 });
 
+regra('54. As perguntas do Consciente e do Criativo dizem de que se fala, com o plano do aluno', () => {
+  por('ecl_planos', [
+    { id: 'p_antes', turmaId: 't', ucId: 'UC1', data: '2026-10-10', estado: 'publicado', tipoPlanAula: 'pratico' },
+    { id: 'p_hoje', turmaId: 't', ucId: 'UC1', data: '2026-10-13', estado: 'publicado', tipoPlanAula: 'pratico', fichasIds: ['f1'] }]);
+  por('ecl_fichas', [{ id: 'f1', nomePrato: 'Wrap de Frango', textoGuia: 'Passo 1…', ingredientes: [] }]);
+  por('ecl_historico_avaliacoes', [
+    { id: 'r1', alunoId: 'a1', turmaId: 't', planoAulaId: 'p_antes', fichaId: '', ucId: 'UC1', microcompetenciaId: 'APP-0053', nota: 4, data: '2026-10-10', validadoPor: 'aluno' },
+    { id: 'r2', alunoId: 'a1', turmaId: 't', planoAulaId: 'p_hoje', fichaId: '', ucId: 'UC1', microcompetenciaId: 'APP-0053', nota: 1, data: '2026-10-13', validadoPor: 'professor' }]);
+  const pl = b.getPlanosAula().find(x => x.id === 'p_hoje');
+  const ctx = b.contextoPerguntas5C(pl, undefined, 'a1');
+  const co20 = t5.concretizar(t5.perguntaPorId('co20') as any, ctx);
+  igual(co20.pergunta, 'Antes desta aula, viste o plano na aplicação e leste o guião de «Wrap de Frango»?', 'vir preparado:');
+  igual(co20.frases[1], 'Vi o plano, mas não li o guião.', 'as respostas também:');
+  const cr09 = t5.concretizar(t5.perguntaPorId('cr09') as any, ctx).pergunta;
+  igual(cr09.startsWith('Hoje, a fazer «Wrap de Frango», usaste uma coisa que aprendeste numa aula anterior?'), true, cr09 + ':');
+  igual(/da aula de 10\/10/.test(cr09), !!ctx.aprendido, 'o exemplo é de uma aula anterior:');
+  igual(ctx.erro, undefined, 'a própria aula e o que o aluno disse de si não contam como erro:');
+  igual(t5.concretizar(t5.perguntaPorId('co20') as any, {}).pergunta.includes('o que o professor preparou'), true, 'sem plano, diz o que é:');
+});
+
 // 4. Um plano eliminado noutro aparelho: neste, as notas dele também saem.
 {
   total++; mem.clear();

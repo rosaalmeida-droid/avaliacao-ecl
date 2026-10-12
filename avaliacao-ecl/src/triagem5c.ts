@@ -117,6 +117,9 @@ export interface Triagem5C {
   semAntes?: { cl?: string[]; cr?: string[]; co?: string[] };
   /** Disse «não houve ocasião», mas o professor viu que aconteceu: fica na resposta mais baixa. */
   naoReparou?: ('cl' | 'cr' | 'co')[];
+  /** As perguntas como o aluno as leu, com o plano dele lá dentro (concretizar):
+   *  o professor vê a mesma pergunta na validação. */
+  textos?: Partial<Record<ChaveTriagem, string>>;
 }
 
 /** Nota 1-5 de uma resposta; null quando não houve ocasião. */
@@ -266,12 +269,15 @@ export const BANCO_CO: PerguntaCO[] = [
     'Hoje o professor não me corrigiu nada.',
     'Hoje o professor corrigiu-te?',
     ['Fiquei aborrecido/a.', 'Não mudei.', 'Corrigi logo.', 'Corrigi e percebi porquê.'], 'Hoje não.'),
+  // «Vieste preparado como?» (Rosa, 12/out/2026): se viu o plano e leu o que
+  // havia para ler. Com o plano, diz qual guião, ficha ou capítulo (concretizar).
   co('co20', 'professor', 'Vir preparado',
-    'Hoje vieste preparado/a para a aula que o professor preparou (leste a ficha, trouxeste o material)?',
-    ['Não, e atrasei o trabalho.', 'Não, mas consegui resolver.', 'Sim, em parte.', 'Sim, li a ficha e trouxe tudo.'],
+    'Antes desta aula, viste o plano na aplicação e leste o que o professor preparou (a ficha técnica, o guião ou o capítulo do manual)?',
+    ['Não vi o plano da aula.', 'Vi o plano, mas não li o que o professor preparou.', 'Li o que o professor preparou antes da aula.',
+      'Li o que o professor preparou antes da aula e já sabia o que ia fazer (ou trouxe as dúvidas escritas).'],
     '',
-    'Hoje vieste preparado/a?',
-    ['Não, e atrasei.', 'Não, mas consegui resolver.', 'Mais ou menos.', 'Sim, li a ficha e trouxe tudo.'], ''),
+    'Antes da aula, leste o que o professor preparou?',
+    ['Não vi o plano.', 'Vi o plano, mas não li o que o professor preparou.', 'Li o que o professor preparou.', 'Li o que o professor preparou e já sabia o que ia fazer.'], ''),
   co('co21', 'professor', 'Uma oportunidade extra',
     'O professor deu-te uma oportunidade extra (recuperar, repetir, treinar)? O que fizeste?',
     ['Não aproveitei.', 'Aproveitei só em parte.', 'Aproveitei.', 'Aproveitei e agradeci.'],
@@ -400,6 +406,86 @@ export const BANCO_CR: PerguntaCO[] = [
 
 const BANCOS = { co: { lados: LADOS_CO, banco: BANCO_CO }, cr: { lados: LADOS_CR, banco: BANCO_CR } };
 export const bancoDe = (chave: 'co' | 'cr') => BANCOS[chave];
+
+// ════════════════════════════════════════════════════════════
+// PERGUNTAS DENTRO DO PLANO DO ALUNO (Rosa, 12/out/2026)
+// ════════════════════════════════════════════════════════════
+// «Usaste o que sabias?» e «Vieste preparado?» eram vagas: o aluno não
+// sabia de quê. Com o plano da aula (o prato, o guião, o tema do manual) e
+// o que o aluno já fez noutras aulas, a pergunta diz de que se fala.
+export interface ContextoPerguntas5C {
+  /** O que se fez hoje, com a preposição: «a fazer «Bacalhau à Brás»», «no trabalho sobre «Doçaria»». */
+  aFazer?: string;
+  /** O nome do que se fez: «Bacalhau à Brás», «o trabalho sobre «Doçaria»». */
+  oQue?: string;
+  /** O que havia para ler antes da aula: por extenso e curto. */
+  paraLer?: { longo: string; curto: string };
+  /** Onde procurar uma dúvida: «no guião», «na ficha técnica», «no manual». */
+  ondeProcurar?: string;
+  /** Uma técnica que o aluno fez numa aula anterior, para exemplo. */
+  aprendido?: { nome: string; data: string };
+  /** A técnica que correu menos bem ao aluno numa aula anterior. */
+  erro?: { nome: string; data: string };
+  /** Aula sem cozinha (teórica, atitudinal). */
+  teorica?: boolean;
+}
+
+/** A pergunta com o plano e a experiência do aluno lá dentro. Sem contexto,
+ *  fica a versão geral (que também já diz o quê). */
+export function concretizar<T extends PerguntaTriagem>(q: T, c: ContextoPerguntas5C = {}): T {
+  const id = (q as any).id as string | undefined;
+  const hoje = c.aFazer ? `Hoje, ${c.aFazer},` : 'Hoje';
+  const ler = c.paraLer || { longo: 'o que o professor preparou (a ficha técnica, o guião ou o capítulo do manual)', curto: 'o que o professor preparou' };
+  const onde = c.ondeProcurar || (c.teorica ? 'no manual' : 'na ficha técnica ou no guião');
+  switch (id) {
+    case 'co20': return { ...q,
+      pergunta: `Antes desta aula, viste o plano na aplicação e leste ${ler.longo}?`,
+      frases: ['Não vi o plano da aula.', `Vi o plano, mas não li ${ler.curto}.`, `Li ${ler.curto} antes da aula.`,
+        `Li ${ler.curto} antes da aula e já sabia o que ia fazer (ou trouxe as dúvidas escritas).`],
+      perguntaSimples: `Antes da aula, leste ${ler.curto}?`,
+      frasesSimples: ['Não vi o plano.', `Vi o plano, mas não li ${ler.curto}.`, `Li ${ler.curto}.`, `Li ${ler.curto} e já sabia o que ia fazer.`] };
+    case 'cr09': {
+      const ex = c.aprendido ? `Por exemplo: «${c.aprendido.nome}», da aula de ${c.aprendido.data}.`
+        : c.teorica ? 'Por exemplo: uma coisa do manual que estudaste antes, ou uma técnica que já fizeste na cozinha.'
+        : 'Por exemplo: um corte, uma cozedura, uma regra de higiene ou uma conta de doses.';
+      return { ...q,
+        pergunta: `${hoje} usaste uma coisa que aprendeste numa aula anterior? ${ex}`,
+        perguntaSimples: `${hoje} fizeste uma coisa que aprendeste noutra aula${c.aprendido ? ` (por exemplo, «${c.aprendido.nome}»)` : ''}?` };
+    }
+    case 'cr14': return c.erro ? { ...q,
+      pergunta: `Na aula de ${c.erro.data}, «${c.erro.nome}» correu-te menos bem. ${hoje} evitaste esse erro?`,
+      semOcasiao: `Hoje não fiz nada parecido com «${c.erro.nome}».`,
+      perguntaSimples: `Na aula de ${c.erro.data}, «${c.erro.nome}» correu menos bem. ${hoje} correu melhor?`,
+      semOcasiaoSimples: 'Hoje não fiz isso.' } : q;
+    case 'cr13': return c.oQue ? { ...q,
+      pergunta: `Se fizesses ${c.oQue} outra vez, o que mudavas?`,
+      perguntaSimples: `Se fizesses ${c.oQue} outra vez, mudavas alguma coisa?` } : q;
+    case 'cr10': return c.oQue ? { ...q,
+      pergunta: `Hoje quiseste saber mais sobre ${c.oQue} (de onde vem, porque se faz assim)?`,
+      perguntaSimples: `Hoje quiseste saber mais sobre ${c.oQue}?` } : q;
+    case 'cr08': return c.aFazer ? { ...q,
+      pergunta: `${hoje} perguntaste «e se fizéssemos de outra maneira?»`,
+      perguntaSimples: `${hoje} pensaste noutra maneira de fazer?` } : q;
+    case 'cr04': return { ...q,
+      pergunta: `${hoje} tiveste uma dúvida sobre como fazer. Como a resolveste?`,
+      frases: [q.frases[0], q.frases[1], `Procurei primeiro ${onde}.`, `Procurei ${onde}, experimentei e confirmei com o professor.`],
+      perguntaSimples: `${hoje} tiveste uma dúvida. O que fizeste?`,
+      frasesSimples: [q.frasesSimples[0], q.frasesSimples[1], `Vi primeiro ${onde}.`, `Vi ${onde}, experimentei e confirmei.`] };
+    case 'cr11': return c.aFazer ? { ...q,
+      pergunta: `${hoje} encontraste uma maneira de trabalhar mais organizada ou mais rápida?`,
+      perguntaSimples: `${hoje} arranjaste uma maneira mais fácil de trabalhar?` } : q;
+    case 'co13': return c.aFazer ? { ...q,
+      pergunta: `${hoje} houve uma coisa que ainda não fazes bem? O que fizeste?`,
+      perguntaSimples: `${hoje} houve uma coisa difícil para ti?` } : q;
+    case 'co14': return c.aFazer ? { ...q,
+      pergunta: `${hoje} houve uma coisa que fazes bem? O que fizeste com isso?`,
+      perguntaSimples: `${hoje} fizeste uma coisa que sabes fazer bem?` } : q;
+    case 'co16': return c.aFazer ? { ...q,
+      pergunta: `${hoje} tiveste dúvidas antes de começar uma tarefa? O que fizeste?`,
+      perguntaSimples: `${hoje} tiveste dúvidas antes de começar?` } : q;
+    default: return q;
+  }
+}
 
 /** A k-ésima pergunta do ciclo: os três lados alternam, e dentro de cada
  *  lado as perguntas vão rodando. */

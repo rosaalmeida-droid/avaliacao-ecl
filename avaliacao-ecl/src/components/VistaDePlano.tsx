@@ -11,7 +11,7 @@ import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf }
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula, alunosPorResponderVersaoNova } from '../backend';
-import { bancoDe } from '../triagem5c';
+import { bancoDe, concretizar } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
 import React, { useState } from 'react';
@@ -24,7 +24,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula, SEM_ATRASOS_MIN,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano, contextoPerguntas5C } from '../backend';
 import { rotuloPlano, avisoFimUC, rotuloDoPlano } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -448,7 +448,8 @@ function PerguntaDoDia({ chave, nome, plano, aoMudar }: { chave: 'co' | 'cr'; no
           </optgroup>
         ))}
       </select>
-      <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{banco.find(q => q.id === id)?.pergunta}»</div>
+      {/* Como os alunos a leem, com o prato, o guião ou o tema desta aula. */}
+      <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{(() => { const q = banco.find(x => x.id === id); return q && concretizar(q, contextoPerguntas5C(plano)).pergunta; })()}»</div>
       {escolhida && (
         <button onClick={() => mudar('')} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none',
           color: '#7d4f8c', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>

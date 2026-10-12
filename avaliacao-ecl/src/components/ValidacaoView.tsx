@@ -2,9 +2,9 @@ import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
 import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
-import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula, liderKFdoGrupo, grupoDoAluno } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula, liderKFdoGrupo, grupoDoAluno, contextoPerguntas5C } from '../backend';
 import { registosKFDoAluno, type RegistoKFDoAluno } from './RegistosKFaoVivo';
-import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
+import { perguntasDaAula, perguntaPorId, concretizar, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
@@ -482,6 +482,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // professor tirou as atitudes), o aluno não respondeu aos 5 C nem às
   // atitudes: não aparecem aqui, nem como «o aluno diz que não aconteceu».
   const planoDaSelecao: any = getPlanosAula().find(p => p.id === selecao.planoAulaId);
+  // As perguntas do Consciente e do Criativo com o plano do aluno, como ele as
+  // leu (Rosa, 12/out/2026). A pergunta lida pelo aluno vem guardada na resposta.
+  const ctx5C = contextoPerguntas5C(planoDaSelecao, undefined, selecao.alunoId,
+    ((selecao.autoavaliacoes || []) as any[]).map(a => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.titulo).find(Boolean));
+  const perguntas5C = (t: Triagem5C) => perguntasDaAula(t.coId, t.crId, t.clId).map(q => concretizar(q, ctx5C));
+  const pergunta5CPorId = (id: string) => { const q = perguntaPorId(id); return q && concretizar(q, ctx5C); };
   const atitudesNaoPerguntadas = !!((selecao as any).triagem5c?.naoPerguntado)
     || (!!planoDaSelecao && !partesDoPlanoParaOAluno(planoDaSelecao, selecao.alunoId).atitudes);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
@@ -596,10 +602,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         ? { competenciaId: a.competenciaId, q, pergunta: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento, planoDaSelecao ? contextoDoPlano(planoDaSelecao) : undefined)?.[q]?.pergunta || '',
             proxima: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento, planoDaSelecao ? contextoDoPlano(planoDaSelecao) : undefined)?.[q]?.respostas[2] || '' } : null).filter(Boolean));
     // O mesmo nas perguntas dos 5 C.
-    if (triagem) for (const q of perguntasDaAula(triagem.coId, triagem.crId, triagem.clId))
+    if (triagem) for (const q of perguntas5C(triagem))
       if ((triagem.naoReparou || []).includes(q.chave)) {
         // A pergunta que o aluno disse que não aconteceu (a primeira que saltou).
-        const p = perguntaPorId((triagem.semAntes?.[q.chave] || [])[0] || '') || q;
+        const p = pergunta5CPorId((triagem.semAntes?.[q.chave] || [])[0] || '') || q;
         naoReparou.push({ competenciaId: q.chave, q: 0, pergunta: p.pergunta, proxima: p.frases[2] || '' });
       }
     // Guardar validação
@@ -1248,13 +1254,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
             Não conta para a nota desta aula. Entra no Colaborativo, no Criativo e no Consciente da pauta da UC.
           </div>
-          {perguntasDaAula(triagem.coId, triagem.crId, triagem.clId).map(q => {
+          {perguntas5C(triagem).map(q => {
             const r = triagem[q.chave];
             const opcoes: { v: number | 'sem'; txt: string }[] = [
               ...q.frases.map((f, i) => ({ v: i, txt: f })), ...(q.semOcasiao ? [{ v: 'sem' as const, txt: q.semOcasiao }] : [])];
             // Perguntas a que disse «não aconteceu» antes de responder a esta.
             const saltou = triagem.semAntes?.[q.chave] || [];
-            const pSaltada = saltou.length ? perguntaPorId(saltou[0]) : undefined;
+            const pSaltada = saltou.length ? pergunta5CPorId(saltou[0]) : undefined;
             // O que o aluno respondeu (para voltar atrás se o professor mudar de ideias).
             const doAluno = ((selecao as any).triagem5c || {})[q.chave] ?? null;
             // A turma toda respondeu à mesma pergunta do Consciente e do Criativo:
@@ -1264,7 +1270,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               ? colegasQueViram(q.chave, selecao.alunoId, selecao.planoAulaId || '', idPergunta) : 0;
             return (
               <div key={q.chave} style={{ marginBottom:10 }}>
-                <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {triagem.textos?.[q.chave] || q.pergunta}</div>
                 {(r === 'sem' || saltou.length > 0 || (triagem.naoReparou || []).includes(q.chave)) && (
                   <div style={{ fontSize:13, padding:'7px 10px', marginBottom:6, borderRadius:8,
                     background:'rgba(184,115,51,0.12)', color:'#8a4a15', lineHeight:1.45 }}>
