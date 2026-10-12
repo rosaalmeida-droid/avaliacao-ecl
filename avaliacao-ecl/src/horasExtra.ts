@@ -11,6 +11,12 @@
 // da noite (depois das 19:00) e o fim de semana. Só contam os alunos que o
 // professor confirmou que foram («Confirmar quem participou»); antes disso
 // a atividade aparece como «por confirmar».
+//
+// (Rosa, 12/out/2026) «Se for dentro do horário letivo, dentro das aulas, como
+// a marmelada branca de Odivelas, não contam como horas extra.» Tira-se
+// também o tempo das aulas da turma nesse dia (os planos de aula). E a
+// atividade ligada a uma aula desse dia, ou que se sobrepõe a uma, faz parte
+// do dia de aulas: só conta a parte da noite (depois das 19:00).
 // ============================================================
 import { getPlanosAula, getPresencas, participantesDoEvento } from './backend';
 import { blocosNoDia } from './horarios';
@@ -56,11 +62,20 @@ function contaDaAtividade(p: any): Omit<LinhaHorasExtra, 'confirmado'> | null {
   const fim = fim0 <= ini ? fim0 + 24 * 60 : fim0;   // passa da meia-noite
   const dia = new Date(data + 'T00:00:00').getDay();
   const fds = dia === 0 || dia === 6;
-  const aulas: [number, number][] = fds ? [] : blocosNoDia(p.turmaId, data).map(b => [min(b.inicio), min(b.fim)] as [number, number]);
-  const foraMin = foraDe(ini, fim, aulas);
-  if (foraMin <= 0) return null;
+  // As aulas da turma nesse dia: o horário de cozinha e os planos de aula.
+  const planosDoDia = getPlanosAula().filter((x: any) => x.id !== p.id && x.turmaId === p.turmaId && !x.tipoEvento
+    && x.estado !== 'arquivado' && !x.eliminado && String(x.data || '').slice(0, 10) === data);
+  const aulas: [number, number][] = [
+    ...(fds ? [] : blocosNoDia(p.turmaId, data).map(b => [min(b.inicio), min(b.fim)] as [number, number])),
+    ...planosDoDia.map((x: any) => [min(x.horaInicio), min(x.horaFim)] as [number, number]).filter(([a, b]) => !isNaN(a) && !isNaN(b) && b > a),
+  ];
+  // Dentro de uma aula desse dia (ligada a ela, ou ao mesmo tempo): é horário letivo.
+  const dentroDeAula = !fds && (planosDoDia.some((x: any) => x.id === p.aulaLigada)
+    || aulas.some(([a, b]) => ini < b && a < fim));
   // A noite: depois das 19:00 (e antes das 7:00 do dia seguinte), fora das aulas.
   const noiteMin = fds ? 0 : foraDe(Math.max(ini, INICIO_NOITE), Math.max(fim, INICIO_NOITE), aulas);
+  const foraMin = dentroDeAula ? noiteMin : foraDe(ini, fim, aulas);
+  if (foraMin <= 0) return null;
   const hm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   return {
     planoId: p.id, data, diaSemana: DIAS[dia], titulo: String(p.titulo || 'Atividade').replace(/^Atividade fora da escola — /, ''),

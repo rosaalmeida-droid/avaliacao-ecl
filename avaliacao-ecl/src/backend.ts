@@ -4051,6 +4051,8 @@ export interface FaltaDaUC {
   descricao: string;
   horas: number;
   minutosAtraso?: number;
+  /** Justificação oficial registada na plataforma da escola (só informação). */
+  justificacaoOficial?: boolean;
 }
 
 /**
@@ -4067,7 +4069,7 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
     const reg: any = presencas.find(r => r.planoAulaId === p.id);
     return { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula', tipo: 'falta' as const,
       descricao: reg?.decisaoProfessor === 'falta_presenca' ? 'Falta de presença (decisão do professor)' : 'Faltou à aula',
-      horas: horasDoPlano(p) };
+      horas: horasDoPlano(p), ...(reg?.justificacaoOficial ? { justificacaoOficial: true } : {}) };
   });
   getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId
     && (p.estado === 'publicado' || p.estado === 'realizada')
@@ -4078,7 +4080,8 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
       const base = { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula' };
       if (reg.decisaoProfessor === 'parcial') {
         const h = Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
-        if (h > 0) out.push({ ...base, tipo: 'parcial', descricao: 'Esteve só parte da aula', horas: h });
+        if (h > 0) out.push({ ...base, tipo: 'parcial', descricao: 'Esteve só parte da aula', horas: h,
+          ...(reg.justificacaoOficial ? { justificacaoOficial: true } : {}) });
         return;
       }
       const minutos = Number(reg.atrasadoMins) || 0;
@@ -6139,23 +6142,44 @@ export function decidirFalta(
       : decisao === 'parcial' ? (horasPresentes || []).length > 0
       : true,
     horasPresentes: decisao === 'parcial' ? [...(horasPresentes || [])] : undefined,
+    // A justificação oficial só faz sentido numa falta.
+    justificacaoOficial: decisao === 'falta_presenca' || decisao === 'parcial' ? reg.justificacaoOficial : undefined,
   });
   save(KEYS.presencas, all);
+  enviarDecisaoDaPresenca(reg);
+}
 
-  // Para o Sheets — a mesma linha do aluno nesta aula é atualizada, e os
-  // outros aparelhos do professor passam a ver a decisão.
-  const aluno = getAlunos().find(a => a.id === alunoId);
-  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+/** Para o Sheets e para a base: a mesma linha do aluno nesta aula é
+ *  atualizada, e os outros aparelhos do professor passam a ver a decisão. */
+function enviarDecisaoDaPresenca(reg: any): void {
+  const aluno = getAlunos().find(a => a.id === reg.alunoId);
+  const plano = getPlanosAula().find(p => p.id === reg.planoAulaId);
   enviar(SHEETS_HISTORICO_URL, 'presenca', {
-    alunoId, planoAulaId, turmaId: reg.turmaId,
+    alunoId: reg.alunoId, planoAulaId: reg.planoAulaId, turmaId: reg.turmaId,
     nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)), numero: aluno?.numero || 0,
     planoTitulo: plano?.titulo || '', ucId: reg.ucId,
     presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
     horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
-    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor, decididoEm: reg.decididoEm,
+    data: reg.data || '', decisaoProfessor: reg.decisaoProfessor, decididoPor: reg.decididoPor, decididoEm: reg.decididoEm,
     horasPresentes: reg.horasPresentes || null,
+    justificacaoOficial: reg.justificacaoOficial || null,
     observacao: reg.observacao || '',
   });
+}
+
+/**
+ * Falta com justificação oficial (Rosa, 12/out/2026): a justificação foi
+ * registada na plataforma da escola. É só informação para o professor
+ * preparar uma recuperação diferenciada. A falta conta na mesma, a aula
+ * continua sem avaliação e nenhuma nota ou conta muda.
+ */
+export function marcarJustificacaoOficial(alunoId: string, planoAulaId: string, sim: boolean, professor: string): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const reg: any = all.find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
+  if (!reg || !reg.decisaoProfessor) return;
+  reg.justificacaoOficial = sim ? { em: new Date().toISOString(), por: professor } : null;
+  save(KEYS.presencas, all);
+  enviarDecisaoDaPresenca(reg);
 }
 
 /**
@@ -6695,6 +6719,8 @@ export interface EstadoAlunoNaAula {
   decisaoFalta?: string;
   /** Quando o professor tomou a decisão (para mostrar «gravado às…»). */
   decididoEm?: string;
+  /** A falta tem justificação oficial (só informação; não muda contas). */
+  justificacaoOficial?: boolean;
   fardamentoOk: boolean;
   itensEmFalta: string;
   /** «às 09:05 (52 s)» quando confirmou que lavou as mãos; '' se não. */
@@ -6743,6 +6769,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
       minutosAposAbertura: pres?.atrasadoMins || 0,
       decisaoFalta: (pres as any)?.decisaoProfessor,
       decididoEm: (pres as any)?.decididoEm as string | undefined,
+      justificacaoOficial: !!(pres as any)?.justificacaoOficial,
       fardamentoOk: !!pres?.fardamentoOk,
       itensEmFalta: emFalta,
       maosLavadas: maosLavadasDaPresenca(pres?.observacao),

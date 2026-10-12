@@ -42,7 +42,8 @@ export function RegistoHorasExtra({ turmaId, onVoltar }: { turmaId?: string; onV
       <div style={{ fontSize: 22, fontWeight: 800, color: C.tinta }}>Registo de horas extra</div>
       <div style={{ fontSize: 14, color: C.suave, lineHeight: 1.5, margin: '4px 0 12px' }}>
         As horas que cada aluno fez em atividades extra <b>fora do horário da turma</b>: nos dias de semana fora das aulas,
-        à noite (depois das 19:00) e ao fim de semana. Só contam as atividades em que confirmou quem participou.
+        à noite (depois das 19:00) e ao fim de semana. Uma atividade feita dentro de uma aula (no mesmo dia e às mesmas horas)
+        é horário letivo: só conta a parte depois das 19:00. Só contam as atividades em que confirmou quem participou.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <select value={turma} onChange={e => { setTurma(e.target.value); setAberto(null); }}

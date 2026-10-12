@@ -533,7 +533,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       if (j?.ok && j?.emailEnviado) {
         setCriada(c => c ? { ...c, enviadoA: lista.join(', ') } : c);
         setMsgEmail('');
-      } else setMsgEmail('⚠️ O e-mail não foi enviado: ' + (j?.mensagem || 'o ficheiro das requisições não respondeu. Tente outra vez.'));
+      } else {
+        const m = String(j?.mensagem || '');
+        // O Google ainda não deu ao script licença para criar o PDF/Excel ou enviar e-mails.
+        setMsgEmail(/permission|autoriza|authorization/i.test(m)
+          ? '⚠️ O e-mail não foi enviado: o Apps Script da requisição ainda não tem autorização para criar o PDF. '
+            + 'No editor do Apps Script «Requisicao ECL», escolha a função autorizar, carregue em Executar e aceite tudo; '
+            + 'depois Implementar → Gerir implementações → lápis → Nova versão. A requisição já está criada: volte a carregar em «Enviar».'
+          : '⚠️ O e-mail não foi enviado: ' + (m || 'o ficheiro das requisições não respondeu. Tente outra vez.'));
+      }
     } catch (e) {
       setMsgEmail('⚠️ O e-mail não foi enviado: ' + String(e));
     } finally { setAEnviarEmail(false); }

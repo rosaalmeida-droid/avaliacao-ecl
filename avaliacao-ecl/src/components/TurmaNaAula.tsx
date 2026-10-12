@@ -11,7 +11,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula,
+  estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula, marcarJustificacaoOficial,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
   getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos, decidirFardaNaPresenca,
 } from '../backend';
@@ -291,6 +291,27 @@ export function TurmaNaAula({
                       <div style={{ fontSize: 12, color: C.verde, marginTop: 5, fontWeight: 600 }}>
                         ✓ Gravado às {new Date(e.decididoEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                       </div>
+                    )}
+                    {/* (Rosa, 12/out/2026) Só um registo: a falta conta na mesma e a aula fica sem avaliação. */}
+                    {(e.decisaoFalta === 'falta_presenca' || e.decisaoFalta === 'parcial') && (
+                      <button
+                        onClick={() => {
+                          marcarJustificacaoOficial(e.alunoId, planoAulaId, !e.justificacaoOficial, nomeProfessor || 'professor');
+                          redesenhar(n => n + 1);
+                          onAtualizar?.();
+                        }}
+                        aria-pressed={!!e.justificacaoOficial}
+                        style={{
+                          marginTop: 7, width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          border: `1px solid ${e.justificacaoOficial ? '#2C5F8A' : C.border}`,
+                          background: e.justificacaoOficial ? '#EAF2FA' : '#fff', color: '#2C5F8A',
+                        }}>
+                        {e.justificacaoOficial ? '✓ ' : ''}Com justificação oficial
+                        <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.suave, marginTop: 2 }}>
+                          Registada na plataforma da escola. Só informação: a falta conta na mesma e a aula fica sem avaliação.
+                        </span>
+                      </button>
                     )}
                     {verHoras && (
                       <div style={{ marginTop: 8, padding: '8px 10px', background: '#FAFAF7', borderRadius: 8, border: `1px solid ${C.border}` }}>

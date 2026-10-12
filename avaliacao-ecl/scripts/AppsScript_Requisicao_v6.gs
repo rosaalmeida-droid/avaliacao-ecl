@@ -1,5 +1,5 @@
 // ============================================================
-// Apps Script — Requisição ECL v6.2
+// Apps Script — Requisição ECL v6.3
 // Arquitectura: app → DADOS_APP → Modelo (cópia)
 //
 // O QUE MUDA EM RELAÇÃO À v5 (Rosa, out/2026)
@@ -39,6 +39,14 @@
 //    confere, e carrega em «Enviar por e-mail às compras». Esse pedido
 //    («acao: enviarEmail») não cria nada: envia o PDF e o Excel da folha
 //    que já foi criada.
+//
+// 8. (v6.3, Rosa, 12/out/2026) Função  autorizar. O erro «You do not have
+//    permission to call UrlFetchApp.fetch» quer dizer que o Google ainda não
+//    deu ao script licença para criar o PDF e o Excel. Uma implementação
+//    nova não pede essa licença sozinha: é preciso pedi-la no editor.
+//    No editor, escolha a função  autorizar  (lista ao lado de «Depurar»),
+//    carregue em Executar e aceite tudo («Avançado» → «Aceder a
+//    Requisicao ECL (não seguro)» → «Permitir»). Depois faça Nova versão.
 //
 // DEPOIS DE COLAR:
 //    Implementar → Gerir implementações → editar (lápis)
@@ -691,6 +699,21 @@ function resposta(ok, mensagem, log, extra) {
 // ══════════════════════════════════════════════════════════════
 // TESTES — correr à mão no editor
 // ══════════════════════════════════════════════════════════════
+
+/** Correr UMA vez no editor (Executar) para o Google pedir as licenças de
+ *  que o e-mail às compras precisa: ler o ficheiro, criar o PDF e o Excel
+ *  (UrlFetchApp), apagar o ficheiro temporário (Drive) e enviar e-mails.
+ *  Não escreve nada nem envia nada. */
+function autorizar() {
+  var ss = abrirFolha();
+  Logger.log('Ficheiro: ' + ss.getName());
+  Logger.log('Drive: ' + DriveApp.getRootFolder().getName());
+  Logger.log('E-mails que ainda pode enviar hoje: ' + MailApp.getRemainingDailyQuota());
+  var r = UrlFetchApp.fetch('https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=pdf&gid='
+    + ss.getSheets()[0].getSheetId(), { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  Logger.log('PDF de teste: ' + (r.getResponseCode() === 200 ? 'OK' : 'erro ' + r.getResponseCode()));
+  Logger.log('Pronto. Agora: Implementar → Gerir implementações → lápis → Nova versão → Implementar.');
+}
 
 /** Mostra o que o script vê no modelo, sem escrever nada. */
 function verEstrutura() {

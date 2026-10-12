@@ -15,6 +15,7 @@ import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '.
 import { AvaliarColegas, configGrupos } from './GruposAluno';
 import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
+import { atitudeEmPalavrasSimples } from '../atitudesSimples';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
@@ -4319,6 +4320,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <span style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
                 textTransform:'uppercase', color: sel ? V : 'rgba(26,23,20,0.5)' }}>{a.etiqueta}</span>
               <span style={{ fontSize:15, fontWeight:700 }}>{a.nome}</span>
+              {atitudeEmPalavrasSimples(a.id) && (
+                <span style={{ fontSize:13, fontWeight:500, color:'rgba(26,23,20,0.65)', lineHeight:1.4, textAlign:'left' }}>
+                  {atitudeEmPalavrasSimples(a.id)}</span>
+              )}
             </button>
           );
         })}
@@ -4699,6 +4704,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>
               {ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude'}
             </div>
+            {/* O nome oficial não chega: «iniciativa», «assertividade»… (Rosa, 12/out/2026). */}
+            {atitudeEmPalavrasSimples(id) && (
+              <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.72)', lineHeight:1.5, margin:'4px 0 6px' }}>
+                Quer dizer: {atitudeEmPalavrasSimples(id)}
+              </div>
+            )}
             {perguntasAtitude(id)}
           </div>
         );

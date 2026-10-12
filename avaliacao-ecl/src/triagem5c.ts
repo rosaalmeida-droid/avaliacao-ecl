@@ -351,12 +351,14 @@ export const BANCO_CR: PerguntaCO[] = [
     '',
     'Hoje pensaste noutra maneira de fazer?',
     ['Não.', 'Pensei, mas não disse.', 'Perguntei ao professor.', 'Perguntei e experimentámos.'], ''),
+  // «Ligaste esta aula a outra coisa que já sabes fazer?» era demasiado
+  // aberta (Rosa, 12/out/2026): agora diz o quê, com exemplos.
   cr('cr09', 'ideias', 'O que já sabes',
-    'Hoje ligaste esta aula a outra coisa que já sabes fazer?',
-    ['Não.', 'Lembrei-me, mas não usei.', 'Usei uma coisa que aprendi antes.', 'Usei e expliquei a um colega.'],
+    'Hoje usaste uma coisa que aprendeste noutra aula? Por exemplo: um corte, uma cozedura, uma regra de higiene ou uma conta de doses.',
+    ['Não usei nada de outras aulas.', 'Lembrei-me de uma, mas não a usei.', 'Usei uma e sei dizer qual foi.', 'Usei uma e expliquei a um colega como se faz.'],
     '',
-    'Hoje usaste uma coisa que já sabias?',
-    ['Não.', 'Lembrei-me, mas não usei.', 'Sim, usei.', 'Usei e expliquei a um colega.'], ''),
+    'Hoje fizeste uma coisa que aprendeste noutra aula (um corte, uma cozedura, uma regra)?',
+    ['Não.', 'Lembrei-me, mas não usei.', 'Sim, e sei dizer qual.', 'Sim, e expliquei a um colega.'], ''),
   cr('cr10', 'ideias', 'Curiosidade',
     'Hoje quiseste saber mais sobre alguma coisa (de onde vem, porque se faz assim)?',
     ['Não.', 'Pensei nisso, mas não perguntei.', 'Perguntei.', 'Perguntei e fui procurar mais.'],
