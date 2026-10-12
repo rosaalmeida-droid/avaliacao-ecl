@@ -4,7 +4,7 @@
 // os alunos veem»). As aulas, cada uma com o seu peso, as faltas, a média,
 // o bónus de cada atividade e a nota da UC (a da pauta).
 // ============================================================
-import { notaFinalUC, aulasDaNotaUC, getPlanosFaltadosPorUC, bonusPorAtividade } from './backend';
+import { notaFinalUC, aulasDaNotaUC, faltasQueContamNaNota, bonusPorAtividade } from './backend';
 import { notaDaUCComDecimas } from './pautaUC';
 import { posicaoNaUC } from './rotuloPlano';
 import { getPlanosAula } from './backend';
@@ -18,12 +18,13 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
   const planos = new Map(getPlanosAula().map(p => [p.id, p]));
   const aulas: AulaNota[] = aulasDaNotaUC(alunoId, turmaId, ucId).map(l => ({
     numero: planos.get(l.planoId) ? posicaoNaUC(planos.get(l.planoId)!) : 0,
-    titulo: l.titulo, data: l.data, nota20: l.nota, peso: l.peso, semResposta: l.semResposta,
+    titulo: l.titulo, data: l.data, nota20: l.nota, peso: l.peso, semResposta: l.semResposta, recuperada: l.recuperada,
     // O que aconteceu nessa aula fica escrito (Rosa, 7/out/2026).
     ocorrencias: ocorrenciasDaAula(alunoId, l.planoId),
   }));
   const detalhe = {
-    faltas: getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => ({ titulo: p.titulo || 'Aula', data: dataCurta(p.data) })),
+    // As faltas que ainda contam 0 (as recuperadas estão nas aulas).
+    faltas: faltasQueContamNaNota(alunoId, turmaId, ucId),
     media: calc.base,
     bonus: bonusPorAtividade(alunoId, turmaId, ucId, calc.base),
     bonusTotal: calc.bonusParticipacao,

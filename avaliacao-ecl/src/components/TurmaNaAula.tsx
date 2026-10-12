@@ -14,7 +14,10 @@ import {
   estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula, marcarJustificacaoOficial,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
   getPlanosAula, getPresencas, blocosDeHoraDoPlano, colegasPorAvaliar, sincronizarGrupos, decidirFardaNaPresenca,
+  recuperacaoDaAula, notaDaAulaRecuperada, recuperacaoEhAutomatica, pedirRecuperacaoDaAula, darNotaDaRecuperacaoDaAula,
+  cancelarRecuperacaoDaAula, ultimaResposta,
 } from '../backend';
+import { janelaConfirmar } from './janelaConfirmar';
 import { decisaoFardaNaAula, toleranciaNoPeriodo, diaMes } from '../regrasFarda';
 import { pedeFardaEHigiene } from '../contextoAula';
 
@@ -309,9 +312,14 @@ export function TurmaNaAula({
                         }}>
                         {e.justificacaoOficial ? '✓ ' : ''}Com justificação oficial
                         <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.suave, marginTop: 2 }}>
-                          Registada na plataforma da escola. Só informação: a falta conta na mesma e a aula fica sem avaliação.
+                          Registada na plataforma da escola. Só informação: a falta conta na mesma nas horas.
                         </span>
                       </button>
+                    )}
+                    {/* (Rosa, 12/out/2026) Qualquer aluno pode recuperar a aula a que faltou. */}
+                    {e.decisaoFalta === 'falta_presenca' && plano && (
+                      <RecuperarAula alunoId={e.alunoId} plano={plano} professor={nomeProfessor || 'professor'}
+                        onValidar={onValidar} onMudou={() => { redesenhar(n => n + 1); onAtualizar?.(); }} />
                     )}
                     {verHoras && (
                       <div style={{ marginTop: 8, padding: '8px 10px', background: '#FAFAF7', borderRadius: 8, border: `1px solid ${C.border}` }}>
@@ -359,6 +367,125 @@ export function TurmaNaAula({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const dm = (d?: string) => d ? `${String(d).slice(8, 10)}/${String(d).slice(5, 7)}` : '';
+const daquiA = (dias: number) => new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10);
+const f1 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+
+/**
+ * Recuperar uma aula a que o aluno faltou (Rosa, 12/out/2026), para qualquer
+ * aluno, com ou sem 10% de faltas. Na aula teórica é automática: o aluno
+ * autoavalia-se nela e o professor valida. Nas outras, o professor diz o que
+ * o aluno tem de fazer e dá a nota. A nota substitui o 0 só desta aula; a
+ * falta conta na mesma nas horas.
+ */
+function RecuperarAula({ alunoId, plano, professor, onValidar, onMudou }: {
+  alunoId: string; plano: any; professor: string;
+  onValidar?: (alunoId: string) => void; onMudou: () => void;
+}) {
+  const r = recuperacaoDaAula(alunoId, plano.id);
+  const automatica = r ? r.automatica : recuperacaoEhAutomatica(plano);
+  const nota = notaDaAulaRecuperada(alunoId, plano.id);
+  const [aberto, setAberto] = useState(false);
+  const [oQueFazer, setOQueFazer] = useState(r?.oQueFazer || '');
+  const [prazo, setPrazo] = useState(r?.prazo || daquiA(7));
+  const [notaTxt, setNotaTxt] = useState(typeof r?.nota === 'number' ? f1(r.nota) : '');
+  const [aMudarNota, setAMudarNota] = useState(false);
+  const verde = C.verde;
+  const caixa: React.CSSProperties = { marginTop: 7, padding: '10px 11px', borderRadius: 8, border: `1px solid ${verde}`, background: C.verdeSuave, fontSize: 12.5, lineHeight: 1.45, color: C.tinta };
+  const bt = (cheio: boolean): React.CSSProperties => ({ padding: '8px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+    border: `1.5px solid ${verde}`, background: cheio ? verde : '#fff', color: cheio ? '#fff' : verde });
+  const campo: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 9px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: 'inherit', fontSize: 13, background: '#fff' };
+
+  if (!r && !aberto) {
+    return (
+      <button onClick={() => setAberto(true)} style={{ marginTop: 7, width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', border: `1px solid ${C.border}`, background: '#fff', color: verde }}>
+        Recuperar esta aula
+        <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.suave, marginTop: 2 }}>
+          {automatica ? 'Aula teórica: o aluno autoavalia-se nos conhecimentos desta aula e o professor valida.' : 'Diga o que o aluno tem de fazer e, depois, dê a nota.'}
+          {' '}A nota substitui o 0 desta aula. A falta conta na mesma nas horas.
+        </span>
+      </button>
+    );
+  }
+
+  if (!r || aberto) {
+    const podePedir = automatica || oQueFazer.trim().length > 0;
+    return (
+      <div style={caixa}>
+        <b>Recuperar esta aula</b>
+        <div style={{ color: C.suave, marginTop: 2 }}>
+          {automatica ? 'Aula teórica: o aluno estuda o trabalho da aula e autoavalia-se só nos conhecimentos (as atitudes de uma aula em que não esteve não se avaliam). O professor valida.'
+            : 'Aula com prática ou atitudes: só o professor pode avaliar o que o aluno fez.'}
+        </div>
+        <label style={{ display: 'block', fontWeight: 700, marginTop: 8 }}>
+          O que o aluno tem de fazer{automatica ? ' (opcional)' : ''}
+          <textarea value={oQueFazer} onChange={ev => setOQueFazer(ev.target.value)} rows={2}
+            placeholder={automatica ? 'Ex.: estudar o tema da aula no manual.' : 'Ex.: apresentar o trabalho na próxima aula.'}
+            style={{ ...campo, marginTop: 4, resize: 'vertical' }} />
+        </label>
+        <label style={{ display: 'block', fontWeight: 700, marginTop: 6 }}>
+          Prazo
+          <input type="date" value={prazo} onChange={ev => setPrazo(ev.target.value)} style={{ ...campo, width: 170, marginTop: 4, display: 'block' }} />
+        </label>
+        <div style={{ display: 'flex', gap: 6, marginTop: 9, flexWrap: 'wrap' }}>
+          <button disabled={!podePedir} onClick={() => {
+            pedirRecuperacaoDaAula(alunoId, plano.id, { oQueFazer, prazo }, professor);
+            setAberto(false); onMudou();
+          }} style={{ ...bt(true), opacity: podePedir ? 1 : 0.5 }}>{r ? 'Guardar' : 'Pedir a recuperação'}</button>
+          <button onClick={() => { setAberto(false); setOQueFazer(r?.oQueFazer || ''); }} style={bt(false)}>Cancelar</button>
+        </div>
+      </div>
+    );
+  }
+
+  const respondeu = !!ultimaResposta(alunoId, plano.id);
+  return (
+    <div style={caixa}>
+      <b>{nota !== null ? `✓ Aula recuperada: ${f1(nota)}/20` : 'Recuperação pedida'}</b>
+      <span style={{ color: C.suave }}> · em {dm(r.pedidaEm)}{r.prazo ? `, até ${dm(r.prazo)}` : ''}</span>
+      {r.oQueFazer && <div style={{ marginTop: 3 }}>{r.oQueFazer}</div>}
+      {automatica ? (
+        nota === null && (
+          <div style={{ marginTop: 6 }}>
+            {respondeu ? 'O aluno já se autoavaliou: falta validar.' : 'À espera da autoavaliação do aluno (aparece-lhe no Início).'}
+            {respondeu && onValidar && (
+              <button onClick={() => onValidar(alunoId)} style={{ ...bt(true), display: 'block', marginTop: 6 }}>Validar a autoavaliação</button>
+            )}
+          </div>
+        )
+      ) : (nota === null || aMudarNota) ? (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 7, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700 }}>Nota da recuperação</span>
+          <input inputMode="decimal" value={notaTxt} onChange={ev => setNotaTxt(ev.target.value)} placeholder="0–20"
+            aria-label="Nota da recuperação, de 0 a 20" style={{ ...campo, width: 70 }} />
+          <span>/20</span>
+          {(() => {
+            const n = Number(notaTxt.replace(',', '.'));
+            const ok = notaTxt.trim() !== '' && !isNaN(n) && n >= 0 && n <= 20;
+            return <button disabled={!ok} onClick={() => { darNotaDaRecuperacaoDaAula(alunoId, plano.id, n, professor); setAMudarNota(false); onMudou(); }}
+              style={{ ...bt(true), opacity: ok ? 1 : 0.5 }}>Guardar a nota</button>;
+          })()}
+        </div>
+      ) : (
+        <button onClick={() => setAMudarNota(true)} style={{ ...bt(false), display: 'block', marginTop: 6 }}>Mudar a nota</button>
+      )}
+      <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => setAberto(true)} style={{ background: 'none', border: 'none', padding: 0, color: verde, fontSize: 12.5, fontWeight: 700,
+          textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Mudar o pedido</button>
+        <button onClick={async () => {
+          const ok = await janelaConfirmar({ titulo: 'Cancelar a recuperação desta aula?',
+            texto: nota !== null ? `A nota da recuperação (${f1(nota)}) deixa de contar e a aula volta a contar 0.` : 'A aula continua a contar 0.',
+            sim: 'Cancelar a recuperação', nao: 'Voltar', perigo: true });
+          if (!ok) return;
+          cancelarRecuperacaoDaAula(alunoId, plano.id, professor); setOQueFazer(''); setNotaTxt(''); onMudou();
+        }} style={{ background: 'none', border: 'none', padding: 0, color: '#C0392B', fontSize: 12.5, fontWeight: 700,
+          textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar a recuperação</button>
+      </div>
     </div>
   );
 }

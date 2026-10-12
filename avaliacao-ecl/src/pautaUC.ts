@@ -36,7 +36,7 @@ import {
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
   validacaoDaAula, notaFinalUC, alunoDeTeste, planosSemAutoavaliacao,
-  aplicarBonusesUC, aulasDaNotaUC, atividadesQueContamComoAula,
+  aplicarBonusesUC, aulasDaNotaUC, atividadesQueContamComoAula, notaDaAulaRecuperada,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { pesoNoModulo } from './contextoAula';
@@ -214,7 +214,8 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         if (!p) return null;
         const notas = p.planosIds.map(id => {
           if (atividadesComoAula.has(id)) return notaAtividade.has(id) ? notaAtividade.get(id)! : null;
-          if (faltou.has(id)) return recup ?? 0;
+          // Aula faltada e recuperada: a nota da recuperação (Rosa, 12/out/2026).
+          if (faltou.has(id)) return notaDaAulaRecuperada(a.id, id) ?? recup ?? 0;
           if (semAuto.has(id)) return 0;
           return notaDoPlano(a.id, id, tipoDe(id));
         });

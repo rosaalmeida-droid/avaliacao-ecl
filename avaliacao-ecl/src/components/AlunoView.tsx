@@ -17,7 +17,8 @@ import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
 import { atitudeEmPalavrasSimples } from '../atitudesSimples';
 import { JanelaAutoavaliacoesEmFalta } from './JanelaAutoavaliacoesEmFalta';
-import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
+import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, faltasQueContamNaNota, bonusPorAtividade, type BonusDaAtividade,
+  recuperacoesDeAulasPorFazer, recuperacaoDaAula } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
 import { DesafioAltaPerformance } from './AltaPerformance';
@@ -1196,6 +1197,32 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       });
     }
 
+    // Aulas faltadas que o professor pediu para recuperar (Rosa, 12/out/2026).
+    // Na aula teórica, o aluno autoavalia-se nela; nas outras, faz o que o
+    // professor pediu e o professor dá a nota. Até lá, a aula conta 0.
+    const recAulas = recuperacoesDeAulasPorFazer(aluno.id);
+    if (recAulas.length > 0) {
+      const dm = (d: string) => `${String(d).slice(8, 10)}/${String(d).slice(5, 7)}`;
+      const auto = recAulas.filter(x => x.r.automatica && !ultimaResposta(aluno.id, x.plano.id)).map(x => x.plano);
+      aulasPorAutoavaliar.current = [...auto, ...aulasPorAutoavaliar.current.filter(p => !auto.includes(p))];
+      auto.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'recuperação desta aula: autoavalia-te'; });
+      av.unshift({
+        id: 'recuperacao_aula',
+        titulo: recAulas.length === 1 ? `Recuperação da aula de ${dm(recAulas[0].plano.data)}` : `Tens ${recAulas.length} aulas para recuperar`,
+        detalhe: recAulas.map(({ plano: p, r }) => {
+          const oQue = r.automatica
+            ? (ultimaResposta(aluno.id, p.id) ? 'já te autoavaliaste, falta o professor validar.' : 'estuda o trabalho desta aula e responde aos conhecimentos; o professor valida.')
+            : `${r.oQueFazer || 'fala com o professor'}${/[.!?]$/.test(r.oQueFazer || '') ? '' : '.'} Depois, o professor dá a nota.`;
+          return (recAulas.length > 1 ? `Aula de ${dm(p.data)}: ${oQue}` : oQue.charAt(0).toUpperCase() + oQue.slice(1))
+            + (r.oQueFazer && r.automatica ? ` O professor pediu: ${r.oQueFazer}${/[.!?]$/.test(r.oQueFazer) ? '' : '.'}` : '')
+            + (r.prazo ? ` Até ${dm(r.prazo)}.` : '');
+        }).join(' ') + ' Até lá, esta aula conta 0 na tua nota da UC.',
+        destino: (auto.length > 0 ? 'autoavaliar_pendente' : 'nota') as any,
+        urgente: true,
+        obrigatorio: true,
+      });
+    }
+
     if (recuperacoesPendentes > 0) {
       av.push({
         id: 'recuperacoes',
@@ -1243,8 +1270,8 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // cada atividade — o aluno tem de perceber as notas que foi tendo (Rosa, set/2026).
   const calcUC = ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
   const detalheNota = ucAtual && calcUC ? {
-    faltas: getPlanosFaltadosPorUC(aluno.id, ucAtual, aluno.turmaId)
-      .map(p => ({ titulo: p.titulo || 'Aula', data: fmtDataCurta(p.data) })),
+    // As faltas que ainda contam 0 (as recuperadas estão nas aulas — Rosa, 12/out/2026).
+    faltas: faltasQueContamNaNota(aluno.id, aluno.turmaId, ucAtual),
     media: calcUC.base,
     bonus: bonusPorAtividade(aluno.id, aluno.turmaId, ucAtual, calcUC.base),
     bonusTotal: calcUC.bonusParticipacao,
@@ -1998,8 +2025,12 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // A aula a decorrer (Rosa, 6/out/2026): o grupo está na comanda, por cima,
   // e o «ver a aula», a ficha, o guião e a requisição abrem-se de dentro de
   // «Produzir». Ficam só os passos que pedem uma ação ao aluno.
+  // Recuperação da aula teórica a que faltou (Rosa, 12/out/2026): não entrou,
+  // não teve função nem grupo; estuda o trabalho da aula e autoavalia-se.
+  const emRecuperacao = !soConsulta && temFaltaMarcada(aluno.id, plano.id) && !!recuperacaoDaAula(aluno.id, plano.id)?.automatica;
   const PASSOS = soConsulta ? PASSOS_TODOS
-    : PASSOS_TODOS.filter(p => !['orientacao', 'grupo', 'guia', 'requisicao'].includes(p.id));
+    : PASSOS_TODOS.filter(p => !['orientacao', 'grupo', 'guia', 'requisicao'].includes(p.id)
+      && !(emRecuperacao && ['entrada', 'funcao_inicio', 'funcao_fim'].includes(p.id)));
 
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
     if (id==='orientacao' && orientacaoConcluida) return 'concluido';
@@ -2135,7 +2166,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
         </EcraDeCor>
       );
     } else if (secAberta === 'avaliacao') {
-      const pt = soAtividade ? null : partesDoPlanoParaOAluno(plano, aluno.id);
+      const pt = soAtividade || emRecuperacao ? null : partesDoPlanoParaOAluno(plano, aluno.id);
       const quais = pt && !(pt.tecnicas && pt.conhecimentos && pt.atitudes)
         ? [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ') : '';
       ecraPasso = (
@@ -2181,6 +2212,15 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             prato={pratos.join(' · ') || undefined}
             funcao={minhasFuncoes.map(f => f.nome).join(' + ') || undefined}
             onVerFuncoes={orgAula ? () => setVerQuadro(true) : undefined} />
+          {/* Recuperação da aula teórica a que faltou (Rosa, 12/out/2026). */}
+          {emRecuperacao && !avaliou && (
+            <div style={{ margin:'0 16px 10px', padding:'11px 14px', borderRadius:12, background:'#FDF0E8', border:'1.5px solid #B5651D',
+              fontSize:14.5, lineHeight:1.45, color:'#8A4E15' }}>
+              <b>Recuperação desta aula.</b> Faltaste: vê o trabalho que se fez nesta aula, estuda-o, e depois responde aos conhecimentos.
+              O professor valida, e a nota substitui o 0 desta aula.
+              {recuperacaoDaAula(aluno.id, plano.id)?.oQueFazer ? <> O professor pediu: {recuperacaoDaAula(aluno.id, plano.id)?.oQueFazer}</> : null}
+            </div>
+          )}
           {ecraPasso}
           {/* O resto, discreto, por baixo: quem quiser mais informação vai buscá-la aqui. */}
           <div style={{ background: MESA, padding:'12px 16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
@@ -2408,7 +2448,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
                 encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
               </div>
             )}
-            {secAberta==='avaliacao' && !soAtividade && (() => {
+            {secAberta==='avaliacao' && !soAtividade && !emRecuperacao && (() => {
               const pt = partesDoPlanoParaOAluno(plano, aluno.id);
               if (pt.tecnicas && pt.conhecimentos && pt.atitudes) return null;
               const quais = [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ');
@@ -3522,6 +3562,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
   // técnicas e os conhecimentos, mas não as atitudes, já avaliadas na atividade.
   const partes = partesDoPlanoParaOAluno(plano, aluno.id);
+  // Recuperação da aula teórica a que faltou (Rosa, 12/out/2026).
+  const emRecup = temFaltaMarcada(aluno.id, plano.id) && !!recuperacaoDaAula(aluno.id, plano.id)?.automatica;
   const subIdsFiltrados = regras.subIds;
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
   // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
@@ -3865,7 +3907,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
 
   // Com falta marcada pelo professor, o aluno não se autoavalia nesta aula
   // (Rosa, 6/out/2026: uma aluna avaliou-se numa atividade a que faltou).
-  if (temFaltaMarcada(aluno.id, plano.id)) {
+  // Só se o professor pediu a recuperação da aula teórica (Rosa, 12/out/2026).
+  if (temFaltaMarcada(aluno.id, plano.id) && !recuperacaoDaAula(aluno.id, plano.id)?.automatica) {
     return (
       <div style={{ background:'#fdecea', border:'1.5px solid #a23a2e', borderRadius:14, padding:'16px 18px' }}>
         <div style={{ fontSize:16, fontWeight:700, color:'#7b2233' }}>O professor marcou falta nesta aula</div>
@@ -4177,7 +4220,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
     // (Sem este passo quando o tema vem da aula anterior: fica assumido.)
     // Aula com apresentação oral: primeiro, se apresentou (Rosa, 12/out/2026).
-    ...(regras.perguntaApresentacao && partes.conhecimentos ? [{ id: 'oral', tipo: 'oral' as const }] : []),
+    // Na recuperação de uma aula a que faltou, não se pergunta (não esteve nas apresentações).
+    ...(regras.perguntaApresentacao && partes.conhecimentos && !emRecup ? [{ id: 'oral', tipo: 'oral' as const }] : []),
     ...(regras.escolheTema && partes.conhecimentos && temaDaAnterior == null ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
@@ -4484,6 +4528,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
           {semPratica && <div style={{ marginTop:6, fontWeight:700, color:'#8e2418' }}>
             Hoje não fizeste prática (sem farda completa): respondes só aos conhecimentos e às atitudes.</div>}
+          {temFaltaMarcada(aluno.id, plano.id) && <div style={{ marginTop:6, fontWeight:700, color:'#8A4E15' }}>
+            Recuperação desta aula: faltaste, por isso respondes só aos conhecimentos, a partir do que estudaste.
+            O professor valida, e a nota substitui o 0 desta aula.</div>}
         </div>
       )}
       {/* Onde estou */}
@@ -4552,6 +4599,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
             {rotuloSecao(ehCriterioTrabalho(c.id) ? 'Como correu?'
+              : ehConhecimento && emRecup ? 'Depois de estudares, já sabes isto?'
               : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
               : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
             {ordem(NIVEIS_FRASES.length, 'c_' + c.id).map(i => { const nivel = NIVEIS_FRASES[i]; return (

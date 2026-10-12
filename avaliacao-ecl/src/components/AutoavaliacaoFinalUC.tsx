@@ -12,6 +12,7 @@ import type { Aluno } from '../types';
 import {
   notasFinaisPublicadasDoAluno, getPropostaFinalUC,
   getPlanosAulaPorTurma, getPlanosFaltadosPorUC, situacaoRecuperacaoUC, guardarPropostaFinalUC, horasDadasDaUC, ucTerminou,
+  notaDaAulaRecuperada,
 } from '../backend';
 import { linhasDaPautaUC, produtosDaUC, notaDoPlano, MAPA_5C, type Letra5C } from '../pautaUC';
 import { EcraCheio, ProgressoSlides, NavSlides } from './EcraCheio';
@@ -115,11 +116,15 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
       .filter(p => p.ucId === ucId && String(p.data).slice(0, 10) <= hoje
         && (p.estado === 'publicado' || (p.estado as string) === 'realizada'))
       .sort((a, b) => String(a.data).localeCompare(String(b.data)))
-      .map(p => ({
-        id: p.id, titulo: p.titulo || 'Aula', data: String(p.data).slice(0, 10),
-        faltou: faltou.has(p.id),
-        nota: faltou.has(p.id) ? null : notaDoPlano(aluno.id, p.id, (p as any).tipoPlanAula || 'pratico'),
-      }));
+      .map(p => {
+        // Aula faltada e recuperada: a nota da recuperação (Rosa, 12/out/2026).
+        const recuperada = faltou.has(p.id) ? notaDaAulaRecuperada(aluno.id, p.id) : null;
+        return {
+          id: p.id, titulo: p.titulo || 'Aula', data: String(p.data).slice(0, 10),
+          faltou: faltou.has(p.id) && recuperada === null,
+          nota: faltou.has(p.id) ? recuperada : notaDoPlano(aluno.id, p.id, (p as any).tipoPlanAula || 'pratico'),
+        };
+      });
     const sit = situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId);
     const linha = linhasDaPautaUC(aluno.turmaId, ucId, produtosDaUC(aluno.turmaId, ucId))
       .find(l => l.alunoId === aluno.id);
