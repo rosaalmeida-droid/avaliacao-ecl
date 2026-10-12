@@ -1327,7 +1327,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           Turma: {turmaId}
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
-          {ehAtividadeExtra(dados, turmaId) && dados.modoParticipacao !== 'inscricao' ? 'A turma toda faz esta atividade (obrigatória). Conta como mais uma aula.'
+          {ehAtividadeExtra(dados, turmaId) && dados.modoParticipacao !== 'inscricao' ? 'A turma toda faz esta atividade (obrigatória). Fora do horário, dá bónus (até +0,5) e quem faltar perde 0,5.'
             : ehAtividadeExtra(dados, turmaId) ? 'Só os alunos escolhidos desta turma fazem esta atividade; os outros só a podem ver.'
             : 'Só os alunos desta turma veem este plano. Se não for esta a turma, altere-a no menu antes de criar o plano.'}
         </div>

@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.9';
+var VERSAO = 'ECL único v27.0';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2007,9 +2007,10 @@ function diaISO_(v) {
 }
 
 /** (v26.5) Atividade obrigatória para a turma fora das horas da aula (depois
- *  das aulas, sábado, férias): conta como mais uma aula, na aula desse dia ou na
- *  seguinte da mesma UC; quem não se autoavaliou conta 0 (Rosa, 6/out/2026).
- *  Igual à aplicação. Os convidados e os concursos são só bónus. */
+ *  das aulas, sábado, férias): avalia-se na aula desse dia ou na seguinte da
+ *  mesma UC. (v27.0, Rosa, 12/out/2026) Já não conta como mais uma aula: dá
+ *  bónus (até +0,5; quem faltou perde 0,5), e as faltas e as horas não contam
+ *  na UC. Igual à aplicação. Os convidados e os concursos são só bónus. */
 function transpostaDe_(p, planos) {
   var r = aulaQueRecebe_(p, planos);
   return r ? 'Avaliação transposta para a aula de ' + diaCurto(r.data) + '.' : 'Avaliação transposta para a aula seguinte da disciplina.';
@@ -2340,7 +2341,7 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (faltouX) casos.push('Faltou');
       if (atrasoContaAqui(x, p)) casos.push(decX === 'falta_atraso' ? 'Falta de atraso (declarada pelo professor)' : 'Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
       if (x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
-      if (p.tipoEvento) casos.push(atvContaComoAula_(p, d.planos) ? 'Atividade obrigatória fora das horas da aula: conta como mais uma aula. ' + transpostaDe_(p, d.planos) : 'Atividade extra: conta como bónus');
+      if (p.tipoEvento) casos.push(atvContaComoAula_(p, d.planos) ? 'Atividade obrigatória fora das horas da aula: dá bónus (até +0,5); quem faltou perde 0,5. ' + transpostaDe_(p, d.planos) : 'Atividade extra: conta como bónus');
       if (s && p.pedirDeNovoEm && s.versaoPlano && String(s.versaoPlano) < String(p.pedirDeNovoEm)) casos.push('Respondeu à versão antiga do plano');
       auto.forEach(function (q) { if (q.nivel === 'nop') casos.push('Sem oportunidade: ' + nomeC(q.competenciaId)); });
       if (v && v.semFarda) casos.push('Sem farda: as técnicas contam 0 na nota da aula');
@@ -2349,7 +2350,9 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (v && (v.comentarioGeral || v.comentario)) casos.push('Comentário do professor: «' + (v.comentarioGeral || v.comentario) + '»');
       if (s && !v) casos.push('Por validar');
       // (v26.5) Numa atividade não há «conta 0»: sem resposta, não conta para ele.
-      if (!s && !faltouX) casos.push(p.tipoEvento && !atvContaComoAula_(p, d.planos) ? 'Não respondeu: esta atividade não conta para ele' : 'Não respondeu: conta 0 na nota da UC até se autoavaliar');
+      // (v27.0) Na obrigatória fora das horas, sem resposta fica sem bónus (não conta 0).
+      if (!s && !faltouX) casos.push(!p.tipoEvento ? 'Não respondeu: conta 0 na nota da UC até se autoavaliar'
+        : atvContaComoAula_(p, d.planos) ? 'Não respondeu: fica sem o bónus desta atividade até se autoavaliar' : 'Não respondeu: esta atividade não conta para ele');
       var presenca = !x ? '' : faltouX ? 'Faltou' : atrasoContaAqui(x, p) ? 'Atrasado' : 'Presente';
       var n20 = v ? Number(String(v.notaMedia20 === undefined ? '' : v.notaMedia20).replace(',', '.')) : NaN;
       junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), p.titulo || '', a.numero || '', a.nome || '', presenca,
@@ -2396,7 +2399,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     .sort(function (a, b) { return String(a.data || '').localeCompare(String(b.data || '')) || (Number(a.numeroPlan) || 0) - (Number(b.numeroPlan) || 0); })
     .forEach(function (p) { var u = p.ucId || ''; contaUC[u] = (contaUC[u] || 0) + 1; posNaUC[p.id] = contaUC[u]; });
   // (v26.5) Atividades obrigatórias fora das horas da aula: avaliam-se na aula seguinte.
-  // (v26.9, Rosa, 12/out/2026) Já não contam como mais uma aula: dão bónus (coluna
+  // (v27.0, Rosa, 12/out/2026) Já não contam como mais uma aula: dão bónus (coluna
   // «Bónus», feita pela aplicação). Não aparecem como colunas de aula nas NOTAS.
   var recebe = {};
   d.planos.forEach(function (p) { if (atvContaComoAula_(p, d.planos)) recebe[p.id] = aulaQueRecebe_(p, d.planos); });
@@ -2627,7 +2630,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         if (auto[k]) return 'AA';
         if (faltou(pres[k], p.id)) return 'F';
         // (v25.9) Esteve e não se autoavaliou: conta 0, como na aplicação.
-        // (v26.5) Na atividade obrigatória que conta como aula também.
+        // (v26.5) Na atividade obrigatória que conta como aula também (v27.0: já nenhuma conta).
         if (esteve(pres[k], p.id) || recebe.hasOwnProperty(p.id)) { n++; return '0 (sem resposta)'; }
         return '';
       });
@@ -2657,7 +2660,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   var gruposAulas = [
     { nome: 'AULAS LANÇADAS — contam para a nota', cor: '#3E7A31', fundo: '#DFF0D8',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && !p.tipoEvento; }) },
-    { nome: 'ATIVIDADES OBRIGATÓRIAS FORA DAS HORAS DA AULA — contam como mais uma aula, na aula desse dia ou na seguinte da UC', cor: '#2F5D8A', fundo: '#E3EDF7',
+    { nome: 'ATIVIDADES OBRIGATÓRIAS FORA DAS HORAS DA AULA — dão bónus (até +0,5; quem faltou perde 0,5); avaliam-se na aula desse dia ou na seguinte da UC', cor: '#2F5D8A', fundo: '#E3EDF7',
       lista: aulas.filter(function (p) { return p.estado !== 'rascunho' && recebe.hasOwnProperty(p.id); }) },
     { nome: 'ATIVIDADES EXTRA — contam como bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
       lista: aulas.filter(function (p) { return p.estado !== 'arquivado' && p.estado !== 'rascunho' && p.tipoEvento && !recebe.hasOwnProperty(p.id); }) },
@@ -2665,7 +2668,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     // contam para a nota, só dão bónus (Rosa, out/2026).
     { nome: 'AULAS PUBLICADAS PARA OS PRÓXIMOS DIAS', cor: '#2F5D8A', fundo: '#E3EDF7',
       lista: d.planos.filter(function (p) { return !p.eliminado && !p.tipoEvento && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
-    { nome: 'ATIVIDADES OBRIGATÓRIAS DOS PRÓXIMOS DIAS (fora das horas da aula) — vão contar como mais uma aula', cor: '#2F5D8A', fundo: '#E3EDF7',
+    { nome: 'ATIVIDADES OBRIGATÓRIAS DOS PRÓXIMOS DIAS (fora das horas da aula) — vão dar bónus (quem faltar perde 0,5)', cor: '#2F5D8A', fundo: '#E3EDF7',
       lista: d.planos.filter(function (p) { return recebe.hasOwnProperty(p.id) && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },
     { nome: 'ATIVIDADES EXTRA DOS PRÓXIMOS DIAS — não contam para a nota, só bónus', cor: '#6B3FA0', fundo: '#EDE3F6',
       lista: d.planos.filter(function (p) { return !p.eliminado && p.tipoEvento && !recebe.hasOwnProperty(p.id) && p.estado !== 'arquivado' && p.estado !== 'rascunho' && String(p.data || '').slice(0, 10) > hoje; }) },

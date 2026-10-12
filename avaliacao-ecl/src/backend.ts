@@ -5582,7 +5582,7 @@ export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
     .catch(() => enviarNotasDaTurmaCom(turmaId, forcar, null));
 }
 function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
-  notaComoNaPauta: ((a: string, t: string, u: string) => number | null) | null): void {
+  notaComoNaPauta: ((a: string, t: string, u: string, ignorarPublicada?: boolean) => number | null) | null): void {
   try {
     if (!SHEETS_ECL_URL || !turmaId) return;
     const planos = getPlanosAula().filter(p => p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado');
@@ -5598,8 +5598,8 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
         const n = notaDaAulaValidada(validacaoDaAula(a.id, p.id, validacoes));
         if (n !== null) porAula[p.id] = Math.round(n * 10) / 10;
       });
-      // A atividade obrigatória fora das horas da aula conta como mais uma aula
-      // (Rosa, 6/out/2026): vai com a sua nota, como na aplicação (falta = 0).
+      // Atividades que contam como mais uma aula (desde 12/out/2026 nenhuma:
+      // a obrigatória fora do horário dá bónus, que vai na coluna do bónus).
       for (const l of aulasDaNotaUC(a.id, turmaId, uc)) {
         if (getPlanosAula().some((x: any) => x.id === l.planoId && x.tipoEvento)) porAula[l.planoId] = Math.round(l.nota * 10) / 10;
       }
@@ -5607,7 +5607,10 @@ function enviarNotasDaTurmaCom(turmaId: string, forcar: boolean,
       linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
         media: c.base === null ? '' : Math.round(c.base * 10) / 10,
         bonus: Math.round(((c.bonusParticipacao || 0) + (c.bonusAssiduidade || 0)) * 100) / 100,
-        final: (() => { const n = notaComoNaPauta ? notaComoNaPauta(a.id, turmaId, uc) : c.final;
+        // A conta de hoje, mesmo com a pauta já publicada: a publicada tem a
+        // sua coluna no Sheets («Nota final publicada»). Mandar a publicada
+        // aqui deixava o Aldmir com média 14,3 e «Nota da UC» 5 (Rosa, 12/out/2026).
+        final: (() => { const n = notaComoNaPauta ? notaComoNaPauta(a.id, turmaId, uc, true) : c.final;
           return n === null || n === undefined ? '' : Math.round(n * 10) / 10; })(),
         faltas: getPlanosFaltadosPorUC(a.id, uc, turmaId).length,
         // As faltas em horas, sobre o total de horas da UC (a regra dos 10%),
@@ -7895,9 +7898,9 @@ export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
     if (faltados.has(p.id) || linhas.some(l => l.planoId === p.id)) continue;
     linhas.push({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota: 0, peso: pesoNoModulo(p), semResposta: true });
   }
-  // A atividade obrigatória fora das horas da aula conta como mais uma aula, na
-  // aula que a recebe. Sem autoavaliação conta 0, como as aulas (Rosa, 6/out/2026);
-  // respondida e ainda por validar, espera pelo professor.
+  // Atividades que contam como mais uma aula, na aula que as recebe (regra de
+  // 6/out/2026). Desde 12/out/2026 nenhuma: a obrigatória fora das horas da
+  // aula dá bónus (atividadeContaComoAula devolve sempre false).
   const hojeISO_ = new Date().toISOString().slice(0, 10);
   for (const r of atividadesQueContamComoAula(turmaId, ucId)) {
     if (faltados.has(r.atividade.id) || linhas.some(l => l.planoId === r.atividade.id) || r.atividade.data > hojeISO_) continue;

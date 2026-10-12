@@ -556,7 +556,8 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '7. Aula e atividade extra', texto: [
     'Um plano de aula é a aula da turma toda e conta para a tua nota.',
     'Uma atividade extra é um evento, um concurso, uma visita ou um serviço de catering só para alguns alunos (ou durante as férias). Dá bónus.',
-    'Se a turma toda participa num evento durante o ano letivo, trata-se de um plano de aula, que conta como uma aula.',
+    'Se a turma toda participa num evento nas horas da aula, trata-se de um plano de aula, que conta como uma aula.',
+    'Se a atividade é obrigatória para a turma toda, mas fora do horário (depois das aulas, ao sábado), dá bónus (até +0,5). Quem falta perde 0,5; quem vai só parte do tempo recebe a parte proporcional.',
     '«Fora da escola» significa que decorre no exterior, e não «fora do horário das aulas».',
   ] },
   { titulo: '8. Se foste a uma atividade extra', texto: [

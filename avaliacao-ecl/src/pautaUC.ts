@@ -119,8 +119,8 @@ export function planosRealizadosDaUC(turmaId: string, ucId: string): PlanoRealiz
       || String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))
     .map(p => ({ id: p.id, titulo: p.titulo || 'Plano', data: String(p.data).slice(0, 10),
       avaliado: validacoes.some(v => v.planoAulaId === p.id) }))
-    // A atividade obrigatória fora das horas da aula conta como mais uma aula, na data da
-    // aula que a recebe (Rosa, out/2026).
+    // Atividades que contam como mais uma aula, na data da aula que as recebe
+    // (desde 12/out/2026 nenhuma: a obrigatória fora das horas dá bónus).
     .concat(atividadesQueContamComoAula(turmaId, ucId).filter(r => r.atividade.data <= hojeISO())
       .map(r => ({ id: r.atividade.id, titulo: `${r.atividade.titulo || 'Atividade'} (atividade de ${r.atividade.data.split('-').reverse().slice(0, 2).join('/')})`,
         data: r.dataDaAula, avaliado: validacoes.some(v => v.planoAulaId === r.atividade.id) })))
