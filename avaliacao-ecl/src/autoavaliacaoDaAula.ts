@@ -21,6 +21,7 @@ import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
 import { perguntasDaAula, CL_SEMPRE, CL_AULA } from './triagem5c';
+import { getPlanosAula } from './backend';
 import { porqueNao, triagemDoPlano, escolheTema, fasesDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
 import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
@@ -65,6 +66,10 @@ export interface RegrasAutoavaliacao {
   temasPossiveis: { ficheiro: string; capitulo: CapituloManual }[];
   /** Os formatos do trabalho (escrito, oral…), cada um avaliado à parte. */
   formatos: FormatoTrabalho[];
+  /** Aula com apresentação oral: pergunta-se primeiro se o aluno apresentou
+   *  hoje ('hoje') ou se já apresentou ('jaFez', o trabalho continua de uma
+   *  aula com apresentação). null: não se pergunta. */
+  perguntaApresentacao: 'hoje' | 'jaFez' | null;
 }
 
 export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[], opts: {
@@ -74,6 +79,9 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   /** Atividade: os alunos já respondem às atitudes no plano de aula da turma
    *  desse dia — a atividade não as repete (Rosa, out/2026). */
   atitudesNoPlanoDaTurma?: boolean;
+  /** Numa aula com apresentação oral: o aluno apresentou hoje, numa aula
+   *  anterior, ou ainda não (null: ainda não respondeu). */
+  apresentacaoOral?: ApresentacaoOral | null;
 }): RegrasAutoavaliacao {
   const p: any = plano;
   const ctx = opts.ctx;
@@ -138,7 +146,18 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     .map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
   // Os critérios são os das fases em que o trabalho está hoje: a oral só na
   // aula em que se apresenta; na investigação, os da pesquisa.
-  const fases = temTema ? fasesDoTrabalho(triagem) : [];
+  // (Rosa, 12/out/2026) Nem todos apresentam na mesma aula. Pergunta-se
+  // primeiro se apresentou: quem apresentou responde às perguntas da oral;
+  // quem ainda não apresentou, ou já apresentou noutra aula, responde ao que
+  // observou nas apresentações dos colegas (para corrigir o seu trabalho).
+  const perguntaApresentacao: 'hoje' | 'jaFez' | null = !temTema ? null
+    : apresentacaoNumaAulaAnterior(p) ? 'jaFez' : temApresentacaoOral(triagem) ? 'hoje' : null;
+  const fasesDoPlano = temTema ? fasesDoTrabalho(triagem) : [];
+  const apresentou = opts.apresentacaoOral === 'hoje';
+  const fases: string[] = !perguntaApresentacao ? fasesDoPlano
+    : [...fasesDoPlano.filter(f => !APRESENTACAO_AO_VIVO.includes(f)),
+      ...(apresentou ? (fasesDoPlano.some(f => APRESENTACAO_AO_VIVO.includes(f)) ? fasesDoPlano.filter(f => APRESENTACAO_AO_VIVO.includes(f)) : ['apres_oral'])
+        : opts.apresentacaoOral ? ['observar'] : [])];
   const formatos: FormatoTrabalho[] = fases.filter(f => f.startsWith('apres_')).map(f => f.slice(6) as FormatoTrabalho);
   if (temTema) {
     conhecimentos.length = 0;
@@ -195,8 +214,29 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     clNaoSePergunta: false,
     clAula: !ctx.cozinha && !ctx.equipa,
     clSempre: !ctx.colegas && ctx.cozinha,
-    escolheTema: temTema, temasPossiveis, formatos,
+    escolheTema: temTema, temasPossiveis, formatos, perguntaApresentacao,
   };
+}
+
+// ── A apresentação oral (Rosa, 12/out/2026) ───────────────────
+export type ApresentacaoOral = 'hoje' | 'antes' | 'nao';
+/** As fases em que o aluno apresenta à turma (a escrita entrega-se, não se apresenta). */
+const APRESENTACAO_AO_VIVO = ['apres_oral', 'apres_digital', 'apres_pratico'];
+/** A aula tem apresentação oral: a fase «Apresentação oral e defesa», ou o ensaio da defesa da PAP. */
+export function temApresentacaoOral(t: any): boolean {
+  return !!t && ((t.fases || []).some((f: string) => APRESENTACAO_AO_VIVO.includes(f))
+    || ((t.pap?.tipos || []) as string[]).includes('defesa'));
+}
+/** Uma aula anterior do mesmo trabalho (a que esta continua) já tinha apresentação oral. */
+export function apresentacaoNumaAulaAnterior(plano: any): PlanoAula | null {
+  let de = triagemDoPlano(plano)?.continuaDe;
+  for (let n = 0; de && n < 6; n++) {
+    const ant = getPlanosAula().find(x => x.id === de);
+    if (!ant) return null;
+    if (temApresentacaoOral(triagemDoPlano(ant))) return ant;
+    de = triagemDoPlano(ant)?.continuaDe;
+  }
+  return null;
 }
 
 // ── Quanto pesa cada parte na nota desta aula ─────────────────
@@ -251,7 +291,8 @@ export interface NaoSePergunta { nome: string; motivo: string }
  */
 export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: ContextoAula,
   perguntaCOId: string, perguntaCRId: string, ano = 1, atitudesNoPlanoDaTurma = false): { ecras: EcraDoAluno[]; fora: NaoSePergunta[]; regras: RegrasAutoavaliacao } {
-  const R = regrasDaAutoavaliacao(plano, fichas, { ctx, ano, atitudesNoPlanoDaTurma });
+  // O professor vê as perguntas de quem apresenta (as da oral).
+  const R = regrasDaAutoavaliacao(plano, fichas, { ctx, ano, atitudesNoPlanoDaTurma, apresentacaoOral: 'hoje' });
   const p: any = plano;
   const evento = !!p.tipoEvento;
   const ecras: EcraDoAluno[] = [];

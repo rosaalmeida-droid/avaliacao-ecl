@@ -90,7 +90,7 @@ import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRe
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
 import { capituloDoCampo } from '../bancoManuais';
 import { ouvirTurmaNaBase, TIPOS_DO_ALUNO } from '../baseDeDados';
-import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
+import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno, type ApresentacaoOral } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { criterioTrabalho, ehCriterioTrabalho } from '../criteriosTrabalho';
@@ -3470,7 +3470,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const [temaEscolhido, setTemaEscolhido] = useState<number | null>(temaDaAnterior);
   // No trabalho de grupo, o tema assumido também fica marcado no grupo.
   useEffect(() => { if (temaDaAnterior != null) marcarTemaNoGrupo(plano.id, aluno.id, temaDaAnterior); }, []);
-  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano) });
+  // Aula com apresentação oral (Rosa, 12/out/2026): o aluno diz primeiro se apresentou.
+  const [apresentacaoOral, setApresentacaoOral] = useState<ApresentacaoOral | null>(() =>
+    (respostasDoAlunoComAntigas(aluno.id, plano.id)[0] as any)?.apresentacaoOral ?? null);
+  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano), apresentacaoOral });
   // Esteve numa atividade do mesmo dia: responde só às partes do plano da
   // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
   // técnicas e os conhecimentos, mas não as atitudes, já avaliadas na atividade.
@@ -3786,7 +3789,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,
         nota: !hsaSemRegisto() ? paraNota(nivelHaccp) : 1,
         semRegistoKF: hsaSemRegisto()}]:[]),
-      ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>(v === 'nop'
+      // Só as perguntas que estão no ecrã: se o aluno mudou de tema ou disse que
+      // não apresentou, as respostas que deixaram de se aplicar não seguem.
+      ...Object.entries(notasMicro).filter(([mId,v])=>v && itensComp.some(c => c.id === mId)).map(([mId,v])=>(v === 'nop'
         // Não teve oportunidade: vai ao professor para confirmar; sem nota.
         ? {competenciaId:mId,nivel:'nop',nota:0,semOportunidade:true}
         : {competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
@@ -3802,6 +3807,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       // A versão do plano a que o aluno respondeu: se o professor o mudar
       // depois, sabe-se que esta resposta é da versão anterior.
       versaoPlano:String((plano as any).atualizadoEm || ''),
+      ...(regras.perguntaApresentacao && apresentacaoOral ? { apresentacaoOral } : {}),
       // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
       evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas),
       ...(semPratica ? { semPratica: true } : {}),
@@ -4117,7 +4123,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // baralhava a autoavaliação e não interessa à professora.
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
-  type Passo = { id: string; tipo: 'presenca' | 'compromisso' | 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
+  type Passo = { id: string; tipo: 'presenca' | 'compromisso' | 'oral' | 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
     // Esteve só parte da aula: primeiro, perceber o que isso fez ao grupo (Rosa, 6/out/2026).
@@ -4125,6 +4131,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       { id: 'compromisso', tipo: 'compromisso' as const }] : []),
     // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
     // (Sem este passo quando o tema vem da aula anterior: fica assumido.)
+    // Aula com apresentação oral: primeiro, se apresentou (Rosa, 12/out/2026).
+    ...(regras.perguntaApresentacao && partes.conhecimentos ? [{ id: 'oral', tipo: 'oral' as const }] : []),
     ...(regras.escolheTema && partes.conhecimentos && temaDaAnterior == null ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
@@ -4146,6 +4154,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const podeAvancar =
     passo.tipo === 'presenca' ? presCerta(passo.atiId!)
     : passo.tipo === 'compromisso' ? !!compromisso
+    : passo.tipo === 'oral' ? apresentacaoOral != null
     : passo.tipo === 'tema' ? temaEscolhido != null
     : passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
@@ -4161,6 +4170,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const tituloPasso = (p: Passo) =>
     p.tipo === 'presenca' ? 'Estiveste só parte da aula'
     : p.tipo === 'compromisso' ? 'O teu compromisso'
+    : p.tipo === 'oral' ? 'A apresentação oral'
     : p.tipo === 'tema' ? 'O teu tema'
     : p.tipo === 'comp' ? p.comp!.rotulo
     : p.tipo === 'outra' ? 'O que fizeste hoje'
@@ -4341,7 +4351,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     if (t) linhasRever.push({ nome: 'O teu tema', resposta: `${t.n}. ${t.titulo} (o mesmo da aula anterior)`, nota: null, passo: Math.max(0, primeira) });
   }
   passos.forEach((p, i) => {
-    if (p.tipo === 'tema') {
+    if (p.tipo === 'oral') {
+      linhasRever.push({ nome: 'A apresentação oral', resposta: !apresentacaoOral ? 'Por responder'
+        : apresentacaoOral === 'hoje' ? 'Apresentei hoje' : apresentacaoOral === 'antes' ? 'Já tinha apresentado noutra aula' : 'Ainda não apresentei',
+        nota: null, passo: i });
+    } else if (p.tipo === 'tema') {
       const t = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo;
       linhasRever.push({ nome: 'O teu tema', resposta: t ? `${t.n}. ${t.titulo}` : 'Por escolher', nota: null, passo: i });
     } else if (p.tipo === 'comp') {
@@ -4522,6 +4536,30 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 Esta competência não conta para a nota de hoje e volta a aparecer noutra aula. O professor confirma.
               </div>
             )}
+          </div>
+        );
+      })()}
+
+      {/* ── Apresentação oral: apresentou hoje, noutra aula, ou ainda não ── */}
+      {passo.tipo === 'oral' && (() => {
+        const opcoes: { v: ApresentacaoOral; t: string }[] = regras.perguntaApresentacao === 'jaFez'
+          ? [{ v: 'antes', t: 'Sim, numa aula anterior.' }, { v: 'hoje', t: 'Sim, apresentei hoje.' }, { v: 'nao', t: 'Não, ainda não apresentei.' }]
+          : [{ v: 'hoje', t: 'Sim, apresentei hoje.' }, { v: 'nao', t: 'Não, hoje não apresentei.' }];
+        return (
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
+              {regras.perguntaApresentacao === 'jaFez' ? 'Já fizeste a apresentação oral?' : 'Fizeste a apresentação oral hoje?'}
+            </div>
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
+              Se apresentaste hoje, a seguir respondes sobre a tua apresentação. Se não, respondes sobre o que viste nas
+              apresentações dos colegas, para melhorares o teu trabalho. O professor confirma.
+            </div>
+            {opcoes.map(o => (
+              <button key={o.v} onClick={() => setApresentacaoOral(o.v)} style={estiloOpcao(apresentacaoOral === o.v)}>
+                {radio(apresentacaoOral === o.v)}
+                <span>{o.t}</span>
+              </button>
+            ))}
           </div>
         );
       })()}
