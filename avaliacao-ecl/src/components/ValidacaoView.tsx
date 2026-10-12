@@ -2,7 +2,8 @@ import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
 import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
-import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula, liderKFdoGrupo, grupoDoAluno } from '../backend';
+import { registosKFDoAluno, type RegistoKFDoAluno } from './RegistosKFaoVivo';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -933,9 +934,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             <div key="OBR_02" style={{ marginBottom: 10, background: '#fff', border: `1.5px solid ${escolha ? 'var(--border)' : '#b5651d'}`, borderRadius: 12, padding: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>Registos do KitchenFlow</div>
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '4px 0 10px', lineHeight: 1.5 }}>
-                Consulte o relatório do KitchenFlow desta aula. Os registos que a ficha pede foram feitos? Conta 10% na nota da aula.
+                Os registos que a ficha pede foram feitos? Conta 10% na nota da aula.
                 A mesma opção fica escolhida para os colegas do mesmo grupo.
               </div>
+              {/* (Rosa, 12/out/2026) O que o aluno registou, lido do KitchenFlow. */}
+              <RegistosKFDoAlunoNaAula turmaId={selecao.turmaId} alunoId={selecao.alunoId}
+                planoAulaId={selecao.planoAulaId || ''} data={String(planoDaSelecao?.data || '').slice(0, 10)} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
                 {NIVEIS_REGISTOS_KF.map(n => (
                   <button key={n.v} onClick={() => {
@@ -1546,6 +1550,46 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+/** O que o aluno registou no KitchenFlow no dia da aula (Rosa, 12/out/2026:
+ *  «tem de aparecer que o aluno registou, e até o que registou»). Se não
+ *  registou e o grupo tem líder, mostra os registos do líder (é quem os faz). */
+export function RegistosKFDoAlunoNaAula({ turmaId, alunoId, planoAulaId, data }: { turmaId: string; alunoId: string; planoAulaId: string; data: string }) {
+  const [estado, setEstado] = useState<{ meus: RegistoKFDoAluno[] | null; doLider?: RegistoKFDoAluno[] | null; lider?: string } | 'a_ler'>('a_ler');
+  useEffect(() => {
+    let vivo = true;
+    setEstado('a_ler');
+    (async () => {
+      const meus = data ? await registosKFDoAluno(turmaId, alunoId, data) : null;
+      let doLider: RegistoKFDoAluno[] | null | undefined, lider: string | undefined;
+      if (meus && !meus.length) {
+        const g = grupoDoAluno(planoAulaId, alunoId);
+        lider = g ? liderKFdoGrupo(planoAulaId, g.id) : undefined;
+        if (lider && lider !== alunoId) doLider = await registosKFDoAluno(turmaId, lider, data);
+      }
+      if (vivo) setEstado({ meus, doLider, lider });
+    })();
+    return () => { vivo = false; };
+  }, [turmaId, alunoId, planoAulaId, data]);
+  const caixa: React.CSSProperties = { margin: '0 0 10px', padding: '9px 11px', borderRadius: 10, background: '#F4F8F3', border: '1px solid #DCE8D8', fontSize: 13, lineHeight: 1.45 };
+  const lista = (rs: RegistoKFDoAluno[]) => (
+    <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+      {rs.map((r, i) => (
+        <li key={i}><b>{r.tabela}</b>{r.hora ? ` · ${r.hora}` : ''}{r.detalhe ? <span style={{ color: 'rgba(26,23,20,0.65)' }}> — {r.detalhe}</span> : null}</li>
+      ))}
+    </ul>
+  );
+  if (estado === 'a_ler') return <div style={{ ...caixa, color: 'rgba(26,23,20,0.55)' }}>A ver no KitchenFlow o que o aluno registou…</div>;
+  if (estado.meus === null) return <div style={{ ...caixa, background: '#FFF8EC', borderColor: '#F0D9B5' }}>Não foi possível ler o KitchenFlow agora (sem ligação). Consulte o relatório do KitchenFlow desta aula.</div>;
+  if (estado.meus.length) return <div style={caixa}><b>✓ Registou no KitchenFlow nesta aula ({estado.meus.length}):</b>{lista(estado.meus)}</div>;
+  const nomeLider = estado.lider ? (getAlunos().find(a => a.id === estado.lider)?.nome || '').split(' ')[0] : '';
+  return (
+    <div style={{ ...caixa, background: '#FDF0EF', borderColor: '#F3D2CD' }}>
+      <b>Este aluno não tem registos no KitchenFlow neste dia.</b>
+      {estado.doLider && estado.doLider.length > 0 && <><div style={{ marginTop: 4 }}>O líder do grupo{nomeLider ? `, ${nomeLider},` : ''} registou ({estado.doLider.length}):</div>{lista(estado.doLider)}</>}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeG
 import { atitudeEmPalavrasSimples } from '../atitudesSimples';
 import { JanelaAutoavaliacoesEmFalta } from './JanelaAutoavaliacoesEmFalta';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, faltasQueContamNaNota, bonusPorAtividade, type BonusDaAtividade,
-  recuperacoesDeAulasPorFazer, recuperacaoDaAula, aulasFaltadasParaRecuperar } from '../backend';
+  recuperacoesDeAulasPorFazer, recuperacaoDaAula, aulasFaltadasParaRecuperar, aulasPorValidarNaNota } from '../backend';
 import { RecuperarAulasAluno } from './RecuperarAulasAluno';
 import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
@@ -1293,6 +1293,11 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const detalheNota = ucAtual && calcUC ? {
     // As faltas que ainda contam 0 (as recuperadas estão nas aulas — Rosa, 12/out/2026).
     faltas: faltasQueContamNaNota(aluno.id, aluno.turmaId, ucAtual),
+    // As que esperam pela validação do professor: ainda não contam.
+    porValidar: aulasPorValidarNaNota(aluno.id, aluno.turmaId, ucAtual).map(a => {
+      const pl = planos.find(x => x.id === a.planoId);
+      return { ...a, numero: pl ? posicaoNaUC(pl) : 0 };
+    }),
     media: calcUC.base,
     bonus: bonusPorAtividade(aluno.id, aluno.turmaId, ucAtual, calcUC.base),
     bonusTotal: calcUC.bonusParticipacao,

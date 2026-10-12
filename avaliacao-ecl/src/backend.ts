@@ -1274,6 +1274,8 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       const daBase = await Promise.all(Object.keys(COLECAO_DO_TIPO)
         .map(async tipo => [tipo, await lerDaBase(tipo, turmaId)] as const));
       for (const [tipo, dados] of daBase) if (dados) juntarDaBase(tipo, dados);
+      // Os alunos fantasma marcados aqui e que não chegaram à base.
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') reenviarFantasmasPorConfirmar();
     }
 
     // ── Preços revistos (Continente) — iguais para todas as turmas ────
@@ -1851,7 +1853,9 @@ function juntarConfigs(lista: any[]): void {
 // presenças da aula, nas funções e responsabilidades, nas recuperações e
 // no ranking (assume que faltam a tudo). Continuam na pauta oficial e
 // podem ser repostos. A marca é partilhada por todos os aparelhos.
-export interface MarcaFantasma { alunoId: string; turmaId: string; fantasma: boolean; marcadoPor: string; atualizadoEm: string }
+export interface MarcaFantasma { alunoId: string; turmaId: string; fantasma: boolean; marcadoPor: string; atualizadoEm: string;
+  /** Já chegou à base de dados (e, por ela, aos outros aparelhos). */
+  naBase?: boolean }
 const KEY_FANTASMAS = 'ecl_alunos_fantasma';
 let cacheFantasmas: Set<string> | null = null;
 export function alunosFantasma(): Set<string> {
@@ -1863,7 +1867,23 @@ export function marcarFantasma(aluno: { id: string; turmaId: string }, fantasma:
   const m: MarcaFantasma = { alunoId: aluno.id, turmaId: aluno.turmaId, fantasma, marcadoPor: quem || 'coordenação', atualizadoEm: new Date().toISOString() };
   save(KEY_FANTASMAS, [...load<MarcaFantasma>(KEY_FANTASMAS).filter(x => x.alunoId !== aluno.id), m]);
   cacheFantasmas = null;
-  gravarNaBase('aluno_fantasma', m as any);
+  enviarFantasma(m);
+}
+/** A marca vai para a base; só fica «naBase» quando a base a aceitou. Antes ia
+ *  uma vez e, se falhasse, ficava só neste aparelho: os outros continuavam a
+ *  ver o aluno (Rosa, 12/out/2026: «continuam a aparecer depois de anulados»;
+ *  a base não tinha nenhuma marca). */
+function enviarFantasma(m: MarcaFantasma): void {
+  const { naBase: _n, ...semEstado } = m;
+  gravarNaBase('aluno_fantasma', semEstado as any).then(ok => {
+    if (!ok) return;
+    save(KEY_FANTASMAS, load<MarcaFantasma>(KEY_FANTASMAS).map(x =>
+      x.alunoId === m.alunoId && x.atualizadoEm === m.atualizadoEm ? { ...x, naBase: true } : x));
+  }).catch(() => {});
+}
+/** As marcas deste aparelho que ainda não chegaram à base vão outra vez. */
+export function reenviarFantasmasPorConfirmar(): void {
+  load<MarcaFantasma>(KEY_FANTASMAS).filter(m => !m.naBase && m.alunoId).forEach(enviarFantasma);
 }
 function juntarFantasmas(lista: any[]): void {
   const m = new Map(load<MarcaFantasma>(KEY_FANTASMAS).map(x => [x.alunoId, x]));
@@ -1872,7 +1892,7 @@ function juntarFantasmas(lista: any[]): void {
     const velho = m.get(x.alunoId);
     if (!velho || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) {
       m.set(x.alunoId, { alunoId: x.alunoId, turmaId: x.turmaDoAluno || x.turmaId || velho?.turmaId || '', fantasma: x.fantasma === true || x.fantasma === 'true',
-        marcadoPor: x.marcadoPor || '', atualizadoEm: x.atualizadoEm || '' });
+        marcadoPor: x.marcadoPor || '', atualizadoEm: x.atualizadoEm || '', naBase: true });
     }
   }
   save(KEY_FANTASMAS, [...m.values()]);
@@ -6467,6 +6487,19 @@ export function recuperacoesDeAulasPorFazer(alunoId: string): { plano: PlanoAula
     .filter((x): x is { plano: PlanoAula; r: RecuperacaoDaAula } => !!x.plano && !!x.r && (x.plano as any).estado !== 'arquivado'
       && notaDaAulaRecuperada(alunoId, x.plano.id) === null)
     .sort((a, b) => String(a.plano.data).localeCompare(String(b.plano.data)));
+}
+
+/** As aulas da UC em que o aluno já se autoavaliou e o professor ainda não
+ *  validou: não contam (nem 0) até serem validadas. Para «Como chegaste a esta
+ *  nota» (Rosa, 12/out/2026: o Leonel não via as aulas de 9 e 12/10). */
+export function aulasPorValidarNaNota(alunoId: string, turmaId: string, ucId: string): { planoId: string; titulo: string; data: string }[] {
+  const contadas = new Set(aulasDaNotaUC(alunoId, turmaId, ucId).map(l => l.planoId));
+  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  const sels = getSelecoes().filter(s => s.alunoId === alunoId);
+  return getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado'
+      && !contadas.has(p.id) && !faltados.has(p.id) && sels.some(s => s.planoAulaId === p.id))
+    .sort((a, b) => String(a.data).localeCompare(String(b.data)))
+    .map(p => ({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10).split('-').reverse().join('/') }));
 }
 
 /** As faltas que ainda contam 0 na nota (as recuperadas saem), com a

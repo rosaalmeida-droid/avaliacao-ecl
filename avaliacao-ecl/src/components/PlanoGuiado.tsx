@@ -268,7 +268,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     }
     // A farda e os registos de higiene acompanham o tipo — também numa
     // atividade extra (antes ficava de fora, como o tipo; auditoria out/2026).
-    if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || (!definida && !atual.tipoEvento)) {
+    if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || 'registos' in parcial || (!definida && !atual.tipoEvento)) {
       const ob = obrigatoriasDaTriagem(nova);
       const tiradas = new Set<string>(atual.compRemovidas || []);
       if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
@@ -287,7 +287,17 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       if (prox) novo.conhecimentosProf = indicadoresDoConteudo(prox.ficheiro, prox.capitulo);
     }
     // Trabalho de grupo: o professor faz os grupos no plano (Rosa, 6/out/2026).
-    if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
+    // Também quando os alunos trabalham «em grupos (brigadas)»: sem os grupos
+    // ligados, ninguém tinha colegas para avaliar (Rosa, 12/out/2026: no 3.º ACP
+    // só a atividade de 1/10 tinha os grupos ligados). Liga-se ao responder como
+    // trabalham (ou se nunca se decidiu): se o professor os desligou à mão, ficam.
+    const mudouTrabalho = 'trabalho' in parcial || 'modo' in parcial;
+    const emGrupo = nova.modo === 'grupo' || nova.trabalho === 'grupos';
+    if (emGrupo && !novo.gruposAlunos?.ativo && (mudouTrabalho || !novo.gruposAlunos))
+      novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
+    // Cada um sozinho (ou a turma toda): sem grupos, se ainda ninguém formou nenhum.
+    else if (mudouTrabalho && !emGrupo && novo.gruposAlunos?.ativo && !gruposDaAula(atual.id).length)
+      novo.gruposAlunos = { ...novo.gruposAlunos, ativo: false };
     addOrUpdatePlanoAula(novo);
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
   }
@@ -395,6 +405,18 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
               : 'Ninguém é avaliado na farda nesta aula, nem perde nada por não a ter.'}>
             <Opcao ativo={valor.farda === true} onClick={() => gravar({ farda: true })}>Sim, os alunos têm de vir de farda</Opcao>
             <Opcao ativo={valor.farda === false} onClick={() => gravar({ farda: false })}>Não, a farda não foi pedida</Opcao>
+          </Q>
+        )}
+
+        {/* Higiene e segurança alimentar (registos do KitchenFlow): numa aula prática
+            só de arrumação do material não há registos a fazer (Rosa, 12/out/2026). */}
+        {definida && (tipo === 'pratico' || tipo === 'misto') && (
+          <Q n={n++} titulo="Há registos de higiene e segurança alimentar nesta aula?"
+            ajuda={ob.registos
+              ? 'Os alunos fazem os registos no KitchenFlow (temperaturas, higienização…), e o professor confirma-os na validação. Conta na nota da aula.'
+              : 'Nesta aula não há registos no KitchenFlow: não se pergunta aos alunos nem conta na nota (por exemplo, uma aula só de arrumação do material).'}>
+            <Opcao ativo={ob.registos} onClick={() => gravar({ registos: true })}>Sim, os alunos fazem os registos no KitchenFlow</Opcao>
+            <Opcao ativo={!ob.registos} onClick={() => gravar({ registos: false })}>Não, nesta aula não há registos</Opcao>
           </Q>
         )}
 

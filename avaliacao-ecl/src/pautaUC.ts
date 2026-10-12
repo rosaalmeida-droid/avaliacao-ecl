@@ -396,6 +396,23 @@ export function notaDoCompetente(l: LinhaPautaUC, produtos: ProdutoPauta[]): num
   return Math.round(produtos.reduce((s, p, j) => s + (l.produtos[j] ?? 0) * p.peso / 100, 0) * 10) / 10;
 }
 
+/**
+ * O Competente de hoje, para a nota que se vê durante a UC: as aulas ainda à
+ * espera da validação do professor (o aluno já se autoavaliou) ficam de fora,
+ * como na lista das aulas, em vez de contarem 0 (Rosa, 12/out/2026: o Leonel
+ * via a média 15,9 e a nota 13,7). As faltas e as aulas sem resposta contam 0
+ * na mesma. A pauta oficial (notaDoCompetente) não muda.
+ */
+export function notaDoCompetenteDeHoje(l: LinhaPautaUC, produtos: ProdutoPauta[]): number | null {
+  let soma = 0, pesos = 0;
+  produtos.forEach((p, j) => {
+    const n = l.produtos[j];
+    if (n === null || n === undefined) return;
+    soma += n * p.peso; pesos += p.peso;
+  });
+  return pesos ? Math.round((soma / pesos) * 10) / 10 : null;
+}
+
 /** Sugestão para a CLASSIF. ATRIBUÍDA: o Competente em 0-20, dentro da
  *  faixa do Competente (um aluno com 4 no CP fica entre 10 e 13). */
 export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cp: number, turmaId?: string, ucId?: string): number | null {
@@ -498,6 +515,7 @@ export function notaDaUCComoNaPauta(alunoId: string, turmaId: string, ucId: stri
  * (Rosa, 6/out/2026: «as notas devem ter sempre décimas») A nota da UC com
  * décimas, para mostrar na aplicação e no Sheets: a mesma conta da pauta
  * (as aulas pelo seu peso, sem resposta a 0, mais o bónus), sem arredondar.
+ * As aulas à espera da validação ainda não contam (notaDoCompetenteDeHoje).
  * Na pauta, só a nota final é inteira; depois de publicada, conta a publicada.
  * As regras (negativa, recuperação) continuam com notaDaUCComoNaPauta.
  */
@@ -510,7 +528,7 @@ export function notaDaUCComDecimas(alunoId: string, turmaId: string, ucId: strin
     const produtos = produtosDaUC(turmaId, ucId);
     if (produtos.length) {
       const l = linhasDaPautaUC(turmaId, ucId, produtos, alunoId)[0];
-      const n = l ? notaDoCompetente(l, produtos) : null;
+      const n = l ? notaDoCompetenteDeHoje(l, produtos) : null;
       if (n !== null) {
         const b = bonusDaPauta(alunoId, n, turmaId, ucId);
         const v = b ? Math.min(n + b.bonus, b.teto) : n;

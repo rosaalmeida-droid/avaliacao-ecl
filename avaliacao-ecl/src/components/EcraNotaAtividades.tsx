@@ -62,6 +62,8 @@ export function EcraMinhaNota({
   /** Como se chega à nota: faltas, média das aulas, bónus de cada atividade. */
   detalhe?: {
     faltas: { titulo: string; data: string; recuperacao?: string }[];
+    /** Autoavaliou-se e o professor ainda não validou: ainda não conta. */
+    porValidar?: { titulo: string; data: string; numero?: number }[];
     media: number | null;
     bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
     bonusTotal: number; teto: boolean; motivoTeto?: string; final: number | null; publicada: boolean;
@@ -192,7 +194,7 @@ export function EcraMinhaNota({
         )}
 
         {/* Como chegaste a esta nota: tudo, aula a aula, e o bónus de cada atividade. */}
-        {detalhe && (aulas.length > 0 || detalhe.faltas.length > 0 || detalhe.bonus.length > 0) && (
+        {detalhe && (aulas.length > 0 || detalhe.faltas.length > 0 || detalhe.bonus.length > 0 || (detalhe.porValidar || []).length > 0) && (
           <div style={{ ...painel, padding: 18, marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.tinta, marginBottom: 10 }}>Como chegaste a esta nota</div>
             {aulas.some(a => a.peso !== undefined) && (
@@ -215,6 +217,14 @@ export function EcraMinhaNota({
                   ))}
                 </span>
                 <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
+              </div>
+            ))}
+            {(detalhe.porValidar || []).map((v, i) => (
+              <div key={'v' + i} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>{v.numero ? `Aula ${v.numero} · ` : ''}{v.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(v.titulo || '')) ? null : <span style={{ color: '#999' }}> · {v.data}</span>}
+                  <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>autoavaliaste-te: à espera da validação do professor, ainda não conta</span>
+                </span>
+                <span style={{ fontWeight: 700, color: '#999' }}>—</span>
               </div>
             ))}
             {detalhe.faltas.map((f, i) => (

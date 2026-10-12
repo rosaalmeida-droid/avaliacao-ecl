@@ -4,7 +4,7 @@
 // os alunos veem»). As aulas, cada uma com o seu peso, as faltas, a média,
 // o bónus de cada atividade e a nota da UC (a da pauta).
 // ============================================================
-import { notaFinalUC, aulasDaNotaUC, faltasQueContamNaNota, bonusPorAtividade } from './backend';
+import { notaFinalUC, aulasDaNotaUC, faltasQueContamNaNota, bonusPorAtividade, aulasPorValidarNaNota } from './backend';
 import { notaDaUCComDecimas } from './pautaUC';
 import { posicaoNaUC } from './rotuloPlano';
 import { getPlanosAula } from './backend';
@@ -25,6 +25,9 @@ export function contasDaNotaDoAluno(alunoId: string, turmaId: string, ucId: stri
   const detalhe = {
     // As faltas que ainda contam 0 (as recuperadas estão nas aulas).
     faltas: faltasQueContamNaNota(alunoId, turmaId, ucId),
+    // As que esperam pela validação do professor: ainda não contam.
+    porValidar: aulasPorValidarNaNota(alunoId, turmaId, ucId).map(a => ({ ...a,
+      numero: planos.get(a.planoId) ? posicaoNaUC(planos.get(a.planoId)!) : 0 })),
     media: calc.base,
     bonus: bonusPorAtividade(alunoId, turmaId, ucId, calc.base),
     bonusTotal: calc.bonusParticipacao,

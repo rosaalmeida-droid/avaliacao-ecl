@@ -1289,6 +1289,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       const cozinham = tp === 'pratico' || tp === 'misto';
       (p as any).triagemAula = { tipo: tp, cozinham, onde: cozinham ? 'cozinha' : 'sala',
         trabalho: tp === 'teorico' ? 'individual' : 'grupos', servico: false } as TriagemAula;
+      // Em grupos: os grupos ficam ligados, e os alunos avaliam os colegas do
+      // grupo (Rosa, 12/out/2026: sem isto, só uma aula teve avaliação entre colegas).
+      if (tp !== 'teorico') (p as any).gruposAlunos = { ativo: true, tamanho: 4 };
       if (tp === 'teorico') (p as any).compRemovidas = [...new Set([...((p as any).compRemovidas || []), 'OBR_01', 'OBR_02'])];
       if (tp === 'teorico' || tp === 'misto') {
         const prox = proximoConteudo(getPlanosAulaPorTurma(turmaId), turmaId, dados.ucId);
