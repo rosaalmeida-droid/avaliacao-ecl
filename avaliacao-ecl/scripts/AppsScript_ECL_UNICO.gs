@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.1';
+var VERSAO = 'ECL único v27.2';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -958,6 +958,8 @@ function doGet(e) {
     if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token), { eliminados: eliminadosDe('ALUNOS') });
     if (tipo === 'entrar')           return respostaDados(entrarPessoal(p.quem, p.codigo));
     if (tipo === 'entrar_aluno')     return respostaDados(entrarAluno(p.alunoId, p.pin));
+    // (v27.2) Só «sim» ou «não»: o email não sai daqui sem o PIN.
+    if (tipo === 'tem_email_aluno')  return respostaDados({ temEmail: !!emailRegistadoDoAluno_(p.alunoId) });
     if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }), { eliminados: eliminadosDe('AVALIACOES') });
     if (tipo === 'get_presencas')    return comDados('presencas',    ler('PRESENCAS',    { turmaId: turma }));
     if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }), { eliminados: eliminadosDe('SELECOES') });
@@ -3733,7 +3735,18 @@ function entrarAluno(alunoId, pin) {
   if (!a || !a.pin) return { semPin: true };
   if (bloqueado('a_' + alunoId, false)) return { entrou: false, bloqueado: true };
   if (String(pin || '').trim() !== String(a.pin).trim()) { bloqueado('a_' + alunoId, true); return { entrou: false }; }
-  return { entrou: true };
+  // (v27.2) O email da escola que o aluno já deu vai com a entrada (PIN certo):
+  // a aplicação não lho volta a pedir noutro telemóvel (Rosa, 12/out/2026).
+  var email = emailRegistadoDoAluno_(alunoId);
+  return email ? { entrou: true, email: email } : { entrou: true };
+}
+
+/** (v27.2) O email da escola que o aluno escreveu na aplicação ('' se ainda não deu). */
+function emailRegistadoDoAluno_(alunoId) {
+  try {
+    var e = ler('EMAILS_ALUNOS', {}).filter(function (x) { return String(x.alunoId) === String(alunoId || '') && /@eclisboa\.net$/i.test(String(x.email || '').trim()); }).pop();
+    return e ? String(e.email).trim().toLowerCase() : '';
+  } catch (err) { return ''; }
 }
 
 /** Correr à mão: quantos alunos têm PIN no Sheets (por turma). */

@@ -563,6 +563,10 @@ export async function confirmarPinAluno(alunoId: string, pin: string): Promise<R
   if (!j?.ok) return 'semRede';
   if (j.semPin || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';
   if (j.bloqueado) return 'bloqueado';
+  // O email da escola que o aluno já deu (script v27.2): não se volta a pedir (Rosa, 12/out/2026).
+  if (j.entrou && typeof j.email === 'string' && RE_EMAIL_ESCOLA.test(j.email.trim())) {
+    try { localStorage.setItem(chaveEmail(alunoId), j.email.trim().toLowerCase()); } catch { /* volta a pedir */ }
+  }
   return j.entrou ? 'entrou' : 'errado';
 }
 
@@ -6469,8 +6473,11 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
 /** Horas da UC que já foram dadas: planos publicados de aulas que já aconteceram. */
 export function horasDadasDaUC(turmaId: string, ucId: string): number {
   const hoje = new Date().toISOString().slice(0, 10);
+  // Só as aulas: as atividades e os eventos (fora do horário, ou só de alguns
+  // alunos) não são horas da UC, nem os planos num dia sem aulas. Contavam, e
+  // a UFCD 16 aparecia com 47,5 h dadas quando ia na hora 29 (Rosa, 12/out/2026).
   return getPlanosAula()
-    .filter(p => p.ucId === ucId && p.turmaId === turmaId
+    .filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento && !planoNumDiaSemAulas(p)
       && (p.estado === 'publicado' || p.estado === 'realizada')
       && aulaJaAconteceu(p, hoje))
     .reduce((s, p) => s + horasDoPlano(p), 0);
@@ -10731,6 +10738,21 @@ const chaveEmail = (alunoId: string) => 'ecl_email_aluno_' + alunoId;
 
 export function emailDoAluno(alunoId: string): string {
   try { return localStorage.getItem(chaveEmail(alunoId)) || ''; } catch { return ''; }
+}
+/** O aluno já deu o email noutro telemóvel (o Sheets diz que sim, sem o mostrar). */
+const chaveRegistado = (alunoId: string) => 'ecl_email_aluno_registado_' + alunoId;
+export function emailRegistadoNoutroAparelho(alunoId: string): boolean {
+  try { return !!localStorage.getItem(chaveRegistado(alunoId)); } catch { return false; }
+}
+/** Pergunta ao Sheets se o aluno já deu o email (script v27.2). Com um script
+ *  antigo ou sem rede, responde «não» e o ecrã do email aparece, como antes. */
+export async function emailJaRegistadoNoSheets(alunoId: string): Promise<boolean> {
+  try {
+    const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'tem_email_aluno', alunoId }, 5000);
+    const sim = !!(j?.ok && j.temEmail);
+    if (sim) try { localStorage.setItem(chaveRegistado(alunoId), new Date().toISOString()); } catch { /* */ }
+    return sim;
+  } catch { return false; }
 }
 /** Os alunos do 1.º ano ainda não sabem o email da escola (Rosa, 6/out/2026):
  *  podem adiar, e a aplicação volta a pedir passados 7 dias. */
