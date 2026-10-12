@@ -13,7 +13,7 @@
 // do período, fica logo «sem prática».
 // ============================================================
 import { getPresencas, getPlanosAula, getValidacoes } from './backend';
-import { pedeFardaEHigiene } from './contextoAula';
+import { pedeFardaEHigiene, fardaIncompletaNaPresenca } from './contextoAula';
 
 export type DecisaoFarda = 'tolerancia' | 'sem_pratica';
 
@@ -42,9 +42,7 @@ const fardaContaNaAula = (planoAulaId: string) => {
 export function fardaEmFaltaNaAula(alunoId: string, planoAulaId: string): boolean {
   if (!fardaContaNaAula(planoAulaId)) return false;
   const r: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
-  if (!r) return false;
-  if (r.fardaDeclarada) return (r.fardaEmFalta || []).length > 0;
-  return !!r.horaEntrada && r.fardamentoOk === false;
+  return fardaIncompletaNaPresenca(r, getPlanosAula().find(p => p.id === planoAulaId));
 }
 
 /** A tolerância da farda já dada neste período, noutra aula (a mais recente). */

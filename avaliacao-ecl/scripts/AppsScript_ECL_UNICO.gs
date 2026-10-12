@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.2';
+var VERSAO = 'ECL único v27.3';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2343,8 +2343,14 @@ function seccaoOQueChegouACadaAluno(d, aulas, alunos, junta, titulo, cabecalho, 
       if (faltouX) casos.push('Faltou');
       if (atrasoContaAqui(x, p)) casos.push(decX === 'falta_atraso' ? 'Falta de atraso (declarada pelo professor)' : 'Chegou atrasado' + (x.atrasadoMins ? ' (' + x.atrasadoMins + ' min)' : ''));
       // (v27.1) Só numa aula em que a farda conta: o professor diz no plano (Rosa, 12/out/2026).
-      var fardaConta = (p.compRemovidas || []).indexOf('OBR_01') < 0;
-      if (fardaConta && x && (x.fardamentoOk === false || x.fardamentoOk === 'false')) casos.push('Farda incompleta (respondeu também sobre a farda)');
+      // (v27.3) E só se o aluno a declarou à entrada: uma presença marcada pelo professor,
+      // ou numa aula atitudinal, fica com «farda: não» por omissão (o Aldmir a 29/09).
+      var tri = p.triagemAula || {};
+      var fardaConta = (p.compRemovidas || []).indexOf('OBR_01') < 0
+        && (tri.farda === true || (tri.farda !== false && ['pratico', 'misto', 'atitudinal_obr'].indexOf(String(p.tipoPlanAula || 'pratico')) >= 0));
+      var fardaIncompleta = x && (x.fardaDeclarada ? (x.fardaEmFalta || []).length > 0
+        : (!!x.horaEntrada && (x.fardamentoOk === false || x.fardamentoOk === 'false')));
+      if (fardaConta && fardaIncompleta) casos.push('Farda incompleta (respondeu também sobre a farda)');
       if (p.tipoEvento) casos.push(atvContaComoAula_(p, d.planos) ? 'Atividade obrigatória fora das horas da aula: dá bónus (até +0,5); quem faltou perde 0,5. ' + transpostaDe_(p, d.planos) : 'Atividade extra: conta como bónus');
       if (s && p.pedirDeNovoEm && s.versaoPlano && String(s.versaoPlano) < String(p.pedirDeNovoEm)) casos.push('Respondeu à versão antiga do plano');
       auto.forEach(function (q) { if (q.nivel === 'nop') casos.push('Sem oportunidade: ' + nomeC(q.competenciaId)); });

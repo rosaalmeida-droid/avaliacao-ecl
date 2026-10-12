@@ -84,7 +84,7 @@ import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { notaDaUCComDecimas } from '../pautaUC';
-import { pedeFardaEHigiene, cozinhamNaAula } from '../contextoAula';
+import { pedeFardaEHigiene, cozinhamNaAula, fardaIncompletaNaPresenca } from '../contextoAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
@@ -2226,7 +2226,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
                   <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.65)', marginBottom:6 }}>Só para ver. O que já fizeste fica guardado.</div>
                   {feitos.map(p => p.id === 'entrada'
                     ? linha('Entraste na aula', [pres?.horaEntrada ? `Às ${String(pres.horaEntrada).slice(0, 5)}.` : '',
-                        pres && pedeFardaEHigiene(plano) ? (pres.fardamentoOk === false ? `Farda: ${String(pres.observacao || '').replace(/^.*em falta:\s*/, 'faltava ')}.` : 'Farda completa.') : ''].filter(Boolean).join(' '))
+                        pres && pedeFardaEHigiene(plano) && (pres.fardaDeclarada || pres.horaEntrada)
+                          ? (fardaIncompletaNaPresenca(pres, plano) ? `Farda: ${String(pres.observacao || '').replace(/^.*em falta:\s*/, 'faltava ')}.` : 'Farda completa.') : ''].filter(Boolean).join(' '))
                     : p.id === 'ficha'
                       ? linha(teorica ? 'Fizeste o trabalho da aula' : 'Produziste', passos.total ? `Marcaste ${passos.feitos} de ${passos.total} passos da ficha.` : '',
                           fichas.length ? () => setVerAqui('ficha') : undefined)
