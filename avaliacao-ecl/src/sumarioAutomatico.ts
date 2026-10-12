@@ -27,7 +27,7 @@ import { triagemDoPlano, tipoDe, fasesDoTrabalho, aulaDePAP, type FaseProjeto, t
 import { capituloDoCampo } from './bancoManuais';
 import { getModulo, anoDaTurma } from './cronograma';
 import { getReferencialUC } from './referencial811RA144';
-import { contextoDoPlano, eventosAgregadosAAula, atividadeContaComoAula } from './backend';
+import { contextoDoPlano, eventosAgregadosAAula, atividadeObrigatoriaForaDoHorario } from './backend';
 import { regrasDaAutoavaliacao } from './autoavaliacaoDaAula';
 import { nomeDoTipoAtividade } from './eventosAvaliacao';
 
@@ -356,10 +356,10 @@ function montar(plano: PlanoAula, fichas: FichaProducao[]): string {
   // Toda a aula de PAP deixa evidências, mesmo sem a parte escrita (Rosa, out/2026).
   if (pap) linhas.push('Registo de evidências para a PAP.');
   // O que aconteceu fora da aula e se avalia nesta: a atividade obrigatória da
-  // turma fora das horas da aula conta como mais uma aula (Rosa, 6/out/2026).
+  // turma fora das horas da aula (Rosa, 6/out/2026; dá bónus desde 12/out/2026).
   if (!p.tipoEvento) {
     try {
-      for (const ev of eventosAgregadosAAula(plano).filter(atividadeContaComoAula) as any[]) {
+      for (const ev of eventosAgregadosAAula(plano).filter(atividadeObrigatoriaForaDoHorario) as any[]) {
         const nome = semPonto(String(ev.titulo || 'Atividade').replace(/\s*[—–-]\s*\d{2}\/\d{2}\/\d{4}$/, ''));
         const dia = String(ev.data || '').slice(0, 10).split('-').reverse().slice(0, 2).join('/');
         linhas.push(`Avaliação da atividade «${nome}», realizada a ${dia}.`);

@@ -508,9 +508,22 @@ export function comoEventoAntigo(e: EventoECL, turmaId: string): any {
 }
 
 /** Os eventos, na forma que os planos e a requisição já conhecem. */
+/**
+ * As turmas que vão mesmo ao evento (Rosa, 12/out/2026: «aparecem em todas as
+ * turmas»). Depois de criada a avaliação dos alunos, só as turmas que a têm
+ * (as outras ficaram em «Não vai»); antes disso, as escolhidas no pedido.
+ */
+export function turmasQueVao(e: { id: string; turmasIds?: string[] }): string[] {
+  let planos: any[] = [];
+  try { planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]'); } catch { /* */ }
+  const comPlano = [...new Set(planos.filter(p => p?.eventoId === e.id && p.estado !== 'arquivado' && !p.eliminado)
+    .map(p => String(p.turmaId)))];
+  return comPlano.length ? comPlano : (e.turmasIds || []);
+}
+
 export function eventosParaPlanos(turmaId?: string): any[] {
   let novos: EventoECL[] = [];
   try { novos = JSON.parse(localStorage.getItem('ecl_eventos_v4') || '[]'); } catch { /* */ }
-  return novos.filter(e => e.estado !== 'cancelado' && (!turmaId || e.turmasIds.includes(turmaId)))
+  return novos.filter(e => e.estado !== 'cancelado' && (!turmaId || turmasQueVao(e).includes(turmaId)))
     .map(e => comoEventoAntigo(e, turmaId || e.turmasIds[0] || ''));
 }

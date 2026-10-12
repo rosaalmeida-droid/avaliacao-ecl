@@ -210,14 +210,16 @@ export function EcraMinhaNota({
               <div key={b.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 14 }}>
                 <span style={{ flex: 1, minWidth: 0, color: C.texto }}>
                   {b.tipo === 'concurso' ? '🏆' : '🏅'} {b.titulo} <span style={{ color: '#999' }}>· {b.data.split('-').reverse().slice(0, 2).join('/')}</span>
-                  {(!b.conta || b.tipo === 'concurso') && b.motivo && <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>{b.motivo}</span>}
+                  {b.motivo && <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>{b.motivo}</span>}
                 </span>
-                <span style={{ fontWeight: 700, color: b.conta ? C.verde : '#999' }}>{b.conta ? `+${fmt2(b.valor)}` : '+0'}</span>
+                {/* Faltou a uma atividade obrigatória: perde 0,5 (Rosa, 12/out/2026). */}
+                <span style={{ fontWeight: 700, color: b.valor < 0 ? C.ambar : b.conta ? C.verde : '#999' }}>
+                  {b.valor < 0 ? `−${fmt2(-b.valor)}` : b.conta ? `+${fmt2(b.valor)}` : '+0'}</span>
               </div>
             ))}
             {detalhe.bonus.length > 0 && (
               <div style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 14.5, fontWeight: 700, color: C.verde }}>
-                <span style={{ flex: 1 }}>Bónus das atividades (máximo 2)</span><span>+{fmt2(detalhe.bonusTotal)}</span>
+                <span style={{ flex: 1 }}>Bónus das atividades (máximo 2)</span><span>{detalhe.bonusTotal < 0 ? `−${fmt2(-detalhe.bonusTotal)}` : `+${fmt2(detalhe.bonusTotal)}`}</span>
               </div>
             )}
             {detalhe.teto && (

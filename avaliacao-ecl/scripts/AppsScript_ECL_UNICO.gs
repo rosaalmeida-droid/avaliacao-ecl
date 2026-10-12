@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v26.8';
+var VERSAO = 'ECL único v26.9';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -2395,10 +2395,12 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   d.planos.filter(function (p) { return p.estado !== 'arquivado' && !p.tipoEvento && !p.eliminado; })
     .sort(function (a, b) { return String(a.data || '').localeCompare(String(b.data || '')) || (Number(a.numeroPlan) || 0) - (Number(b.numeroPlan) || 0); })
     .forEach(function (p) { var u = p.ucId || ''; contaUC[u] = (contaUC[u] || 0) + 1; posNaUC[p.id] = contaUC[u]; });
-  // (v26.5) Atividades obrigatórias fora das horas da aula: contam como mais uma aula.
+  // (v26.5) Atividades obrigatórias fora das horas da aula: avaliam-se na aula seguinte.
+  // (v26.9, Rosa, 12/out/2026) Já não contam como mais uma aula: dão bónus (coluna
+  // «Bónus», feita pela aplicação). Não aparecem como colunas de aula nas NOTAS.
   var recebe = {};
   d.planos.forEach(function (p) { if (atvContaComoAula_(p, d.planos)) recebe[p.id] = aulaQueRecebe_(p, d.planos); });
-  var comoAula = aulas.filter(function (p) { return recebe.hasOwnProperty(p.id); });
+  var comoAula = [];
   var transposta = function (p) {
     var r = recebe[p.id];
     return r ? 'Avaliação transposta para a aula de ' + diaCurto(r.data) + (posNaUC[r.id] ? ' (Plano n.º ' + posNaUC[r.id] + ')' : '') : 'Avaliação transposta para a aula seguinte da disciplina';
@@ -2632,7 +2634,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();
       var ap = daApp[a.id + '|' + uc];
       var media = ap && ap.media !== '' && ap.media !== undefined ? virgula(ap.media) : (n ? virgula(Math.round(soma / n * 10) / 10) : '');
-      junta([a.numero || '', a.nome || ''].concat(cel).concat([media, ap ? (Number(ap.faltas) || 0) : '', ap && Number(ap.bonus) ? '+' + virgula(ap.bonus) : '',
+      junta([a.numero || '', a.nome || ''].concat(cel).concat([media, ap ? (Number(ap.faltas) || 0) : '', ap && Number(ap.bonus) ? (Number(ap.bonus) > 0 ? '+' : '') + virgula(ap.bonus) : '',
         ap && ap.final !== '' && ap.final !== undefined ? virgula(ap.final) : '', fin ? (virgula(fin.nota) + (fin.resultado ? ' (' + fin.resultado + ')' : '')) : '']));
     });
     vazia();

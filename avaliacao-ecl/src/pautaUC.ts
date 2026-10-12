@@ -407,6 +407,9 @@ export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[],
   // publicava a nota sem o bónus (Leonel 18 em vez de 19, 5/out/2026).
   const b = bonusDaPauta(l.alunoId, n, turmaId, ucId);
   if (!b || !b.bonus) return base;
+  // Faltou a uma atividade obrigatória (Rosa, 12/out/2026): o bónus negativo
+  // desce a nota, sem sair da faixa do Competente (a pauta não muda).
+  if (b.bonus < 0) return Math.min(base, Math.max(f.de, Math.round(n + b.bonus)));
   return Math.max(base, Math.min(20, Math.round(Math.min(n + b.bonus, b.teto))));
 }
 
@@ -510,7 +513,7 @@ export function notaDaUCComDecimas(alunoId: string, turmaId: string, ucId: strin
       if (n !== null) {
         const b = bonusDaPauta(alunoId, n, turmaId, ucId);
         const v = b ? Math.min(n + b.bonus, b.teto) : n;
-        return Math.round(Math.min(20, v) * 10) / 10;
+        return Math.round(Math.max(0, Math.min(20, v)) * 10) / 10;
       }
     }
   } catch { /* sem pauta: a conta pelos registos */ }

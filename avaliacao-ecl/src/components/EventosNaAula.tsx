@@ -9,7 +9,7 @@
 import React from 'react';
 import type { PlanoAula } from '../types';
 import {
-  eventosAgregadosAAula, atividadeContaComoAula, aulaQueRecebeAtividade, modoParticipacao, notaDaAulaValidada, validacaoDaAula, participantesDoEvento, participacaoContaParaBonus, getAlunos, getSelecoes, getValidacoes,
+  eventosAgregadosAAula, atividadeObrigatoriaForaDoHorario, bonusDaObrigatoria, aulaQueRecebeAtividade, modoParticipacao, participantesDoEvento, participacaoContaParaBonus, getAlunos, getSelecoes, getValidacoes,
 } from '../backend';
 import { BONUS_EVENTOS } from '../eventosAvaliacao';
 import { posicaoNaUC } from '../rotuloPlano';
@@ -28,8 +28,8 @@ export function EventosNaAula({ plano, onAbrirEvento }: { plano: PlanoAula; onAb
     <>
       {eventos.map((ev: any) => {
         const concurso = ev.tipoEvento === 'concurso';
-        // Obrigatória para a turma fora das horas da aula: conta como mais uma aula (Rosa, out/2026).
-        const comoAula = atividadeContaComoAula(ev);
+        // Obrigatória para a turma fora das horas da aula: dá bónus, e quem faltou perde 0,5 (Rosa, 12/out/2026).
+        const obrigatoria = atividadeObrigatoriaForaDoHorario(ev);
         const porAtividade = concurso ? BONUS_EVENTOS.porConcurso : BONUS_EVENTOS.porEvento;
         const atividade: any = { id: ev.id, turmaId: ev.turmaId, tipo: ev.tipoEvento, data: ev.data, titulo: ev.titulo };
         const linhas = participantesDoEvento(ev)
@@ -39,35 +39,37 @@ export function EventosNaAula({ plano, onAbrirEvento }: { plano: PlanoAula; onAb
           .map(a => {
             const validado = validacoes.some(v => v.alunoId === a.id && v.planoAulaId === ev.id);
             const respondeu = selecoes.some(s => s.alunoId === a.id && s.planoAulaId === ev.id);
-            const r = validado ? participacaoContaParaBonus(atividade, a.id) : null;
-            const bonus = r?.conta ? Math.round(porAtividade * r.fator * 100) / 100 : 0;
-            const nota = comoAula && validado ? notaDaAulaValidada(validacaoDaAula(a.id, ev.id)) : null;
-            return { a, validado, respondeu, r, bonus, nota };
+            const obr = obrigatoria ? bonusDaObrigatoria(ev, a.id) : null;
+            const r = obr ? { conta: obr.conta, motivo: obr.motivo, fator: 1 } : validado ? participacaoContaParaBonus(atividade, a.id) : null;
+            const bonus = obr ? obr.valor : r?.conta ? Math.round(porAtividade * r.fator * 100) / 100 : 0;
+            const faltou = !!obr && obr.valor < 0;
+            return { a, validado, respondeu, r, bonus, faltou };
           });
-        const porValidar = linhas.filter(l => !l.validado && l.respondeu).length;
+        const porValidar = linhas.filter(l => !l.validado && l.respondeu && !l.faltou).length;
         const avaliados = linhas.filter(l => l.validado).length;
         return (
           <div key={ev.id} style={{ background: '#fff', border: '2px solid #6B3FA0', borderRadius: 14, padding: '14px 16px', margin: '0 0 14px' }}>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#6B3FA0' }}>
-              {comoAula ? '📘 Atividade obrigatória — conta como mais uma aula' : <>{concurso ? '🏆 Concurso' : '🏅 Evento'} agregado a esta aula</>}
+              {obrigatoria ? '🏅 Atividade obrigatória — avalia-se nesta aula' : <>{concurso ? '🏆 Concurso' : '🏅 Evento'} agregado a esta aula</>}
             </div>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', marginTop: 4 }}>
               {ev.titulo || 'Evento'} · {dataPT(String(ev.data || ''))}
             </div>
             <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', marginTop: 4, lineHeight: 1.5 }}>
-              {comoAula
-                ? <>A turma toda foi, fora das horas da aula. A avaliação conta como mais uma aula desta UC, na data desta aula, e entra na pauta. Não dá bónus nem faltas. Quem não se autoavaliou conta 0.</>
+              {obrigatoria
+                ? <>A turma toda foi, fora do horário escolar: as faltas e as horas não contam na UC. Quem foi recebe um bónus até {fmt(porAtividade)},
+                  conforme a nota da atividade (quem esteve só parte do tempo, nessa proporção). Quem faltou perde {fmt(porAtividade)}.</>
                 : <>Não é plano de aula: não entra na pauta nem dá faltas. Dá um bónus até {fmt(porAtividade)} na nota da UC,
               proporcional à nota {concurso ? 'do concurso' : 'do evento'}, e as atitudes contam.</>}
               {' '}<b>{avaliados} de {linhas.length} avaliados</b>{porValidar ? <>, <b style={{ color: '#b5651d' }}>{porValidar} por validar</b></> : ''}.
             </div>
             <div style={{ marginTop: 10, borderTop: '1px solid rgba(26,23,20,0.08)' }}>
-              {linhas.map(({ a, validado, respondeu, r, bonus, nota }) => (
+              {linhas.map(({ a, validado, respondeu, r, bonus, faltou }) => (
                 <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '7px 0', borderBottom: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
                   <span style={{ flex: 1, minWidth: 0 }}>{a.numero}. {a.nome}</span>
                   <span style={{ fontWeight: 700, whiteSpace: 'nowrap',
-                    color: comoAula && validado ? '#2F5D8A' : validado ? (r?.conta ? '#3E7A31' : '#8e2418') : respondeu ? '#b5651d' : 'rgba(26,23,20,0.45)' }}>
-                    {comoAula && validado ? (nota === null ? 'validado' : `${fmt(nota)} valores`) : validado ? (r?.conta ? `+${fmt(bonus)}` : `sem bónus${r?.motivo ? ` · ${r.motivo}` : ''}`)
+                    color: faltou ? '#8e2418' : validado ? (r?.conta ? '#3E7A31' : '#8e2418') : respondeu ? '#b5651d' : 'rgba(26,23,20,0.45)' }}>
+                    {faltou ? `faltou · ${fmt(bonus)}` : validado ? (r?.conta ? `+${fmt(bonus)}` : `sem bónus${r?.motivo ? ` · ${r.motivo}` : ''}`)
                       : respondeu ? 'por validar' : 'sem autoavaliação'}
                   </span>
                 </div>
@@ -99,7 +101,7 @@ export function LigacaoDaAtividade({ plano, onAbrirAula }: { plano: PlanoAula; o
   const caixa = (cor: string, fundo: string, filhos: React.ReactNode) => (
     <div style={{ background: fundo, border: `2px solid ${cor}`, borderRadius: 14, padding: '14px 16px', margin: '0 0 14px', fontSize: 14.5, lineHeight: 1.55 }}>{filhos}</div>
   );
-  if (!atividadeContaComoAula(p)) {
+  if (!atividadeObrigatoriaForaDoHorario(p)) {
     return caixa('#6B3FA0', '#f6f1fb', <>
       <div style={{ fontWeight: 800, color: '#6B3FA0', fontSize: 15.5 }}>
         {p.tipoEvento === 'concurso' ? '🏆 Concurso: dá bónus' : modoParticipacao(p) === 'inscricao' ? '🏅 Atividade por convite: dá bónus' : '🏅 Atividade: dá bónus'}
@@ -110,18 +112,17 @@ export function LigacaoDaAtividade({ plano, onAbrirAula }: { plano: PlanoAula; o
   const aula: any = aulaQueRecebeAtividade(p);
   const outraUC = aula && p.ucId && aula.ucId !== p.ucId;
   return caixa('#2F5D8A', '#eef3fa', <>
-    <div style={{ fontWeight: 800, color: '#2F5D8A', fontSize: 15.5 }}>📘 Esta atividade conta como mais uma aula</div>
+    <div style={{ fontWeight: 800, color: '#2F5D8A', fontSize: 15.5 }}>🏅 Atividade obrigatória: dá bónus</div>
     <div style={{ marginTop: 4 }}>
-      É obrigatória para a turma toda e é fora das horas da aula ({diaComSemana(p.data)}). Pela regra da escola, não dá bónus:
-      a avaliação conta como mais uma aula, na aula desse dia ou na seguinte da mesma UC. Quem não se autoavaliar conta 0.
+      É obrigatória para a turma toda e é fora do horário escolar ({diaComSemana(p.data)}): as faltas e as horas não contam na UC.
+      Quem foi recebe um bónus até 0,5, conforme a nota da atividade (quem esteve só parte do tempo, nessa proporção). Quem faltou perde 0,5.
     </div>
     {aula ? (
       <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid rgba(47,93,138,0.25)' }}>
-        <div><b>Fica associada à aula de {diaComSemana(aula.data)}</b> — {aula.ucId}{posicaoNaUC(aula) ? ` · Plano n.º ${posicaoNaUC(aula)}` : ''} · «{aula.titulo || 'Aula'}».</div>
+        <div><b>Avalia-se na aula de {diaComSemana(aula.data)}</b> — {aula.ucId}{posicaoNaUC(aula) ? ` · Plano n.º ${posicaoNaUC(aula)}` : ''} · «{aula.titulo || 'Aula'}».</div>
         {outraUC && <div style={{ marginTop: 4, color: '#8a5a12' }}>A {p.ucId} já tinha acabado: fica na aula seguinte da mesma disciplina.</div>}
         <div style={{ marginTop: 4, color: 'rgba(26,23,20,0.65)' }}>
-          A atividade tem nota própria: entra na {aula.ucId} e na pauta, na data dessa aula. Se o aluno faltar a essa aula, a atividade conta na mesma
-          (e a aula conta como falta). Quem faltou à atividade tem 0 nela.
+          O bónus entra na nota da {aula.ucId}. Se o aluno faltar a essa aula, o bónus da atividade conta na mesma (e a aula conta como falta).
         </div>
         <button onClick={() => onAbrirAula(aula)} style={{ marginTop: 8, minHeight: 40, padding: '8px 14px', borderRadius: 10, border: 'none',
           background: '#2F5D8A', color: '#fff', fontWeight: 700, fontSize: 14.5, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -130,7 +131,7 @@ export function LigacaoDaAtividade({ plano, onAbrirAula }: { plano: PlanoAula; o
       </div>
     ) : (
       <div style={{ marginTop: 10, background: '#fff8ef', borderRadius: 10, padding: '10px 12px', border: '1px solid #e0b070', color: '#8a5a12' }}>
-        Ainda não há nenhuma aula da {p.ucId || 'UC'} depois de {dataPT(p.data)} no calendário. Fica associada automaticamente à primeira que criar.
+        Ainda não há nenhuma aula da {p.ucId || 'UC'} depois de {dataPT(p.data)} no calendário. Avalia-se na primeira que criar.
       </div>
     )}
   </>);
