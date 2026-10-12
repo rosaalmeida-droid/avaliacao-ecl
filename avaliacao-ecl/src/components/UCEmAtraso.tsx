@@ -34,6 +34,7 @@ export function ListaFaltasUC({ alunoId, turmaId, ucId }: { alunoId: string; tur
             {f.titulo} · <span style={{ color: 'rgba(26,23,20,0.65)' }}>{f.descricao}
               {f.minutosAtraso ? ` (${f.minutosAtraso} min)` : ''}</span>
             {f.justificacaoOficial && <span style={{ color: '#2C5F8A', fontWeight: 600 }}> · com justificação oficial</span>}
+            {f.recuperacao && <span style={{ color: '#3E7A31', fontWeight: 600 }}> · {f.recuperacao}</span>}
           </span>
           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', color: f.horas ? '#c0392b' : 'rgba(26,23,20,0.5)' }}>
             {f.horas ? `${h1(f.horas)} h` : '0 h'}

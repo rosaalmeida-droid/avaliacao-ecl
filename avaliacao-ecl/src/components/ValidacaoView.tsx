@@ -2,7 +2,7 @@ import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
 import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
-import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -269,7 +269,9 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
           <div style={{ fontWeight: 600, fontSize: 14 }}>
             {nomeDoAluno(s.alunoId)} — {plano?.titulo || `Aula de ${dia} (o plano não está guardado neste computador)`}
           </div>
-          {!esteveNaAula(s.alunoId, s.planoAulaId || '') && (
+          {recuperacaoDaAula(s.alunoId, s.planoAulaId || '')?.automatica ? (
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#3E7A31' }}>Recuperação desta aula (faltou): a nota substitui o 0</div>
+          ) : !esteveNaAula(s.alunoId, s.planoAulaId || '') && (
             <div style={{ fontSize: 13, fontWeight: 700, color: '#c0392b' }}>⚠ Não esteve presente (sem registo de entrada)</div>
           )}
           <div className="muted" style={{ fontSize: 13 }}>
@@ -710,7 +712,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </div>
       )}
       {/* (Rosa, 6/out/2026) A resposta de quem tem falta aparece para validar, com este aviso: a falta pode ser um engano do professor. */}
-      {temFaltaMarcada(selecao.alunoId, selecao.planoAulaId || '') && (
+      {/* (Rosa, 12/out/2026) Recuperação da aula teórica: a resposta conta como recuperação. */}
+      {faltaMarcada && recuperacaoDaAula(selecao.alunoId, selecao.planoAulaId || '')?.automatica ? (
+        <div style={{ background: '#E8F3E5', border: '1.5px solid #3E7A31', borderRadius: 12, padding: '10px 14px', marginBottom: 12,
+          fontSize: 14, color: '#24481c', lineHeight: 1.5 }}>
+          <b>Recuperação desta aula.</b> {nomeDoAluno(selecao.alunoId)} faltou e o professor pediu a recuperação.
+          A nota que validar aqui substitui o 0 desta aula. A falta conta na mesma nas horas.
+        </div>
+      ) : faltaMarcada && (
         <div style={{ background: '#fdecea', border: '1.5px solid #a23a2e', borderRadius: 12, padding: '10px 14px', marginBottom: 12,
           fontSize: 14, color: '#7b2233', lineHeight: 1.5 }}>
           <b>⚠ {nomeDoAluno(selecao.alunoId)} tem falta marcada nesta aula.</b> Confirme se a falta está certa.
@@ -756,7 +765,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </div>
       )}
 
-      {!esteveNaAula(selecao.alunoId, selecao.planoAulaId || '') && (
+      {!esteveNaAula(selecao.alunoId, selecao.planoAulaId || '') && !(faltaMarcada && recuperacaoDaAula(selecao.alunoId, selecao.planoAulaId || '')?.automatica) && (
         <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 12, padding: '12px 14px',
           marginBottom: 14, fontSize: 14.5, color: '#8e2418', lineHeight: 1.5 }}>
           <b>⚠ {nomeDoAluno(selecao.alunoId)} não tem registo de ter estado nesta aula.</b> Não entrou na aplicação

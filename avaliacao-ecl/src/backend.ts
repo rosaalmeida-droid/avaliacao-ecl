@@ -818,6 +818,20 @@ function juntarPresencas(dados: any[]): void {
       local = { ...local, decisaoFarda: s.decisaoFarda || '', decisaoFardaEm: s.decisaoFardaEm };
       porChave.set(k, local);
     }
+    // A recuperação da aula (pedida, nota, cancelada) chega a todos os
+    // aparelhos: fica a mais recente (Rosa, 12/out/2026).
+    const recS = lerRecuperacaoDaAula(s.recuperacaoDaAula), recL = lerRecuperacaoDaAula(local?.recuperacaoDaAula);
+    if (local && recS && String(recS.atualizadoEm || '') > String(recL?.atualizadoEm || '')) {
+      local = { ...local, recuperacaoDaAula: recS };
+      porChave.set(k, local);
+    }
+    // A justificação oficial marcada noutro aparelho (antes só chegava a
+    // quem ainda não tinha a presença).
+    const jS = s.justificacaoOficial && typeof s.justificacaoOficial === 'object' ? s.justificacaoOficial : null;
+    if (local && jS?.em && String(jS.em) > String(local.justificacaoOficial?.em || '')) {
+      local = { ...local, justificacaoOficial: jS };
+      porChave.set(k, local);
+    }
     if (!local) {
       porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
     } else if (decisaoLocalMaisRecente(local, s)) {
@@ -3264,10 +3278,12 @@ const PREFIXO_COLAB = 'COLAB|';
 const PREFIXO_AJUDA = 'AJUDA|';
 /** As respostas às perguntas de alta performance (extra) de uma aula. */
 const PREFIXO_ALTAPERF = 'ALTAPERF|';
+/** O aluno pede para recuperar uma aula a que faltou (Rosa, 12/out/2026). */
+const PREFIXO_RECUP = 'RECUPAULA|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
   return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB)
-    || p.startsWith(PREFIXO_AJUDA) || p.startsWith(PREFIXO_ALTAPERF);
+    || p.startsWith(PREFIXO_AJUDA) || p.startsWith(PREFIXO_ALTAPERF) || p.startsWith(PREFIXO_RECUP);
 };
 
 /**
@@ -3808,6 +3824,9 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     ...(registo.fardaDeclarada ? { fardaDeclarada: true, fardaEmFalta: registo.fardaEmFalta || [] } : {}),
     // Sem farda: o professor deu a tolerância do período, ou o aluno não faz prática (Rosa, 7/out/2026).
     ...((registo as any).decisaoFardaEm ? { decisaoFarda: (registo as any).decisaoFarda || '', decisaoFardaEm: (registo as any).decisaoFardaEm } : {}),
+    // Na base, a presença vai inteira: um envio sem estes campos apagava-os lá.
+    ...((registo as any).justificacaoOficial ? { justificacaoOficial: (registo as any).justificacaoOficial } : {}),
+    ...((registo as any).recuperacaoDaAula ? { recuperacaoDaAula: (registo as any).recuperacaoDaAula } : {}),
   });
 }
 
@@ -4062,6 +4081,8 @@ export interface FaltaDaUC {
   minutosAtraso?: number;
   /** Justificação oficial registada na plataforma da escola (só informação). */
   justificacaoOficial?: boolean;
+  /** A recuperação desta aula: «recuperada: 14/20» ou «recuperação pedida». */
+  recuperacao?: string;
 }
 
 /**
@@ -4078,7 +4099,8 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
     const reg: any = presencas.find(r => r.planoAulaId === p.id);
     return { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula', tipo: 'falta' as const,
       descricao: reg?.decisaoProfessor === 'falta_presenca' ? 'Falta de presença (decisão do professor)' : 'Faltou à aula',
-      horas: horasDoPlano(p), ...(reg?.justificacaoOficial ? { justificacaoOficial: true } : {}) };
+      horas: horasDoPlano(p), ...(reg?.justificacaoOficial ? { justificacaoOficial: true } : {}),
+      ...textoDaRecuperacaoDaAula(alunoId, p.id) };
   });
   getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId
     && (p.estado === 'publicado' || p.estado === 'realizada')
@@ -5143,6 +5165,21 @@ function calcularAvisosOperacionais(): Aviso[] {
     } as Aviso);
   });
 
+  // Alunos que pediram para recuperar uma aula com prática ou atitudes: só
+  // com o aval do professor (Rosa, 12/out/2026).
+  pedidosDeRecuperacaoPendentes().forEach(x => {
+    const al = getAlunos().find(a => a.id === x.alunoId);
+    const dia = String(x.plano.data || '').slice(0, 10).split('-').reverse().slice(0, 2).join('/');
+    avisos.push({
+      id: `op_recupaula_${x.alunoId}_${x.plano.id}_${x.em}`, tipo: 'outro',
+      titulo: `${al?.nome || x.alunoId} (${x.turmaId}) pede para recuperar a aula de ${dia}`,
+      descricao: `«${x.plano.titulo || 'Aula'}», a que faltou.${x.texto ? ` Propõe: «${x.texto.replace(/[.!\s]+$/, '')}».` : ''}\n`
+        + 'Aceite (diga o que tem de fazer e até quando) ou recuse em «Turma e faltas» dessa aula.',
+      contexto: { tabDestino: 'planos', planoId: x.plano.id },
+      resolvido: false, criadoEm: x.em,
+    } as Aviso);
+  });
+
   const planos = getPlanosAula().filter(p => p.estado !== 'arquivado');
   const fichas = getFichasProducao();
   const requisicoes = getRequisicoes();
@@ -6176,15 +6213,285 @@ function enviarDecisaoDaPresenca(reg: any): void {
     data: reg.data || '', decisaoProfessor: reg.decisaoProfessor, decididoPor: reg.decididoPor, decididoEm: reg.decididoEm,
     horasPresentes: reg.horasPresentes || null,
     justificacaoOficial: reg.justificacaoOficial || null,
+    recuperacaoDaAula: reg.recuperacaoDaAula || null,
     observacao: reg.observacao || '',
   });
 }
 
 /**
+ * Recuperar uma aula a que o aluno faltou (Rosa, 12/out/2026: «o aluno que
+ * faltou e não atinge 10% está em desvantagem do aluno que recupera»). Serve
+ * para qualquer aluno, com ou sem 10% de faltas. É o aluno que se propõe
+ * («devia ser o aluno a se autopropor»): na aula teórica a recuperação abre
+ * logo — autoavalia-se nos conhecimentos e o professor valida; nas outras
+ * (prática, mista, atitudinal) só com o aval do professor, que diz o que fazer
+ * e dá a nota. O professor também a pode abrir. A nota substitui o 0 só dessa
+ * aula; a falta conta na mesma nas horas.
+ */
+export interface RecuperacaoDaAula {
+  pedidaEm: string;
+  por: string;
+  /** O que o aluno tem de fazer, nas palavras do professor. */
+  oQueFazer: string;
+  /** Até quando (AAAA-MM-DD). */
+  prazo?: string;
+  /** Aula teórica: autoavaliação do aluno e validação do professor. */
+  automatica: boolean;
+  /** 0-20, dada pelo professor (nas que não são automáticas). */
+  nota?: number;
+  concluidaEm?: string;
+  cancelada?: boolean;
+  /** O professor não aceitou o pedido do aluno (cancelada), e porquê. */
+  recusada?: boolean;
+  motivo?: string;
+  /** Foi o aluno que pediu, e o que propôs. */
+  pedidaPeloAluno?: boolean;
+  mensagemDoAluno?: string;
+  atualizadoEm: string;
+}
+
+/** Só a aula teórica se recupera de forma automática (Rosa, 12/out/2026). */
+export function recuperacaoEhAutomatica(plano: any): boolean {
+  return !plano?.tipoEvento && String(plano?.tipoPlanAula || '') === 'teorico';
+}
+
+function lerRecuperacaoDaAula(x: any): RecuperacaoDaAula | null {
+  let r = x;
+  if (typeof r === 'string') { try { r = JSON.parse(r); } catch { return null; } }
+  return r && typeof r === 'object' && r.pedidaEm ? r as RecuperacaoDaAula : null;
+}
+
+/** O pedido do aluno para recuperar esta aula (o mais recente), se houver. */
+export function propostaDeRecuperacao(alunoId: string, planoAulaId: string): { em: string; texto: string } | null {
+  const s: any = load<any>(KEYS.selecoes).filter((x: any) => x.alunoId === alunoId && x.planoAulaId === PREFIXO_RECUP + planoAulaId)
+    .sort((a: any, b: any) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')))[0];
+  return s ? { em: String(s.criadaEm || ''), texto: String(s.autoavaliacoes?.[0]?.texto || '') } : null;
+}
+
+/** O aluno propõe-se a recuperar uma aula a que faltou. Vai pelo mesmo caminho
+ *  das autoavaliações (chega ao professor na hora). */
+export function proporRecuperacaoDaAula(aluno: { id: string; turmaId: string }, planoAulaId: string, texto: string): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `recupaula_${planoAulaId}_${aluno.id}_${agora.slice(0, 16)}`, planoAulaId: PREFIXO_RECUP + planoAulaId, comandaId: '', fichaId: '',
+    alunoId: aluno.id, turmaId: aluno.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'RECUPERAR', nivel: 'recuperar', nota: 0, texto: texto.trim() } as any],
+    criadaEm: agora,
+  } as any);
+}
+
+function registoDaRecuperacao(alunoId: string, planoAulaId: string): { falta: boolean; r: RecuperacaoDaAula | null } {
+  const reg: any = getPresencas().find(x => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  return { falta: reg?.decisaoProfessor === 'falta_presenca', r: lerRecuperacaoDaAula(reg?.recuperacaoDaAula) };
+}
+
+/** A recuperação aberta para esta aula (só com falta marcada): a do professor;
+ *  ou, na aula teórica, a que o aluno pediu (abre logo, sem esperar). */
+export function recuperacaoDaAula(alunoId: string, planoAulaId: string): RecuperacaoDaAula | null {
+  const { falta, r } = registoDaRecuperacao(alunoId, planoAulaId);
+  if (!falta) return null;
+  if (r) return r.cancelada ? null : r;
+  const prop = propostaDeRecuperacao(alunoId, planoAulaId);
+  const plano = prop ? getPlanosAula().find(p => p.id === planoAulaId) : undefined;
+  if (!prop || !recuperacaoEhAutomatica(plano)) return null;
+  const prazo = new Date(Date.parse(prop.em) + 7 * 86400000).toISOString().slice(0, 10);
+  return { pedidaEm: prop.em, por: 'aluno', oQueFazer: '', prazo, automatica: true, pedidaPeloAluno: true,
+    mensagemDoAluno: prop.texto || undefined, atualizadoEm: prop.em };
+}
+
+/** Pedido do aluno à espera do aval do professor (aula que não é teórica, ou
+ *  pedido feito outra vez depois de o professor não aceitar). */
+export function pedidoDeRecuperacaoPendente(alunoId: string, planoAulaId: string): { em: string; texto: string } | null {
+  const { falta, r } = registoDaRecuperacao(alunoId, planoAulaId);
+  const prop = falta ? propostaDeRecuperacao(alunoId, planoAulaId) : null;
+  if (!prop) return null;
+  if (r) return r.cancelada && prop.em > String(r.atualizadoEm || '') ? prop : null;
+  return recuperacaoEhAutomatica(getPlanosAula().find(p => p.id === planoAulaId)) ? null : prop;
+}
+
+export type EstadoRecuperacaoDaAula =
+  | { estado: 'pode_pedir'; automatica: boolean }
+  | { estado: 'pedida'; em: string; texto: string }
+  | { estado: 'aberta'; r: RecuperacaoDaAula }
+  | { estado: 'recusada'; r: RecuperacaoDaAula }
+  | { estado: 'recuperada'; r: RecuperacaoDaAula; nota: number };
+
+/** Em que ponto está a recuperação desta aula faltada, para o aluno. */
+export function estadoDaRecuperacaoDaAula(alunoId: string, plano: PlanoAula): EstadoRecuperacaoDaAula {
+  const ativa = recuperacaoDaAula(alunoId, plano.id);
+  if (ativa) {
+    const nota = notaDaAulaRecuperada(alunoId, plano.id);
+    return nota !== null ? { estado: 'recuperada', r: ativa, nota } : { estado: 'aberta', r: ativa };
+  }
+  const pend = pedidoDeRecuperacaoPendente(alunoId, plano.id);
+  if (pend) return { estado: 'pedida', ...pend };
+  const { r } = registoDaRecuperacao(alunoId, plano.id);
+  if (r?.cancelada) return { estado: 'recusada', r };
+  return { estado: 'pode_pedir', automatica: recuperacaoEhAutomatica(plano) };
+}
+
+/** As aulas a que o aluno faltou (falta marcada) e que pode recuperar, de todas as UC. */
+export function aulasFaltadasParaRecuperar(alunoId: string, turmaId: string): { plano: PlanoAula; e: EstadoRecuperacaoDaAula }[] {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p]));
+  const contamPorUC = new Map<string, Set<string>>();
+  const contam = (ucId: string) => {
+    if (!contamPorUC.has(ucId)) contamPorUC.set(ucId, new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id)));
+    return contamPorUC.get(ucId)!;
+  };
+  return getPresencas().filter((x: any) => x.alunoId === alunoId && x.decisaoProfessor === 'falta_presenca')
+    .map(x => planos.get(x.planoAulaId))
+    .filter((p): p is PlanoAula => !!p && p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado'
+      && !!p.ucId && contam(p.ucId).has(p.id))
+    .sort((a, b) => String(a.data).localeCompare(String(b.data)))
+    .map(plano => ({ plano, e: estadoDaRecuperacaoDaAula(alunoId, plano) }));
+}
+
+/** Pedidos dos alunos à espera do aval do professor (para o Centro de Avisos). */
+export function pedidosDeRecuperacaoPendentes(): { alunoId: string; turmaId: string; plano: PlanoAula; em: string; texto: string }[] {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p]));
+  const vistos = new Set<string>();
+  const out: { alunoId: string; turmaId: string; plano: PlanoAula; em: string; texto: string }[] = [];
+  for (const s of load<any>(KEYS.selecoes)) {
+    const pid = String(s.planoAulaId || '');
+    if (!pid.startsWith(PREFIXO_RECUP)) continue;
+    const planoId = pid.slice(PREFIXO_RECUP.length), k = s.alunoId + '|' + planoId;
+    const plano = planos.get(planoId);
+    if (vistos.has(k) || !plano) continue;
+    vistos.add(k);
+    const pend = pedidoDeRecuperacaoPendente(s.alunoId, planoId);
+    if (pend) out.push({ alunoId: s.alunoId, turmaId: plano.turmaId, plano, ...pend });
+  }
+  return out;
+}
+
+/** A nota que substitui o 0 desta aula faltada, ou null se ainda não há. Na
+ *  automática, é a nota da validação feita depois de a recuperação ser pedida. */
+export function notaDaAulaRecuperada(alunoId: string, planoAulaId: string, validacoes?: Validacao[]): number | null {
+  const r = recuperacaoDaAula(alunoId, planoAulaId);
+  if (!r) return null;
+  if (typeof r.nota === 'number' && !isNaN(r.nota)) return r.nota;
+  if (!r.automatica) return null;
+  const v: any = validacaoDaAula(alunoId, planoAulaId, validacoes);
+  if (!v || String(v.validadoEm || '') < r.pedidaEm) return null;
+  return notaDaAulaValidada(v);
+}
+
+/** Recuperação automática ainda por fazer: o aluno pode autoavaliar-se nesta aula. */
+export function recuperaPorAutoavaliacao(alunoId: string, planoAulaId: string): boolean {
+  const r = recuperacaoDaAula(alunoId, planoAulaId);
+  return !!r?.automatica && notaDaAulaRecuperada(alunoId, planoAulaId) === null;
+}
+
+function mudarRecuperacaoDaAula(alunoId: string, planoAulaId: string,
+  f: (antiga: RecuperacaoDaAula | null) => RecuperacaoDaAula): boolean {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const reg: any = all.find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
+  if (!reg || reg.decisaoProfessor !== 'falta_presenca') return false;
+  reg.recuperacaoDaAula = f(lerRecuperacaoDaAula(reg.recuperacaoDaAula));
+  save(KEYS.presencas, all);
+  enviarDecisaoDaPresenca(reg);
+  return true;
+}
+
+/** O professor abre a recuperação desta aula, aceita o pedido do aluno, ou muda o que pediu. */
+export function pedirRecuperacaoDaAula(alunoId: string, planoAulaId: string,
+  dados: { oQueFazer: string; prazo?: string }, professor: string): boolean {
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  const agora = new Date().toISOString();
+  // A que está aberta (também a que o aluno abriu na teórica): mantém a data
+  // do pedido, para a autoavaliação que ele já fez continuar a contar.
+  const aberta = recuperacaoDaAula(alunoId, planoAulaId);
+  const pedido = pedidoDeRecuperacaoPendente(alunoId, planoAulaId) || (aberta?.pedidaPeloAluno ? propostaDeRecuperacao(alunoId, planoAulaId) : null);
+  return mudarRecuperacaoDaAula(alunoId, planoAulaId, () => {
+    const { recusada: _r, motivo: _m, ...resto } = aberta ?? ({} as RecuperacaoDaAula);
+    return {
+      ...resto,
+      pedidaEm: aberta?.pedidaEm || agora,
+      por: professor,
+      oQueFazer: dados.oQueFazer.trim(),
+      prazo: dados.prazo || undefined,
+      automatica: recuperacaoEhAutomatica(plano),
+      ...(pedido ? { pedidaPeloAluno: true, mensagemDoAluno: pedido.texto || undefined } : {}),
+      cancelada: false,
+      atualizadoEm: agora,
+    };
+  });
+}
+
+/** O professor não aceita o pedido do aluno (o aluno vê o motivo e pode pedir outra vez). */
+export function recusarRecuperacaoDaAula(alunoId: string, planoAulaId: string, motivo: string, professor: string): boolean {
+  const agora = new Date().toISOString();
+  const pedido = pedidoDeRecuperacaoPendente(alunoId, planoAulaId);
+  return mudarRecuperacaoDaAula(alunoId, planoAulaId, antiga => ({
+    ...(antiga ?? { pedidaEm: pedido?.em || agora, oQueFazer: '', automatica: false }),
+    por: professor, cancelada: true, recusada: true, motivo: motivo.trim() || undefined,
+    pedidaPeloAluno: true, mensagemDoAluno: pedido?.texto || undefined, atualizadoEm: agora,
+  } as RecuperacaoDaAula));
+}
+
+/** A nota da recuperação (0-20), dada pelo professor; null tira a nota. */
+export function darNotaDaRecuperacaoDaAula(alunoId: string, planoAulaId: string, nota: number | null, professor: string): boolean {
+  const agora = new Date().toISOString();
+  const aberta = recuperacaoDaAula(alunoId, planoAulaId);
+  return mudarRecuperacaoDaAula(alunoId, planoAulaId, antiga => {
+    const base = aberta ?? antiga ?? { pedidaEm: agora, por: professor, oQueFazer: '', automatica: false, atualizadoEm: agora };
+    const { nota: _n, concluidaEm: _c, ...resto } = base;
+    return nota === null || isNaN(nota) ? { ...resto, atualizadoEm: agora }
+      : { ...resto, nota: Math.max(0, Math.min(20, Math.round(nota * 10) / 10)), concluidaEm: agora, por: professor, atualizadoEm: agora };
+  });
+}
+
+export function cancelarRecuperacaoDaAula(alunoId: string, planoAulaId: string, professor: string): boolean {
+  const agora = new Date().toISOString();
+  const aberta = recuperacaoDaAula(alunoId, planoAulaId);
+  return mudarRecuperacaoDaAula(alunoId, planoAulaId, antiga => ({
+    ...(aberta ?? antiga ?? { pedidaEm: agora, oQueFazer: '', automatica: false }),
+    por: professor, cancelada: true, atualizadoEm: agora,
+  } as RecuperacaoDaAula));
+}
+
+/** Para as listas de faltas do professor: a aula foi recuperada, ou está pedida. */
+function textoDaRecuperacaoDaAula(alunoId: string, planoAulaId: string): { recuperacao?: string } {
+  const r = recuperacaoDaAula(alunoId, planoAulaId);
+  if (!r) return pedidoDeRecuperacaoPendente(alunoId, planoAulaId) ? { recuperacao: 'o aluno pediu para recuperar: à espera do seu aval' } : {};
+  const n = notaDaAulaRecuperada(alunoId, planoAulaId);
+  if (n !== null) return { recuperacao: `recuperada: ${String(Math.round(n * 10) / 10).replace('.', ',')}/20 (as horas contam na mesma)` };
+  return { recuperacao: (r.automatica ? 'recuperação aberta: autoavaliação do aluno' : 'recuperação aceite') + (r.pedidaPeloAluno ? ' (pedida pelo aluno)' : '') };
+}
+
+/** As recuperações de aulas por fazer de um aluno (para o Início dele). */
+export function recuperacoesDeAulasPorFazer(alunoId: string): { plano: PlanoAula; r: RecuperacaoDaAula }[] {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p]));
+  return getPresencas().filter(x => x.alunoId === alunoId)
+    .map(x => ({ plano: planos.get(x.planoAulaId)!, r: recuperacaoDaAula(alunoId, x.planoAulaId) }))
+    .filter((x): x is { plano: PlanoAula; r: RecuperacaoDaAula } => !!x.plano && !!x.r && (x.plano as any).estado !== 'arquivado'
+      && notaDaAulaRecuperada(alunoId, x.plano.id) === null)
+    .sort((a, b) => String(a.plano.data).localeCompare(String(b.plano.data)));
+}
+
+/** As faltas que ainda contam 0 na nota (as recuperadas saem), com a
+ *  recuperação pedida, se houver — para «Como chegaste a esta nota». */
+export function faltasQueContamNaNota(alunoId: string, turmaId: string, ucId: string): { titulo: string; data: string; recuperacao?: string }[] {
+  const dm = (d?: string) => String(d || '').slice(0, 10).split('-').reverse().join('/');
+  return getPlanosFaltadosPorUC(alunoId, ucId, turmaId)
+    .filter(p => notaDaAulaRecuperada(alunoId, p.id) === null)
+    .map(p => {
+      const r = recuperacaoDaAula(alunoId, p.id);
+      const faltaMarcada = temFaltaMarcada(alunoId, p.id);
+      const texto = r ? (r.automatica ? 'Recuperação: responde aos conhecimentos desta aula' : `Recuperação: ${(r.oQueFazer || 'fala com o professor').replace(/[.!\s]+$/, '')}`)
+          + (r.prazo ? `, até ${dm(r.prazo).slice(0, 5)}` : '') + '. Até lá, conta 0.'
+        : pedidoDeRecuperacaoPendente(alunoId, p.id) ? 'Pediste para recuperar esta aula: à espera do professor.'
+        // O aluno sabe que pode pedir (Rosa, 12/out/2026: «dar indicação ao aluno para se autopropor»).
+        : faltaMarcada ? `Podes pedir para recuperar esta aula (em Recuperações)${recuperacaoEhAutomatica(p) ? '' : ': precisa do aval do professor'}.` : '';
+      return { titulo: p.titulo || 'Aula', data: dm(p.data), ...(texto ? { recuperacao: texto } : {}) };
+    });
+}
+
+/**
  * Falta com justificação oficial (Rosa, 12/out/2026): a justificação foi
  * registada na plataforma da escola. É só informação para o professor
- * preparar uma recuperação diferenciada. A falta conta na mesma, a aula
- * continua sem avaliação e nenhuma nota ou conta muda.
+ * preparar uma recuperação diferenciada. A falta conta na mesma e nenhuma
+ * nota ou conta muda (a aula pode ser recuperada: pedirRecuperacaoDaAula).
  */
 export function marcarJustificacaoOficial(alunoId: string, planoAulaId: string, sim: boolean, professor: string): void {
   const all = load<RegistoPresenca>(KEYS.presencas);
@@ -7883,7 +8190,9 @@ export function eventosAgregadosAAula(plano: PlanoAula): PlanoAula[] {
  * atitudes, 1 com técnicas ou conhecimentos). É a mesma lista da conta da
  * nota (notaFinalUC) e a que o aluno e o professor veem. As faltas ficam à parte.
  */
-export interface AulaDaNotaUC { planoId: string; titulo: string; data: string; nota: number; peso: number; semResposta: boolean }
+export interface AulaDaNotaUC { planoId: string; titulo: string; data: string; nota: number; peso: number; semResposta: boolean;
+  /** Faltou e recuperou a aula: a nota da recuperação em vez do 0 (Rosa, 12/out/2026). */
+  recuperada?: boolean }
 export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
   faltados: Set<string> = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id))): AulaDaNotaUC[] {
   // Só os planos que contam: publicados ou realizados (os arquivados não).
@@ -7899,6 +8208,14 @@ export function aulasDaNotaUC(alunoId: string, turmaId: string, ucId: string,
     const nota = notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno));
     if (nota === null) continue;
     linhas.push({ planoId: id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota, peso: pesoNoModulo(p), semResposta: false });
+  }
+  // Aulas faltadas e recuperadas: contam com a nota da recuperação (Rosa,
+  // 12/out/2026). As outras faltas ficam à parte (contam 0 em notaFinalUC).
+  for (const id of faltados) {
+    const p: any = planosUC.get(id);
+    const nota = p ? notaDaAulaRecuperada(alunoId, id, validacoesAluno) : null;
+    if (nota === null) continue;
+    linhas.push({ planoId: id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10), nota, peso: pesoNoModulo(p), semResposta: false, recuperada: true });
   }
   // Aulas em que o aluno esteve e não se autoavaliou: contam 0 até se
   // autoavaliar (Rosa, out/2026). Assim o aluno responsabiliza-se. Uma
@@ -7957,8 +8274,11 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const pesoAulas = notasAulas.reduce((s, x) => s + x.peso, 0);
   const base = pesoAulas ? notasAulas.reduce((s, x) => s + x.nota * x.peso, 0) / pesoAulas : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
-  const pesoFaltas = faltadosPlanos.reduce((s, p) => s + pesoNoModulo(p), 0);
-  const comFaltas = faltados.size
+  // As aulas recuperadas já estão em notasAulas, com a nota da recuperação.
+  const recuperadas = new Set(notasAulas.filter(x => x.recuperada).map(x => x.planoId));
+  const porRecuperar = faltadosPlanos.filter(p => !recuperadas.has(p.id));
+  const pesoFaltas = porRecuperar.reduce((s, p) => s + pesoNoModulo(p), 0);
+  const comFaltas = porRecuperar.length
     ? Math.round((((base ?? 0) * pesoAulas + recup * pesoFaltas) / (pesoAulas + pesoFaltas)) * 100) / 100
     : base === null ? null : Math.round(base * 100) / 100;
   return aplicarBonusesUC(comFaltas, alunoId, turmaId, ucId);
@@ -10338,6 +10658,10 @@ export function aulaDoDiaDaAtividade(atividade: any): PlanoAula | undefined {
 export type PartesDoPlano = { tecnicas: boolean; conhecimentos: boolean; atitudes: boolean };
 export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos: true, atitudes: true };
 export function partesDoPlanoParaOAluno(aula: any, alunoId: string): PartesDoPlano {
+  // Recuperação da aula teórica a que faltou (Rosa, 12/out/2026): responde só
+  // aos conhecimentos. As atitudes de uma aula em que não esteve não se avaliam.
+  if (aula?.id && temFaltaMarcada(alunoId, aula.id) && recuperacaoDaAula(alunoId, aula.id)?.automatica)
+    return { tecnicas: false, conhecimentos: true, atitudes: false };
   const atv: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
     && aulaDoDiaDaAtividade(a)?.id === aula?.id && participantesDoEvento(a).includes(alunoId));
   // A própria atividade: as atitudes só se não forem já avaliadas no plano

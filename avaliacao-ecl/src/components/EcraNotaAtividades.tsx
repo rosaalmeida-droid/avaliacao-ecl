@@ -50,6 +50,8 @@ export interface AulaNota {
   peso?: number;
   /** Esteve e não se autoavaliou: conta 0. */
   semResposta?: boolean;
+  /** Faltou e recuperou a aula: conta a nota da recuperação. */
+  recuperada?: boolean;
   /** O que aconteceu nessa aula (farda, atraso, atitudes, compromisso, professor). */
   ocorrencias?: string[];
 }
@@ -59,7 +61,7 @@ export function EcraMinhaNota({
 }: {
   /** Como se chega à nota: faltas, média das aulas, bónus de cada atividade. */
   detalhe?: {
-    faltas: { titulo: string; data: string }[];
+    faltas: { titulo: string; data: string; recuperacao?: string }[];
     media: number | null;
     bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
     bonusTotal: number; teto: boolean; motivoTeto?: string; final: number | null; publicada: boolean;
@@ -201,10 +203,11 @@ export function EcraMinhaNota({
             {aulas.map(a => (
               <div key={'a' + a.numero + a.titulo + a.data} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
                 <span style={{ flex: 1, minWidth: 0, color: C.texto }}>{a.numero > 0 ? `Aula ${a.numero} · ` : ''}{a.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(a.titulo || '')) ? null : <span style={{ color: '#999' }}> · {fmtDataCurta(a.data)}</span>}
-                  {(a.peso !== undefined || a.semResposta) && (
+                  {(a.peso !== undefined || a.semResposta || a.recuperada) && (
                     <span style={{ display: 'block', fontSize: 12.5, color: a.semResposta ? C.ambar : '#999' }}>
                       {a.peso !== undefined ? (a.peso === 0.5 ? 'vale ½ aula' : a.peso === 1 ? 'vale 1 aula' : `vale ${String(a.peso).replace('.', ',')} aulas`) : ''}
                       {a.semResposta ? `${a.peso !== undefined ? ' · ' : ''}não te autoavaliaste: conta 0 até te autoavaliares` : ''}
+                      {a.recuperada ? `${a.peso !== undefined ? ' · ' : ''}faltaste e recuperaste: conta a nota da recuperação` : ''}
                     </span>
                   )}
                   {(a.ocorrencias || []).map((o, k) => (
@@ -216,7 +219,9 @@ export function EcraMinhaNota({
             ))}
             {detalhe.faltas.map((f, i) => (
               <div key={'f' + i} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
-                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Faltaste · {f.titulo} <span style={{ color: '#999' }}>· {f.data}</span></span>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Faltaste · {f.titulo}{/\d{2}\/\d{2}\/\d{4}/.test(String(f.titulo || '')) ? null : <span style={{ color: '#999' }}> · {f.data}</span>}
+                  {f.recuperacao && <span style={{ display: 'block', fontSize: 12.5, color: C.ambar, lineHeight: 1.4 }}>{f.recuperacao}</span>}
+                </span>
                 <span style={{ fontWeight: 700, color: C.ambar }}>0</span>
               </div>
             ))}
