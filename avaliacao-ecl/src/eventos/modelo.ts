@@ -9,6 +9,7 @@
 // ============================================================
 
 import type { OpcoesQuantidades } from './capitacoes';
+import { getPlanosAula } from '../backend';
 
 export type Resp3 = 'sim' | 'nao' | 'nao_sei';
 
@@ -515,7 +516,7 @@ export function comoEventoAntigo(e: EventoECL, turmaId: string): any {
  */
 export function turmasQueVao(e: { id: string; turmasIds?: string[] }): string[] {
   let planos: any[] = [];
-  try { planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]'); } catch { /* */ }
+  try { planos = getPlanosAula() as any[]; } catch { /* */ }
   const comPlano = [...new Set(planos.filter(p => p?.eventoId === e.id && p.estado !== 'arquivado' && !p.eliminado)
     .map(p => String(p.turmaId)))];
   return comPlano.length ? comPlano : (e.turmasIds || []);
