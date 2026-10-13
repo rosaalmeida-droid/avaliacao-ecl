@@ -6,6 +6,7 @@ O código do telemóvel fica guardado no navegador, e o iPhone (Safari) apaga-o 
 Agora, com o PIN certo, o aluno entra na mesma: o PIN passa para esse telemóvel e o professor recebe um aviso em «Avisos».
 
 ## Por fazer
+- **Firebase no plano Blaze (13/out/2026), com o teste gratuito do Google (90 dias, 300 dólares de crédito)**: o limite de 50 mil leituras por dia era passado nos dias de aulas (cerca de 70 mil a 8/10 e 52 mil a 12/10) e a base parava. Antes de o teste acabar (por volta de 11/jan/2027), ativar a conta completa na faturação do Google; sem isso, a base pode deixar de responder. Pôr um alerta de orçamento (5 €). Ver no gráfico das leituras se baixaram depois do PR #152.
 - **Alunos de alta performance (Rosa, 6/out/2026) — feito o primeiro passo (perguntas extra no plano, desafio opcional ao aluno, avaliação do professor sem contar para a nota). Falta decidir como entra na avaliação quando o professor marca «Entra na avaliação», e se as perguntas boas ficam num banco por ficha.**
 - Segurança: os PIN dos professores e da coordenação estão no código. A lista de alunos (com PIN) pode ser pedida ao Sheets por quem tiver o endereço. As regras do Firebase aceitam qualquer aparelho com a aplicação.
 - Partir os ficheiros enormes (backend.ts, AlunoView.tsx, ProfessorView.tsx, VistaDePlano.tsx), aos poucos.
