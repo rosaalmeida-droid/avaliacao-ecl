@@ -2,7 +2,7 @@ import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { pedeFardaEHigiene } from '../contextoAula';
 import { decisaoFardaNaAula } from '../regrasFarda';
 import { horasDoAlunoNaAula, PERGUNTAS_PRESENCA, textoCompromisso, horasEmTexto, compromissoPorCumprir, type ReflexaoPresenca } from '../presencaParcial';
-import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula, liderKFdoGrupo, grupoDoAluno, contextoPerguntas5C } from '../backend';
+import { toleranciasDaFarda, colegasDeComparacao, lerEvidenciaFicha, partesDaAulaDoAluno, decidirFalta, temFaltaMarcada, colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota, contextoDoPlano, recuperacaoDaAula, liderKFdoGrupo, grupoDoAluno, contextoPerguntas5C, anularAutoavaliacao } from '../backend';
 import { registosKFDoAluno, type RegistoKFDoAluno } from './RegistosKFaoVivo';
 import { perguntasDaAula, perguntaPorId, concretizar, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -93,6 +93,7 @@ function corNotaFinal(nota: number): string {
 function temaDoAluno(s: SelecaoAluno): string {
   const caps = new Map<number, string>();
   for (const a of (s.autoavaliacoes || []) as any[]) {
+    if (a?.doColega) continue; // o tema do colega que viu apresentar
     const c = capituloDoCampo(String(a?.competenciaId || ''));
     if (c) caps.set(c.capitulo.n, `${c.capitulo.n}. ${c.capitulo.titulo}`);
   }
@@ -377,6 +378,23 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     redesenharFalta(n => n + 1);
     return true;
   }
+  /** Anular esta autoavaliação: deixa de contar e o aluno faz tudo de novo
+   *  (Rosa, 12/out/2026: um aluno disse que apresentou a oral e não apresentou). */
+  async function anular(oral?: 'nao') {
+    const nome = nomeDoAluno(selecao.alunoId);
+    const ok = await janelaConfirmar({
+      titulo: oral ? `${nome} não apresentou: anular a autoavaliação?` : `Anular a autoavaliação de ${nome}?`,
+      texto: 'A resposta deixa de contar e não fica para validar. A autoavaliação abre outra vez no telemóvel do aluno, '
+        + 'sem nada preenchido, e ele tem de responder a tudo de novo. Até responder, a aula conta como sem autoavaliação.'
+        + (oral ? ' Na pergunta da apresentação oral fica «não apresentei», e o aluno não a pode mudar: responde sobre o que observou nos colegas.' : ''),
+      sim: 'Anular e pedir de novo', nao: 'Cancelar', perigo: true });
+    if (!ok) return;
+    anularAutoavaliacao(selecao.planoAulaId || '', selecao.alunoId, oral);
+    onVoltar();
+  }
+  // Disse que apresentou a oral (a resposta, ou as perguntas da apresentação a que respondeu).
+  const disseQueApresentou = (selecao as any).apresentacaoOral === 'hoje'
+    || ((selecao.autoavaliacoes || []) as any[]).some(a => /^KNW-P-F-(oral|digital|pratico)-/.test(String(a?.competenciaId || '')));
   /** Antes de guardar: tudo a 0, ou o comentário diz que faltou? Talvez seja falta, ou o aluno errado. */
   async function antesDeGuardar() {
     const tudoZero = autoavaliacoes.length > 0 && autoavaliacoes.every(a => Number(notasProf[a.competenciaId]) === 1);
@@ -485,7 +503,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // As perguntas do Consciente e do Criativo com o plano do aluno, como ele as
   // leu (Rosa, 12/out/2026). A pergunta lida pelo aluno vem guardada na resposta.
   const ctx5C = contextoPerguntas5C(planoDaSelecao, undefined, selecao.alunoId,
-    ((selecao.autoavaliacoes || []) as any[]).map(a => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.titulo).find(Boolean));
+    ((selecao.autoavaliacoes || []) as any[]).filter(a => !a?.doColega).map(a => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.titulo).find(Boolean));
   const perguntas5C = (t: Triagem5C) => perguntasDaAula(t.coId, t.crId, t.clId).map(q => concretizar(q, ctx5C));
   const pergunta5CPorId = (id: string) => { const q = perguntaPorId(id); return q && concretizar(q, ctx5C); };
   const atitudesNaoPerguntadas = !!((selecao as any).triagem5c?.naoPerguntado)
@@ -791,6 +809,20 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           )}
         </div>
       )}
+      {/* Anular e pedir de novo (12/out/2026), também numa já validada: fica fora
+          do «só ver». Quem disse que apresentou a oral e não apresentou: um botão próprio. */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {disseQueApresentou && (
+          <button onClick={() => { void anular('nao'); }} style={{ padding: '7px 12px', borderRadius: 9, border: '1.5px solid #a8321e',
+            background: '#fff', color: '#a8321e', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Não apresentou a oral? Anular e pedir de novo
+          </button>
+        )}
+        <button onClick={() => { void anular(); }} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.25)',
+          background: '#fff', color: 'rgba(26,23,20,0.75)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Anular esta autoavaliação e pedir de novo
+        </button>
+      </div>
       <fieldset disabled={soVer} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, color: 'var(--cream)' }}>
@@ -812,6 +844,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               : 'diz que ainda não apresentou (responde sobre o que observou).'}
           </div>
         )}
+        {/* Quem não apresentou: a apresentação do colega que viu (Rosa, 12/out/2026). */}
+        {(selecao as any).observouColega && (() => { const o = (selecao as any).observouColega; return (
+          <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.08)' }}>
+            <div style={{ fontWeight: 800, color: '#f0b470' }}>Viu a apresentação de {o.nome}{o.temaTitulo ? ` (${o.tema}. ${o.temaTitulo})` : ''}</div>
+            <div><b>Explicou bem:</b> «{o.bem}»</div>
+            <div><b>Faltou ou estava errado:</b> «{o.mal}»</div>
+            <div style={{ fontSize: 12.5, opacity: 0.75, marginTop: 2 }}>Use isto para validar «Observar os colegas» e as perguntas do tema do colega.</div>
+          </div>); })()}
         {/* As perguntas de quem só esteve parte da aula: a 1.ª escolha diz muito (Rosa, 6/out/2026). */}
         {reflexaoPresenca && (
           <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.08)' }}>
@@ -853,6 +893,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Este aluno faltou? Marcar falta
           </button>
         )}
+
         <div style={{ fontSize: 13, opacity: 0.6, marginTop: 3 }}>
           {ucId && `${ucId}`}
           {fichasNomes.length > 0 && ` · ${fichasNomes.join(', ')}`}
@@ -864,7 +905,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         )}
         {(() => {
           // No mesmo grupo, o mesmo tema: o professor vê se não bate certo.
-          const meu = (selecao.autoavaliacoes || []).map((a: any) => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.n).find(n => n != null);
+          const meu = (selecao.autoavaliacoes || []).filter((a: any) => !a?.doColega).map((a: any) => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.n).find(n => n != null);
           const outros = temasDosColegas(selecao.planoAulaId || '', selecao.alunoId).filter(c => meu != null && c.tema !== meu);
           return outros.length ? (
             <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 6, color: '#ffb4a8' }}>

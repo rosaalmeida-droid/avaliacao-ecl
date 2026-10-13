@@ -243,6 +243,45 @@ regra('54. As perguntas do Consciente e do Criativo dizem de que se fala, com o 
   igual(t5.concretizar(t5.perguntaPorId('co20') as any, {}).pergunta.includes('o que o professor preparou'), true, 'sem plano, diz o que é:');
 });
 
+regra('55. Anular a autoavaliação de um aluno: deixa de contar e ele responde a tudo de novo', () => {
+  por('ecl_planos', [{ id: 'p1', turmaId: 't', data: '2026-10-09', estado: 'publicado', atualizadoEm: '2026-10-09T08:00:00Z' }]);
+  por('ecl_selecoes', [
+    { id: 's_men', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', criadaEm: '2026-10-09T10:00:00Z', versaoPlano: '2026-10-09T08:00:00Z', apresentacaoOral: 'hoje' },
+    { id: 's_out', alunoId: 'a2', turmaId: 't', planoAulaId: 'p1', criadaEm: '2026-10-09T10:05:00Z', versaoPlano: '2026-10-09T08:00:00Z' }]);
+  por('ecl_validacoes', [{ id: 'v_men', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', selecaoId: 's_men', notas: [], validadoEm: '2026-10-09T12:00:00Z' }]);
+  por('ecl_historico_avaliacoes', [{ id: 'r_men', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', fichaId: '', ucId: 'UC1', microcompetenciaId: 'KNW-P-F-oral-dominio', nota: 5, data: '2026-10-09T12:00:00Z', validadoPor: 'professor' }]);
+  b.anularAutoavaliacao('p1', 'a1', 'nao');
+  igual(b.getValidacoes().length, 0, 'a validação dela deixa de contar:');
+  igual(b.getHistoricoAvaliacoes().length, 0, 'e as notas dela também:');
+  const pl: any = b.getPlanosAula().find(x => x.id === 'p1');
+  igual(b.getSelecoes().map(s => s.id), ['s_out'], 'a anulada sai:');
+  igual(b.selecoesDoProfessor().map(s => s.id), ['s_out'], 'nem fica para validar:');
+  igual(b.respostasDoAlunoComAntigas('a1', 'p1').length, 0, 'o aluno recomeça do zero:');
+  igual(pl.oralPeloProfessor, { a1: 'nao' }, 'o professor disse que não apresentou:');
+  igual(b.reabertaPorResponder(pl, 'a1'), true, 'abre no telemóvel do aluno:');
+  // A resposta nova conta e fecha a autoavaliação.
+  const depois = new Date(Date.parse(pl.anuladaPara.a1) + 60000).toISOString();
+  b.addOrUpdateSelecao({ id: 's_nova', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', criadaEm: depois, versaoPlano: pl.atualizadoEm } as any);
+  igual(b.getSelecoes().map(s => s.id).sort(), ['s_nova', 's_out'], 'a nova conta:');
+  igual(b.reabertaPorResponder(b.getPlanosAula().find(x => x.id === 'p1'), 'a1'), false, 'e fecha:');
+  // Uma resposta dada depois, num telemóvel que ainda tinha o plano antigo, não se perde.
+  b.addOrUpdateSelecao({ id: 's_velho', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', criadaEm: new Date(Date.parse(depois) + 60000).toISOString(), versaoPlano: '2026-10-09T08:00:00Z' } as any);
+  igual(b.getSelecoes().some(s => s.id === 's_velho'), true, 'não se perde:');
+});
+
+regra('56. Numa aula teórica não há perguntas de cozinha nem de arrumação', () => {
+  const pa2 = pa as any;
+  const teorica = { cozinha: false, producao: false, equipa: false, colegas: true, servico: false, definido: true } as any;
+  const pratica = { cozinha: true, producao: true, equipa: true, colegas: true, servico: false, definido: true } as any;
+  const RX = /cozinha|descascar|alimentos|ingredientes|loiça|economato/i;
+  for (const id of Object.keys(pa2.PERGUNTAS_ATITUDES)) {
+    const sub = pa2.perguntaSubstituta(id, false, teorica);
+    if (sub) igual(RX.test([sub.pergunta, ...sub.respostas].join(' ')), false, `${id} (${sub.pergunta}):`);
+  }
+  igual(pa2.perguntaSubstituta('ATI-010', false, pratica)?.pergunta, 'Hoje, com as tarefas mais chatas (descascar, lavar, limpar), como foi?', 'na prática fica a de sempre:');
+  igual(RX.test(t5.concretizar(t5.perguntaPorId('co10') as any, { teorica: true }).frases.join(' ')), false, 'co10 na teórica:');
+});
+
 // 4. Um plano eliminado noutro aparelho: neste, as notas dele também saem.
 {
   total++; mem.clear();
@@ -259,6 +298,81 @@ regra('54. As perguntas do Consciente e do Criativo dizem de que se fala, com o 
     igual(b.getHistoricoAvaliacoes().map(r => r.planoAulaId), ['p_bom'], 'notas que ficam:');
     console.log('  ✓ 4. Um plano eliminado noutro aparelho sai daqui, com as notas dele');
   } catch (e: any) { falhas++; console.log('  ✗ 4. Um plano eliminado noutro aparelho sai daqui, com as notas dele\n      ' + (e?.message || e)); }
+}
+
+// 57–59. Validações presas no tablet (Rosa, 13/out/2026).
+{
+  const enviados: any[] = [];
+  let validacoesNoSheets: any[] = [];
+  (globalThis as any).fetch = async (url: string, op?: any) => {
+    if (op?.method === 'POST') {
+      try { const c = JSON.parse(op.body); (c.tipo === 'lote' ? c.itens : [c]).forEach((x: any) => enviados.push(x)); } catch { /* */ }
+      return { ok: true, json: async () => ({}), text: async () => '{}' };
+    }
+    const tipo = new URL(String(url)).searchParams.get('tipo');
+    const corpo = tipo === 'get_validacoes' ? { ok: true, dados: validacoesNoSheets } : { ok: true, dados: [] };
+    return { ok: true, json: async () => corpo, text: async () => JSON.stringify(corpo) };
+  };
+  const esperar = (ms: number) => new Promise(r => setTimeout(r, ms));
+  const T = '2026-10-13T09:00:00.000Z';
+  const val = (id: string, nota: number) => ({ id, alunoId: 'a_' + id, turmaId: 't', planoAulaId: 'p1', validadoEm: T, validadoPor: 'professor', notas: [], notaMedia20: nota });
+  const naEspera = (id: string, tentativas: number) => ({ tipo: 'validacao', id, rotulo: id, turmaId: 't', desde: T, tentativas });
+  const foi = (id: string) => enviados.some(x => x.tipo === 'validacao' && x.id === id);
+  const caso = async (nome: string, fn: () => Promise<void>) => {
+    total++; mem.clear(); enviados.length = 0;
+    por('ecl_planos', [{ id: 'p1', turmaId: 't', data: '2026-10-13', estado: 'publicado' }]);
+    try { await fn(); console.log('  ✓ ' + nome); }
+    catch (e: any) { falhas++; console.log('  ✗ ' + nome + '\n      ' + (e?.message || e)); }
+  };
+
+  await caso('57. A validação com nota 0 (falta) que está no Sheets dá-se por entregue', async () => {
+    por('ecl_validacoes', [val('v0', 0)]);
+    por('ecl_por_confirmar', [naEspera('v0', 6)]);
+    validacoesNoSheets = [{ id: 'v0', validadoEm: T, notaMedia20: '' }];
+    igual((await b.confirmarEReenviar()).aRepetir, 0, 'por confirmar:');
+  });
+  await caso('58. A validação que não chegou continua a ir depois de 5 tentativas', async () => {
+    por('ecl_validacoes', [val('v1', 14)]);
+    por('ecl_por_confirmar', [naEspera('v1', 7)]);
+    validacoesNoSheets = [{ id: 'v1', validadoEm: T, notaMedia20: '' }];   // lá, mas sem a nota
+    igual((await b.confirmarEReenviar()).aRepetir, 1, 'por confirmar:');
+    await esperar(400);
+    igual(foi('v1'), true, 'reenviada:');
+  });
+  await caso('59. «Tentar enviar agora» manda logo tudo, mesmo o que já esgotou as tentativas', async () => {
+    por('ecl_validacoes', [val('v2', 12)]);
+    por('ecl_por_confirmar', [naEspera('v2', 75)]);
+    validacoesNoSheets = [];
+    await b.confirmarEReenviar();
+    await esperar(400);
+    igual(foi('v2'), false, 'sem forçar (75.ª tentativa):');
+    const r = await b.confirmarEReenviar({ forcar: true });
+    await esperar(400);
+    igual(r.enviados, 1, 'enviados:');
+    igual(foi('v2'), true, 'forçado:');
+  });
+}
+
+regra('60. Mudar o plano não obriga a responder outra vez; cancelar o pedido devolve as respostas', () => {
+  por('ecl_planos', [{ id: 'p1', turmaId: 't', data: '2026-10-01', estado: 'publicado' }]);
+  por('ecl_selecoes', [{ id: 's1', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', criadaEm: '2026-10-01T09:00:00Z', versaoPlano: '2026-10-01T08:00:00Z' }]);
+  g.enviarAlteracoesAosAlunos('p1', undefined, true);
+  igual(!!(b.getPlanosAula().find(p => p.id === 'p1') as any)?.pedirDeNovoEm, false, 'pedido sozinho:');
+  igual(b.getSelecoes().map(s => s.id), ['s1'], 'a resposta continua:');
+  b.pedirNovaAutoavaliacao('p1');
+  igual(b.getSelecoes().length, 0, 'depois de o professor pedir:');
+  b.cancelarNovaAutoavaliacao('p1');
+  igual(b.getSelecoes().map(s => s.id), ['s1'], 'depois de cancelar:');
+});
+
+{
+  const lf = await import('../src/lerFichaDaIA');
+  regra('61. Requisição: o nome do prato vai sem o resto da ficha', () => {
+    igual(lf.nomeDoPratoLimpo('Bolo de Bolacha FAMÍLIA PRINCIPAL: Pastelaria — Bolos ALERGÉNICOS: Glúten, Ovos'), 'Bolo de Bolacha');
+    igual(lf.nomeDoPratoLimpo('Almôndegas com Molho de Tomate\nFAMÍLIA PRINCIPAL: Carnes'), 'Almôndegas com Molho de Tomate');
+    igual(lf.nomeDoPratoLimpo('Bacalhau à Brás.'), 'Bacalhau à Brás');
+    igual(lf.nomeDoPratoLimpo('Creme de Legumes — Sopa'), 'Creme de Legumes — Sopa');
+  });
 }
 
 console.log(`\n${total - falhas} de ${total} regras certas.`);

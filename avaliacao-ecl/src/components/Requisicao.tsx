@@ -7,7 +7,7 @@ import { EscolherMakro, qtdDeTexto, type EscolhaMakro } from './EscolherMakro';
 import { itemDoBancoPorNome, useBancoEmpratamento } from './BancoEmpratamento';
 import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
-import { semPontoFinal } from '../lerFichaDaIA';
+import { nomeDoPratoLimpo } from '../lerFichaDaIA';
 import { RequisicoesFeitas } from './RequisicoesFeitas';
 import { getEmailsCompras, definirEmailsCompras, listaEmailsCompras } from '../backend';
 import { getPlanosAula } from '../backend';
@@ -527,8 +527,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setAEnviarEmail(true); setMsgEmail('A enviar o e-mail…');
     try {
       const { ingredientes, preparacao, ...dadosDoEmail } = criada.payload || {};
+      // O nome vai no assunto do e-mail: o Google recusa assuntos com mais de
+      // 250 letras («Argument too large: subject», Rosa, 13/out/2026).
+      const nomeCurto = String(dadosDoEmail.nomeReceita || '');
       const r = await fetch('/api/enviarRequisicao', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...dadosDoEmail, acao: 'enviarEmail', gid: criada.gid, nomeAba: criada.nomeAba, emailsCompras: lista }) });
+        body: JSON.stringify({ ...dadosDoEmail, nomeReceita: nomeCurto.length > 170 ? nomeCurto.slice(0, 167) + '…' : nomeCurto,
+          acao: 'enviarEmail', gid: criada.gid, nomeAba: criada.nomeAba, emailsCompras: lista }) });
       const j: any = await r.json().catch(() => null);
       if (j?.ok && j?.emailEnviado) {
         setCriada(c => c ? { ...c, enviadoA: lista.join(', ') } : c);
@@ -596,14 +600,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // requisição, documento oficial, mantém a soma, com uma nota que a explica
   // (Rosa, out/2026). Só com mais de uma ficha.
   const dosesDe = (f: FichaProducao) => paxPorFicha[f.id] || porcoesDe(f);
-  const nomeSemPonto = (f: FichaProducao) => semPontoFinal(f.nomePrato || '');
+  // Só o nome do prato, sem o resto da ficha que às vezes ficava colado (13/out/2026).
+  const nomeSemPonto = (f: FichaProducao) => nomeDoPratoLimpo(f.nomePrato || '');
   const notaDoses = fichasSelecionadas.length > 1
     ? `Nota: As ${paxEncTotal} doses indicadas em «Encomendas» correspondem à soma das doses das ${fichasSelecionadas.length} fichas técnicas desta requisição. `
       + `Cada prato é produzido apenas para as doses indicadas:\n`
       + fichasSelecionadas.map(f => `• ${nomeSemPonto(f)}: ${dosesDe(f)} dose${dosesDe(f) === 1 ? '' : 's'}`).join('\n')
     : '';
   // Sem o ponto final que a IA deixava no nome («Bacalhau à Brás._0410» no separador).
-  const nomeReceita = fichasSelecionadas.map(f => semPontoFinal(f.nomePrato || '')).filter(Boolean).join(' + ') || 'Requisicao';
+  const nomeReceita = fichasSelecionadas.map(nomeSemPonto).filter(Boolean).join(' + ') || 'Requisicao';
 
   function selecionarPlano(p: PlanoAula) {
     reqAberta.current = null;
@@ -831,7 +836,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               .map(p => `${p.num}. ${p.descricao}`)
               .join('\n');
             // Só identificar o prato no cabeçalho se houver mais de uma ficha
-            return fichasSelecionadas.length > 1 ? `${f.nomePrato}:\n${passos}` : passos;
+            return fichasSelecionadas.length > 1 ? `${nomeSemPonto(f)}:\n${passos}` : passos;
           })
           .filter(Boolean)
           .join('\n\n'),
@@ -862,19 +867,28 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       // enviamos para a nossa própria função serverless Vercel que
       // reencaminha do lado do servidor. Confirmado pelo Network tab:
       // "exec 302 fetch / Redirect" — browser não conseguia seguir.
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
-      let dadosResposta: any = null;
-      try {
-        const resposta = await fetch('/api/enviarRequisicao', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-        try { dadosResposta = await resposta.json(); } catch {}
-      } finally {
-        clearTimeout(timeout);
+      const pedir = async (corpo: Record<string, unknown>): Promise<any> => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        try {
+          const resposta = await fetch('/api/enviarRequisicao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(corpo),
+            signal: controller.signal,
+          });
+          try { return await resposta.json(); } catch { return null; }
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
+      let dadosResposta: any = await pedir(payload);
+      // Corrigir uma requisição (quantidades mudadas) na mesma hora dava «Já
+      // existe uma página com o nome …» (script até à v6.3, Rosa, 13/out/2026):
+      // vai outra vez com «C2_», «C3_»… à frente do nome da página.
+      for (let n = 2; n <= 6 && dadosResposta?.ok === false
+        && /j[aá] existe uma p[aá]gina|already exists/i.test(String(dadosResposta.mensagem || '')); n++) {
+        dadosResposta = await pedir({ ...payload, numero: `C${n}` });
       }
       if (dadosResposta?.ok === false) {
         setMsg('⚠️ Erro: ' + (dadosResposta.mensagem || 'desconhecido'));

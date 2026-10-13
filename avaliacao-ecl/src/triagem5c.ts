@@ -483,6 +483,8 @@ export function concretizar<T extends PerguntaTriagem>(q: T, c: ContextoPergunta
     case 'co16': return c.aFazer ? { ...q,
       pergunta: `${hoje} tiveste dúvidas antes de começar uma tarefa? O que fizeste?`,
       perguntaSimples: `${hoje} tiveste dúvidas antes de começar?` } : q;
+    // Numa aula sem cozinha, ajudar quem trabalha connosco não é a loiça nem a arrumação.
+    case 'co10': return c.teorica ? { ...q, frases: [...q.frases.slice(0, 3), 'Agradeci e ajudei essa pessoa no trabalho dela.'] } : q;
     default: return q;
   }
 }

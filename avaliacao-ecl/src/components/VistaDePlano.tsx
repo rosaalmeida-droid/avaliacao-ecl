@@ -10,7 +10,7 @@ import { BotaoPublicar } from './BotaoPublicar';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula, alunosPorResponderVersaoNova } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, anularAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade, alunoDeTeste, calculoDaAulaValidada, validacaoDaAula, alunosPorResponderVersaoNova } from '../backend';
 import { bancoDe, concretizar } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -24,7 +24,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula, SEM_ATRASOS_MIN,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano, contextoPerguntas5C } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, cancelarNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano, contextoPerguntas5C } from '../backend';
 import { rotuloPlano, avisoFimUC, rotuloDoPlano } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -35,6 +35,7 @@ import { tipoDaTriagem } from '../contextoAula';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { imprimirRelatorioPlano } from '../relatorioPlano';
 import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
+import { temApresentacaoOral, apresentacaoNumaAulaAnterior } from '../autoavaliacaoDaAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -1785,14 +1786,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>Confirme o plano antes de finalizar</div>
                 <EstadoDoPlano plano={atual} mudancas={finalizar.mud} />
                 {finalizar.obrig && (
-                  <div style={{ fontSize: 13.5, background: '#fdf0ef', color: '#8e2418', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
-                    Mudaste aquilo a que os alunos respondem. {finalizar.responderam} aluno{finalizar.responderam === 1 ? ' já respondeu e vai' : 's já responderam e vão'} ter
-                    de responder outra vez. A nota que já deste conta até validares a nova.
+                  <div style={{ fontSize: 13.5, background: '#eef4eb', color: '#2d4a22', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
+                    Mudaste aquilo a que os alunos respondem. As respostas que {finalizar.responderam === 1 ? 'o aluno já deu continuam' : `os ${finalizar.responderam} alunos já deram continuam`} a
+                    contar e a aparecer para validar: não têm de responder outra vez.
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
                   <button onClick={() => {
-                      const novo = enviarAlteracoesAosAlunos(plano.id, finalizar.obrig, true);
+                      // (13/out/2026) Mudar o plano já não obriga a turma a responder outra vez.
+                      const novo = enviarAlteracoesAosAlunos(plano.id, false, true);
                       if (novo) onPlanoActualizado(novo);
                       setFinalizar({ ...finalizar, fase: 'feito' });
                     }} style={btn('var(--copper)', true)}>Está certo, finalizar</button>
@@ -2674,7 +2676,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {[
           { t: 'Lista da turma', d: 'Quem entrou, a farda, as faltas e os atrasos.', ao: () => setTabInicio('turma') },
           { t: 'Validar as autoavaliações', d: 'Confirmar a nota de cada aluno nesta aula.', ao: () => setModulo('validacao') },
-          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se ou houve um erro? Reabra a autoavaliação só para esse aluno, sem PIN novo.', ao: () => setModulo('registos') },
+          { t: 'Reabrir ou anular a autoavaliação de um aluno', d: 'O aluno enganou-se, ou respondeu o que não fez? Reabra ou anule a autoavaliação só desse aluno, sem PIN novo.', ao: () => setModulo('registos') },
         ].map(x => (
           <button key={x.t} onClick={x.ao} style={{ display:'block', width:'100%', textAlign:'left', background:'#fff',
             border:'1px solid rgba(26,23,20,0.14)', borderRadius:14, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit' }}>
@@ -2720,12 +2722,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ...getValidacoes().filter(v => v.planoAulaId === plano.id
             && String((v as any).validadoEm || '') >= String((plano as any).pedirDeNovoEm || '')).map(v => v.alunoId),
         ].filter(id => !alunoDeTeste(id))).size;
-        if (!n && total && plano.estado === 'publicado') return (
+        // (13/out/2026) Mudar o plano já não obriga a responder outra vez: as
+        // respostas continuam a contar. O professor pode pedir, se quiser.
+        if (!total || plano.estado !== 'publicado' || (plano as any).pedirDeNovoEm) return null;
+        return (
           <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <div style={{ flex:1, minWidth:200, fontSize:13.5, color:'rgba(26,23,20,0.7)' }}>
-              {total} aluno{total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.
-              Se as perguntas não estavam corretas, pode pedir que voltem a responder.
+              {n ? `Mudaste este plano depois de ${n} aluno${n === 1 ? ' responder' : 's responderem'}: as respostas que deram continuam a contar e a aparecer para validar.`
+                : `${total} aluno${total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.`}
+              {' '}Se as perguntas não estavam corretas, pode pedir que voltem a responder.
             </div>
             <button onClick={() => {
                 if (!confirm(`Pedir aos ${total} alunos que respondam outra vez?\n\nA nota que já deste continua a contar até validares a nova.`)) return;
@@ -2736,30 +2742,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #b5651d', background:'#fff', color:'#b5651d',
                 fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
               Pedir que respondam outra vez
-            </button>
-          </div>
-        );
-        // Com o registo do que os alunos receberam, o passo 4 («Enviar aos
-        // alunos») já mostra o que mudou e pede que respondam outra vez.
-        if (!n || (plano as any).enviadoAosAlunos) return null;
-        return (
-          <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
-            <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>
-              Mudaste este plano depois de {n} aluno{n === 1 ? '' : 's'} já ter{n === 1 ? '' : 'em'} respondido à autoavaliação.
-            </div>
-            <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
-              Estes alunos responderam às perguntas antigas. Se o pedir, a autoavaliação volta a abrir para eles, com as perguntas novas,
-              e terá de voltar a validar, incluindo as que já validou. A nota atribuída continua a contar até validar a nova resposta.
-            </div>
-            <button onClick={() => {
-                if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
-                pedirNovaAutoavaliacao(plano.id);
-                const p = getPlanosAula().find(x => x.id === plano.id);
-                if (p) onPlanoActualizado(p);
-              }}
-              style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#b5651d', color:'#fff',
-                fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-              Pedir a estes alunos que respondam outra vez
             </button>
           </div>
         );
@@ -2779,6 +2761,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
             Avisar a turma no WhatsApp
           </a>
+          {/* (13/out/2026) Os pedidos que a aplicação fazia sozinha ao mudar o
+              plano: o professor desfaz e voltam a contar as últimas respostas. */}
+          <button onClick={() => {
+              if (!confirm('Cancelar o pedido?\n\nOs alunos deixam de ter de responder outra vez. Conta a última resposta de cada aluno (também as que deram antes do pedido) e aparecem todas para validar.')) return;
+              cancelarNovaAutoavaliacao(plano.id);
+              const p = getPlanosAula().find(x => x.id === plano.id);
+              if (p) onPlanoActualizado(p);
+            }}
+            style={{ display:'inline-block', marginTop:8, marginLeft:8, padding:'9px 14px', borderRadius:10, border:'1px solid #3f5e34',
+              background:'#fff', color:'#3f5e34', fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+            Cancelar o pedido (contam as respostas que já deram)
+          </button>
         </div>
       )}
       {eventoForaDoHorario(plano) && !aulaDoDiaDaAtividade(plano) && (
@@ -3125,39 +3119,73 @@ function ResumoDaAtividadeExtra({ plano }: { plano: any }) {
  *  sozinha no telemóvel dele, com aviso; fecha quando ele responder. */
 function ReabrirAutoavaliacao({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [, redesenhar] = React.useState(0);
+  // Anular (12/out/2026): o aluno escolhido e o que o professor diz da apresentação oral.
+  const [aAnular, setAAnular] = React.useState<string | null>(null);
+  const [oral, setOral] = React.useState<'hoje' | 'antes' | 'nao' | ''>('');
   const alunos = alunosDoPlano(plano);
   const respostas = new Map(selecoesQueContam().filter(s => s.planoAulaId === plano.id).map(s => [s.alunoId, s]));
   const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
   const hora = (iso?: string) => iso ? new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const jaFez = !!apresentacaoNumaAulaAnterior(atual);
+  const comOral = jaFez || temApresentacaoOral(triagemDoPlano(atual));
+  const bt = (cheio: boolean): React.CSSProperties => ({ padding: '8px 14px', borderRadius: 9, border: '1px solid #b5651d', background: cheio ? '#b5651d' : '#fff',
+    color: cheio ? '#fff' : '#b5651d', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' });
+  const anular = (a: { id: string; nome?: string }) => {
+    if (!confirm(`Anular a autoavaliação de ${a.nome}?\n\nA resposta deixa de contar e não fica para validar. Abre outra vez no telemóvel do aluno, `
+      + 'sem nada preenchido, e ele tem de responder a tudo de novo. Até responder, a aula conta como sem autoavaliação.')) return;
+    anularAutoavaliacao(plano.id, a.id, oral || undefined);
+    const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p);
+    setAAnular(null); setOral(''); redesenhar(n => n + 1);
+  };
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.1)' }}>
-      <div style={{ fontSize: 17, fontWeight: 800 }}>Reabrir a autoavaliação de um aluno</div>
+      <div style={{ fontSize: 17, fontWeight: 800 }}>Reabrir ou anular a autoavaliação de um aluno</div>
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '4px 0 12px', lineHeight: 1.5 }}>
         Só para esse aluno e sem PIN novo: a autoavaliação abre automaticamente no telemóvel do aluno, com um aviso.
-        Quando o aluno responder, a autoavaliação fecha outra vez e a resposta nova fica em «Por validar». Até lá, conta a resposta anterior.
+        <b> Reabrir</b>: até o aluno responder outra vez, conta a resposta anterior.
+        <b> Anular</b>: a resposta anterior deixa de contar e o aluno responde a tudo de novo, sem nada preenchido
+        (por exemplo, disse que apresentou a oral e não apresentou).
       </div>
       {alunos.map(a => {
         const s: any = respostas.get(a.id);
         const reaberta = reabertaPorResponder(atual, a.id);
+        const anulada = reaberta && !!atual.anuladaPara?.[a.id] && atual.anuladaPara[a.id] === atual.reabertaPara?.[a.id];
         const validada = s && selecaoJaValidada(s);
         return (
-          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <b>{a.numero}.</b> {a.nome}
-              <span style={{ display: 'block', fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
-                {reaberta ? `Reaberta (${hora(atual.reabertaPara?.[a.id])}) — à espera da resposta nova`
-                  : s ? `Respondeu ${hora(s.criadaEm)}${validada ? ' · validada' : ' · por validar'}` : 'Ainda não respondeu'}
+          <div key={a.id} style={{ padding: '8px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b>{a.numero}.</b> {a.nome}
+                <span style={{ display: 'block', fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
+                  {anulada ? `Anulada (${hora(atual.anuladaPara?.[a.id])}) — à espera da resposta nova`
+                    : reaberta ? `Reaberta (${hora(atual.reabertaPara?.[a.id])}) — à espera da resposta nova`
+                    : s ? `Respondeu ${hora(s.criadaEm)}${validada ? ' · validada' : ' · por validar'}` : 'Ainda não respondeu'}
+                </span>
               </span>
-            </span>
-            {s && !reaberta && (
-              <button onClick={() => {
-                  if (!confirm(`Reabrir a autoavaliação de ${a.nome}?\n\nAbre só para este aluno, sem PIN novo. Até responder outra vez, conta o que já tinha.`)) return;
-                  reabrirAutoavaliacao(plano.id, a.id);
-                  const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p);
-                  redesenhar(n => n + 1);
-                }}
-                style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid #b5651d', background: '#fff', color: '#b5651d',
-                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Reabrir</button>
+              {s && !reaberta && (<>
+                <button onClick={() => {
+                    if (!confirm(`Reabrir a autoavaliação de ${a.nome}?\n\nAbre só para este aluno, sem PIN novo. Até responder outra vez, conta o que já tinha.`)) return;
+                    reabrirAutoavaliacao(plano.id, a.id);
+                    const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p);
+                    redesenhar(n => n + 1);
+                  }}
+                  style={bt(false)}>Reabrir</button>
+                <button onClick={() => { setAAnular(aAnular === a.id ? null : a.id); setOral(''); }} style={bt(aAnular === a.id)}>Anular</button>
+              </>)}
+            </div>
+            {aAnular === a.id && s && !reaberta && (
+              <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 10, background: '#FDF0E8', border: '1px solid #f0c9a8' }}>
+                {comOral && (<>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>O aluno apresentou a oral?</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {([['nao', 'Não apresentou'], ['hoje', 'Apresentou nesta aula'], ...(jaFez ? [['antes', 'Já tinha apresentado noutra aula']] : []),
+                      ['', 'O aluno responde']] as [string, string][]).map(([v, t]) => (
+                      <button key={v || 'aluno'} onClick={() => setOral(v as any)} style={{ ...bt(oral === v), padding: '6px 10px', fontSize: 13 }}>{t}</button>
+                    ))}
+                  </div>
+                </>)}
+                <button onClick={() => anular(a)} style={{ ...bt(true), background: '#a8321e', borderColor: '#a8321e' }}>Anular e pedir de novo</button>
+              </div>
             )}
           </div>
         );

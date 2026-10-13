@@ -1,5 +1,5 @@
 // ============================================================
-// Apps Script — Requisição ECL v6.3
+// Apps Script — Requisição ECL v6.4
 // Arquitectura: app → DADOS_APP → Modelo (cópia)
 //
 // O QUE MUDA EM RELAÇÃO À v5 (Rosa, out/2026)
@@ -47,6 +47,16 @@
 //    No editor, escolha a função  autorizar  (lista ao lado de «Depurar»),
 //    carregue em Executar e aceite tudo («Avançado» → «Aceder a
 //    Requisicao ECL (não seguro)» → «Permitir»). Depois faça Nova versão.
+//
+// 9. (v6.4, Rosa, 13/out/2026) Corrigir uma requisição. Gravar outra vez a
+//    mesma requisição (quantidades corrigidas) dava «Já existe uma página com
+//    o nome …»: o nome da página só levava a hora, sem os minutos. Agora leva
+//    os minutos e, se já houver uma página com esse nome, ganha «_2», «_3»…
+//    Quando falhava, ficava no ficheiro uma «Cópia de Modelo-Não mexer»
+//    a mais: agora a cópia é apagada. O modelo nunca é tocado.
+//    O nome do prato vai sem o resto da ficha («FAMÍLIA PRINCIPAL: …
+//    ALERGÉNIOS: …» aparecia no cabeçalho) e o assunto do e-mail nunca passa
+//    de 240 letras (o Google recusava: «Argument too large: subject»).
 //
 // DEPOIS DE COLAR:
 //    Implementar → Gerir implementações → editar (lápis)
@@ -146,6 +156,8 @@ function doPost(e) {
     var dados;
     try {
       dados = JSON.parse(corpo);
+      // (v6.4) Só o nome do prato, sem o resto da ficha colado.
+      if (dados.nomeReceita) dados.nomeReceita = limparNomeReceita_(dados.nomeReceita);
       log.push('JSON lido — receita: ' + (dados.nomeReceita || '(sem nome)'));
     } catch (parseErr) {
       return resposta(false, 'JSON inválido: ' + parseErr.toString(), log);
@@ -182,9 +194,12 @@ function doPost(e) {
     guardarEmDadosApp(ss, dados, log);
 
     // ── 4. Copiar o modelo ───────────────────────────────────
-    var nomeAba = nomeParaAba(dados);
+    // (v6.4) Um nome que ainda não existe: corrigir uma requisição grava-a
+    // outra vez. Se falhar, a cópia apaga-se (não fica «Cópia de Modelo…»).
+    var nomeAba = nomeParaAba(dados, ss);
     var nova = modelo.copyTo(ss);
-    nova.setName(nomeAba);
+    try { nova.setName(nomeAba); }
+    catch (eNome) { try { ss.deleteSheet(nova); } catch (e2) { /* */ } throw eNome; }
     nova.showSheet();                     // o modelo pode estar escondido
     ss.setActiveSheet(nova);
     ss.moveActiveSheet(2);
@@ -536,8 +551,10 @@ function enviarEmailCompras(d, ss, folha, log) {
   try {
     if (MailApp.getRemainingDailyQuota() < 1) { log.push('e-mail: limite diário atingido'); return ''; }
     var dataIng = formatarData(d.dataIngredientes || d.dataAula || '');
-    var assunto = 'Requisição de matérias-primas — ' + (d.nomeReceita || 'Requisição')
+    var assunto = 'Requisição de matérias-primas — ' + limparNomeReceita_(d.nomeReceita || 'Requisição')
       + (dataIng ? ' — ingredientes até ' + dataIng : '');
+    // (v6.4) O Google recusa assuntos grandes («Argument too large: subject»).
+    if (assunto.length > 240) assunto = assunto.slice(0, 237) + '…';
     var linhas = [
       'Exmos. Senhores,',
       '',
@@ -620,12 +637,30 @@ function desligarLembreteMakro() {
 // APOIO
 // ══════════════════════════════════════════════════════════════
 
-function nomeParaAba(d) {
-  var nome = String(d.nomeReceita || 'Requisicao').trim().replace(/([^.])\.$/, '$1');
+/** O nome do prato sem o resto da ficha que às vezes vinha colado
+ *  («Bolo de Bolacha FAMÍLIA PRINCIPAL: Pastelaria … ALERGÉNIOS: …»). Com
+ *  várias fichas («A + B»), limpa cada uma. (v6.4) */
+function limparNomeReceita_(t) {
+  return String(t || '').split(' + ').map(function (parte) {
+    var n = String(parte || '').split(/\r?\n/)[0];
+    var m = n.match(/\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]{3,}(?:\s+(?:DE|DA|DO|DAS|DOS|[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]{2,}))*\s*(?:\([^)]*\))?\s*:/);
+    if (m && m.index > 0) n = n.slice(0, m.index);
+    return n.replace(/\s+/g, ' ').replace(/[\s—–\-|·,;]+$/, '').trim().replace(/([^.])\.$/, '$1');
+  }).filter(function (x) { return !!x; }).join(' + ');
+}
+
+function nomeParaAba(d, ss) {
+  var nome = limparNomeReceita_(d.nomeReceita || 'Requisicao') || 'Requisicao';
   var base = (d.numero ? d.numero + '_' : '')
     + nome.replace(/[\/\\*\[\]?:]/g, '_');
+  // (v6.4) Com os minutos: antes ficavam cortados («_1210_22») e gravar
+  // outra vez na mesma hora dava «Já existe uma página com o nome …».
   var carimbo = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'ddMM_HHmm');
-  return (base.substring(0, 22) + '_' + carimbo).substring(0, 30);
+  var nomeAba = base.substring(0, 20).trim() + '_' + carimbo;
+  for (var n = 2; ss && ss.getSheetByName(nomeAba) && n < 100; n++) {
+    nomeAba = base.substring(0, 17).trim() + '_' + carimbo + '_' + n;
+  }
+  return nomeAba;
 }
 
 function formatarData(valor) {

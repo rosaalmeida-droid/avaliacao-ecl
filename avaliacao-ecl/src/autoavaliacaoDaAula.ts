@@ -73,6 +73,13 @@ export interface RegrasAutoavaliacao {
    *  hoje ('hoje') ou se já apresentou ('jaFez', o trabalho continua de uma
    *  aula com apresentação). null: não se pergunta. */
   perguntaApresentacao: 'hoje' | 'jaFez' | null;
+  /** Em que fase está o trabalho do tema hoje: as perguntas do tema mudam com
+   *  ela (Rosa, 12/out/2026: «enquanto desenvolve e investiga, as perguntas têm
+   *  de aparecer, mas diferentes»). null: não é um trabalho com tema. */
+  faseDoTema: 'investigacao' | 'desenvolvimento' | 'apresentacao' | null;
+  /** Numa aula com apresentações, o aluno não apresentou hoje: responde sobre a
+   *  apresentação de um colega (o que fez bem, o que faltou, o tema dele). */
+  observaColegas: boolean;
 }
 
 export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[], opts: {
@@ -223,6 +230,11 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     clAula: !ctx.cozinha && !ctx.equipa,
     clSempre: !ctx.colegas && ctx.cozinha,
     escolheTema: temTema, temasPossiveis, formatos, perguntaApresentacao,
+    faseDoTema: !temTema ? null
+      : apresentou && fases.some(f => APRESENTACAO_AO_VIVO.includes(f)) ? 'apresentacao'
+      : fases.some(f => f !== 'investigacao' && f !== 'observar' && !f.startsWith('apres_')) ? 'desenvolvimento'
+      : fases.includes('investigacao') ? 'investigacao' : 'desenvolvimento',
+    observaColegas: !!perguntaApresentacao && !!opts.apresentacaoOral && opts.apresentacaoOral !== 'hoje',
   };
 }
 

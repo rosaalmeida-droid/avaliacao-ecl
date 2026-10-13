@@ -612,10 +612,19 @@ function AppInterno() {
                     {espera.teimosos.slice(0, 3).map((x: any) => rotuloDaEspera(x)).join(' · ')}
                     {espera.teimosos.length > 3 ? ` · e mais ${espera.teimosos.length - 3}` : ''}
                   </div>
-                  <button onClick={() => { setMsgEnvio('A enviar e a confirmar no arquivo da escola…');
-                      confirmarEReenviar().then(r => { setEspera(estadoDaEspera());
+                  <button onClick={() => {
+                      // Manda logo tudo outra vez, à frente do resto, e confere
+                      // daqui a meio minuto (o tempo de o Sheets gravar).
+                      const dizer = (r: { confirmados: number; aRepetir: number }) => {
+                        setEspera(estadoDaEspera());
                         setMsgEnvio(r.aRepetir === 0 ? '✓ Ficou tudo guardado no arquivo da escola.'
-                          : `${r.confirmados ? `Chegaram ${r.confirmados}. ` : ''}Ainda falta${r.aRepetir === 1 ? '' : 'm'} ${r.aRepetir}: a aplicação continua a tentar sozinha. Tente outra vez dentro de um minuto.`); })
+                          : `${r.confirmados ? `Chegaram ${r.confirmados}. ` : ''}Ainda falta${r.aRepetir === 1 ? '' : 'm'} ${r.aRepetir}: a aplicação continua a tentar sozinha. Não feche a aplicação; tente outra vez dentro de um minuto.`);
+                      };
+                      setMsgEnvio('A enviar tudo para o arquivo da escola…');
+                      confirmarEReenviar({ forcar: true }).then(r => {
+                        setMsgEnvio(`Foram enviados ${r.enviados}. A confirmar no arquivo da escola (meio minuto)…`);
+                        setTimeout(() => { confirmarEReenviar().then(dizer).catch(() => {}); }, 30000);
+                      })
                       .catch(() => setMsgEnvio('Não foi possível ligar ao arquivo da escola. Verifique a internet e tente outra vez.')); }}
                     style={{ marginTop: 9, padding: '8px 14px', borderRadius: 8, border: 'none',
                       background: 'var(--copper)', color: '#fff', fontSize: 13.5, fontWeight: 700,

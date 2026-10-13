@@ -73,12 +73,12 @@ import {
   InicioAluno, NavegacaoAluno, CabecalhoAluno, CabecalhoEcra,
   IconesFarda, CORES, type DestinoAluno, type SeparadorAluno, type AvisoAluno,
 } from './InicioAluno';
-import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
+import { temOrganizacao, organizacaoDe, funcoesDoAluno, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
 import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, concretizar, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno, contextoPerguntas5C } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno, contextoPerguntas5C, alunosDoPlano } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
@@ -91,7 +91,7 @@ import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
-import { capituloDoCampo } from '../bancoManuais';
+import { capituloDoCampo, indicadoresDoConteudo } from '../bancoManuais';
 import { ouvirTurmaNaBase, TIPOS_DO_ALUNO } from '../baseDeDados';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno, type ApresentacaoOral } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
@@ -601,9 +601,49 @@ const FRASES_FORMATO: Record<string, string[]> = {
     'Fiz a demonstração sem ajuda e expliquei o que fazia.', 'Fiz sem ajuda, expliquei o que fazia e respondi às perguntas.'],
 };
 
-function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; manual?: boolean }): string[] {
+// ── As perguntas do tema mudam com a fase do trabalho (Rosa, 12/out/2026) ──
+// «Enquanto o aluno estiver a desenvolver e a investigar, as perguntas têm de
+// aparecer, mas diferentes.» O conteúdo (o campo do manual) é o mesmo; muda o
+// que se pergunta sobre ele. Na mesma fase, alternam duas versões.
+const FRASES_DO_TEMA: Record<string, { titulo: string; frases: string[] }[]> = {
+  investigacao: [
+    { titulo: 'Na pesquisa de hoje, o que encontraste sobre isto?', frases: [
+      'Ainda não procurei nada sobre isto.', 'Li sobre isto, mas ainda não percebi bem.',
+      'Li no manual e tirei notas com as minhas palavras.', 'Li no manual e noutra fonte, tirei notas e já sei explicar.'] },
+    { titulo: 'Sobre isto, que fontes usaste hoje?', frases: [
+      'Nenhuma: não pesquisei.', 'Copiei de um sítio, sem perceber bem.',
+      'Usei o manual e percebi o essencial.', 'Usei o manual e outra fonte, e comparei o que dizem.'] },
+  ],
+  desenvolvimento: [
+    { titulo: 'No teu trabalho, como está isto?', frases: [
+      'Ainda não está no meu trabalho.', 'Está, mas copiado ou com erros.',
+      'Está explicado com as minhas palavras.', 'Está explicado com as minhas palavras e com um exemplo da cozinha.'] },
+    { titulo: 'Hoje, o que fizeste no teu trabalho sobre isto?', frases: [
+      'Nada: não avancei nesta parte.', 'Comecei, mas está incompleto.',
+      'Acabei esta parte e revi-a.', 'Acabei esta parte, revi-a e já a sei explicar sem ler.'] },
+  ],
+  apresentacao: [
+    { titulo: 'Na tua apresentação, como explicaste isto?', frases: [
+      'Não falei disto.', 'Falei disto, mas a ler ou com erros.',
+      'Expliquei sem ler.', 'Expliquei sem ler, com um exemplo, e respondi às perguntas sobre isto.'] },
+  ],
+  colega: [
+    { titulo: 'Depois da apresentação do colega, sabes isto?', frases: [
+      'Não percebi esta parte da apresentação.', 'Percebi uma parte, mas não sei explicar.',
+      'Percebi e sei explicar com as minhas palavras.', 'Sei explicar e sei dizer o que faltou ou estava errado na apresentação.'] },
+  ],
+};
+/** A pergunta e as respostas de um campo do tema, nesta fase (e na versão desta vez). */
+function perguntaDoTema(fase: string | null | undefined, vez = 0): { titulo: string; frases: string[] } | null {
+  const vs = fase ? FRASES_DO_TEMA[fase] : undefined;
+  return vs ? vs[vez % vs.length] : null;
+}
+
+function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; manual?: boolean }, faseDoTema?: string | null, vez = 0): string[] {
   const crit = c.id ? criterioTrabalho(c.id) : undefined;
   if (crit) return crit.frases;
+  const doTema = c.rotulo === 'Conhecimento' && c.manual ? perguntaDoTema(faseDoTema, vez) : null;
+  if (doTema) return doTema.frases;
   if (ehCriterioTrabalho(c.id) && FRASES_FORMATO[String(c.id).slice(8)]) return FRASES_FORMATO[String(c.id).slice(8)];
   // Campos do manual («Explicar…», «Executar…», «Identificar…»): o aluno diz
   // se já o sabe fazer, e com que ajuda (Rosa, out/2026). Sem os exercícios
@@ -1104,11 +1144,14 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     // O professor reabriu a autoavaliação só deste aluno (sem PIN novo).
     const reabertas = planosOrdenados.filter((p: any) => reabertaPorResponder(p, aluno.id) && !deNovo.includes(p));
     if (reabertas.length > 0) {
+      // Anulada pelo professor (12/out/2026): a resposta anterior já não conta.
+      const anulada = reabertas.some((p: any) => p.anuladaPara?.[aluno.id] && p.anuladaPara[aluno.id] === p.reabertaPara?.[aluno.id]);
       av.push({
         id: 'reaberta',
-        titulo: 'O professor reabriu a tua autoavaliação',
-        detalhe: `Podes responder outra vez a ${reabertas.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
-          + 'Enquanto não voltares a responder, conta a resposta anterior.',
+        titulo: anulada ? 'O professor anulou a tua autoavaliação' : 'O professor reabriu a tua autoavaliação',
+        detalhe: `${anulada ? 'Tens de responder outra vez a tudo em' : 'Podes responder outra vez a'} ${reabertas.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
+          + (anulada ? 'A resposta anterior já não conta: até responderes, esta aula fica sem autoavaliação.'
+            : 'Enquanto não voltares a responder, conta a resposta anterior.'),
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
         obrigatorio: true,
@@ -2044,7 +2087,9 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
     // E antes da autoavaliação: a função tem de ficar completa. Quem não tem
     // função pode dizer como ajudou os colegas.
-    ...(orgAula ? [minhasFuncoes.length
+    // Numa aula sem cozinhar (teórica, atitudinal), quem não tem função não tem
+    // este passo: «ajudei a arrumar o economato» não faz sentido (Rosa, 12/out/2026).
+    ...(orgAula && (minhasFuncoes.length || comProducao(plano)) ? [minhasFuncoes.length
       ? { id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }
       : { id:'funcao_fim', label:'Ajudei os colegas', agora:'Ajudaste os colegas?', cor:V }] : []),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
@@ -3572,6 +3617,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     for (let n = 0; de && n < 6; n++) {
       for (const sel of respostasDoAlunoComAntigas(aluno.id, de))
         for (const a of (sel?.autoavaliacoes || [])) {
+          if ((a as any).doColega) continue; // o tema de um colega (12/out/2026)
           const cap = capituloDoCampo(a.competenciaId);
           if (cap) return cap.capitulo.n;
         }
@@ -3583,9 +3629,25 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // No trabalho de grupo, o tema assumido também fica marcado no grupo.
   useEffect(() => { if (temaDaAnterior != null) marcarTemaNoGrupo(plano.id, aluno.id, temaDaAnterior); }, []);
   // Aula com apresentação oral (Rosa, 12/out/2026): o aluno diz primeiro se apresentou.
-  const [apresentacaoOral, setApresentacaoOral] = useState<ApresentacaoOral | null>(() =>
+  // O professor anulou a autoavaliação e disse se o aluno apresentou: fica assim.
+  const oralDoProfessor: ApresentacaoOral | undefined = (getPlanosAula().find(x => x.id === plano.id) as any)?.oralPeloProfessor?.[aluno.id];
+  const [apresentacaoOral, setApresentacaoOral] = useState<ApresentacaoOral | null>(() => oralDoProfessor ??
     (respostasDoAlunoComAntigas(aluno.id, plano.id)[0] as any)?.apresentacaoOral ?? null);
   const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano), apresentacaoOral });
+  // Quem não apresentou hoje responde sobre a apresentação de um colega: quem,
+  // o tema, o que fez bem e o que faltou ou estava errado (Rosa, 12/out/2026).
+  const [obsColega, setObsColega] = useState<{ colegaId: string; tema: number | null; bem: string; mal: string }>({ colegaId: '', tema: null, bem: '', mal: '' });
+  const colegaOk = !!obsColega.colegaId && obsColega.tema != null && obsColega.bem.trim().length >= 8 && obsColega.mal.trim().length >= 8;
+  // Quantas vezes o aluno já respondeu a cada campo do manual noutras aulas:
+  // a pergunta do tema alterna entre as versões da fase.
+  const vezesDoCampo = React.useMemo(() => {
+    const m = new Map<string, number>();
+    getHistoricoAvaliacoes().forEach((r: any) => {
+      if (r.alunoId === aluno.id && r.planoAulaId !== plano.id && r.validadoPor === 'aluno' && String(r.microcompetenciaId).startsWith('KNW-P-M-'))
+        m.set(r.microcompetenciaId, (m.get(r.microcompetenciaId) || 0) + 1);
+    });
+    return m;
+  }, [aluno.id, plano.id]);
   // Esteve numa atividade do mesmo dia: responde só às partes do plano da
   // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
   // técnicas e os conhecimentos, mas não as atitudes, já avaliadas na atividade.
@@ -3735,7 +3797,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // sentido hoje. As perguntas que não se fazem ficam «não se aplica».
   const respDe = (id: string) => respostasEfetivas(id, respAti[id], ctxAula, ehDeEvento);
   const aplicavel = (id: string) => atitudeAplicavel(id, ctxAula, ehDeEvento);
-  const atiOk = (id: string) => respondidaAtitude(id, respDe(id), ehDeEvento);
+  const atiOk = (id: string) => respondidaAtitude(id, respDe(id), ehDeEvento, ctxAula);
   const notaAti = (id: string) => nivelDaAtitude(respDe(id));
   // Turmas ACP: a segunda atitude, só entre as dos anos anteriores que faltam.
   const [atitudeApanhar, setAtitudeApanhar] = useState<string|null>(null);
@@ -3913,7 +3975,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       ...Object.entries(notasMicro).filter(([mId,v])=>v && itensComp.some(c => c.id === mId)).map(([mId,v])=>(v === 'nop'
         // Não teve oportunidade: vai ao professor para confirmar; sem nota.
         ? {competenciaId:mId,nivel:'nop',nota:0,semOportunidade:true}
-        : {competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
+        : {competenciaId:mId,nivel:v as string,nota:paraNota(v as string),
+            ...(itensComp.find(c => c.id === mId)?.doColega ? { doColega: true } : {})})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude,respostas:textoDasRespostas(atitudeEscolhida, respDe(atitudeEscolhida), ehDeEvento, ctxAula),respIdx:respDe(atitudeEscolhida),exemplo:(exemplos[atitudeEscolhida]||'').trim()||undefined}]:[]),
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => atiOk(id) && notaAti(id) != null)
@@ -3927,6 +3990,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       // depois, sabe-se que esta resposta é da versão anterior.
       versaoPlano:String((plano as any).atualizadoEm || ''),
       ...(regras.perguntaApresentacao && apresentacaoOral ? { apresentacaoOral } : {}),
+      ...(regras.observaColegas && colegaOk ? { observouColega: { colegaId: obsColega.colegaId,
+        nome: colegasDaTurma.find(a => a.id === obsColega.colegaId)?.nome || '', tema: obsColega.tema,
+        temaTitulo: regras.temasPossiveis.find(x => x.capitulo.n === obsColega.tema)?.capitulo.titulo || '',
+        bem: obsColega.bem.trim(), mal: obsColega.mal.trim() } } : {}),
       // A prova de que passou pela ficha: os passos marcados e a hora de cada um.
       evidenciaFicha: evidenciaDasFichas(plano.id, aluno.id, fichas),
       ...(semPratica ? { semPratica: true } : {}),
@@ -4194,8 +4261,17 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Sem farda e sem tolerância, o aluno não fez prática: não se autoavalia nas
   // técnicas, só nos conhecimentos e nas atitudes (Rosa, 7/out/2026).
   const semPratica = decisaoFardaNaAula(aluno.id, plano.id).decisao === 'sem_pratica';
+  // O tema do colega que viu apresentar: dois campos do manual (testar o que percebeu).
+  const colegasDaTurma = alunosDoPlano(plano).filter(a => a.id !== aluno.id && a.numero !== 99 && a.numero !== 88)
+    .sort((a, b) => a.numero - b.numero);
+  const nomeColega = (colegasDaTurma.find(a => a.id === obsColega.colegaId)?.nome || '').split(' ')[0] || 'o colega';
+  const temaDoColega = regras.observaColegas && obsColega.tema != null ? regras.temasPossiveis.find(t => t.capitulo.n === obsColega.tema) : undefined;
+  const itensDoColega = temaDoColega ? indicadoresDoConteudo(temaDoColega.ficheiro, temaDoColega.capitulo)
+    .filter(k => !conhecimentosSug.some(m => m.id === k.id)).slice(0, 2)
+    .map(k => ({ id: k.id, nome: k.texto, contexto: `A apresentação de ${nomeColega} · ${k.capitulo}`, descricao: '', resultado: '',
+      rotulo: 'Conhecimento', frases: false, manual: true, doColega: true })) : [];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
-    resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean }[] = [
+    resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean; doColega?: boolean }[] = [
     ...(partes.tecnicas && !semPratica ? itensPratica : []),
     // Um campo do manual leva o capítulo por cima («Manual, cap. 21 — O bacalhau: demolha e cozedura»).
     ...(partes.conhecimentos ? conhecimentosSug : []).map(m => ({ id: m.id, nome: m.nome,
@@ -4204,20 +4280,36 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       manual: regras.manual || m.id.startsWith('KNW-P-M-') })),
     ...(partes.tecnicas && !semPratica ? microsSug : []).map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
       descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
+    ...(partes.conhecimentos ? itensDoColega : []),
   ];
+  // A pergunta de cada campo do tema: a da fase do trabalho (ou a do colega que viu).
+  const faseDoItem = (c: { id: string; manual?: boolean; doColega?: boolean }) =>
+    c.doColega ? 'colega' : c.manual && regras.escolheTema && String(c.id).startsWith('KNW-P-M-') ? regras.faseDoTema : null;
+  const frasesDoItem = (c: typeof itensComp[number]) => frasesVisiveis(c, faseDoItem(c), vezesDoCampo.get(c.id) || 0);
 
   // Atitudes: a do trimestre, a que está a melhorar e as do plano, no máximo três.
   const atitudesPermitidas = opcoesDeEscolhaDoAluno(aluno.ano ?? 1);
   const atitudesDoPlano = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
   const idsDoTrimestre = atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3,
     trimestreAtual(new Date(plano.data + 'T00:00:00'))).map((x: any) => x.id);
-  const atitudesEmRecup = atitudesDoPlano.filter((id: string) => {
+  // Atitudes a consolidar (Rosa, 12/out/2026): se a última nota que o
+  // professor deu a uma atitude, em qualquer aula, ficou abaixo de 3, ela
+  // entra na escolha, marcada «Para melhorar» (no máximo duas).
+  const ultimaDoProfessor = new Map<string, { data: string; nota: number }>();
+  for (const r of getHistoricoAvaliacoes()) {
+    if (r.alunoId !== aluno.id || r.validadoPor !== 'professor' || !String(r.microcompetenciaId).startsWith('ATI-')) continue;
+    const a = ultimaDoProfessor.get(r.microcompetenciaId);
+    if (!a || String(r.data) >= a.data) ultimaDoProfessor.set(r.microcompetenciaId, { data: String(r.data), nota: r.nota });
+  }
+  const atitudesFracas = atitudesPermitidas.filter(id => (ultimaDoProfessor.get(id)?.nota ?? 5) < 3
+    && !compRemovidas.includes(id) && aplicavel(id) && !atitudesDaAula.includes(id)).slice(0, 2);
+  const atitudesEmRecup = [...new Set([...atitudesDoPlano.filter((id: string) => {
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     return hist.length > 0 && hist[hist.length - 1].nota < 3;
-  });
+  }), ...atitudesFracas])];
   // Só as que fazem sentido nesta aula: numa visita não se escolhe a
   // cooperação com a equipa nem a higiene dos alimentos.
-  const atitudesSugeridas = regras.atitudesParaEscolher;
+  const atitudesSugeridas = [...new Set([...atitudesFracas, ...regras.atitudesParaEscolher])];
   const opcoesAtitude = !partes.atitudes ? [] : ATITUDES.filter(a =>
     (verTodasAtitudes ? atitudesPermitidas.includes(a.id) : atitudesSugeridas.includes(a.id))
     && !compRemovidas.includes(a.id) && aplicavel(a.id) && !atitudesDaAula.includes(a.id));
@@ -4234,7 +4326,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const todasSemOport = ['pratico', 'misto'].includes(String(tipoPlanAula || 'pratico'))
     && tecnicasComp.length > 0 && tecnicasComp.every(c => notasMicro[c.id] === 'nop');
   const outraTarefaOk = !todasSemOport || outraTarefa.trim().length >= 10;
-  const prontoParaSubmeter = prontoBase && (!atitudeObrigatoria || atitudeRespondida) && outraTarefaOk;
+  const prontoParaSubmeter = prontoBase && (!atitudeObrigatoria || atitudeRespondida) && outraTarefaOk
+    && (!regras.observaColegas || !partes.conhecimentos || colegaOk);
   const porqueAtitude = (id: string) =>
     atitudesEmRecup.includes(id) ? 'Para melhorar'
     : idsDoTrimestre.includes(id) ? 'A do trimestre'
@@ -4244,7 +4337,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // baralhava a autoavaliação e não interessa à professora.
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
-  type Passo = { id: string; tipo: 'presenca' | 'compromisso' | 'oral' | 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
+  type Passo = { id: string; tipo: 'presenca' | 'compromisso' | 'oral' | 'tema' | 'colega' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
     // Esteve só parte da aula: primeiro, perceber o que isso fez ao grupo (Rosa, 6/out/2026).
@@ -4256,7 +4349,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     // Na recuperação de uma aula a que faltou, não se pergunta (não esteve nas apresentações).
     ...(regras.perguntaApresentacao && partes.conhecimentos && !emRecup ? [{ id: 'oral', tipo: 'oral' as const }] : []),
     ...(regras.escolheTema && partes.conhecimentos && temaDaAnterior == null ? [{ id: 'tema', tipo: 'tema' as const }] : []),
-    ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
+    ...itensComp.filter(c => !c.doColega).map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
+    // Não apresentou hoje: a apresentação de um colega, e depois o tema dele.
+    ...(regras.observaColegas && partes.conhecimentos ? [{ id: 'colega', tipo: 'colega' as const }] : []),
+    ...itensComp.filter(c => c.doColega).map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
     ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
     ...(ehAtitudinal
@@ -4278,6 +4374,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     : passo.tipo === 'compromisso' ? !!compromisso
     : passo.tipo === 'oral' ? apresentacaoOral != null
     : passo.tipo === 'tema' ? temaEscolhido != null
+    : passo.tipo === 'colega' ? colegaOk
     : passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
     : passo.tipo === 'atiAula' ? atiOk(passo.atiId!)
@@ -4294,6 +4391,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     : p.tipo === 'compromisso' ? 'O teu compromisso'
     : p.tipo === 'oral' ? 'A apresentação oral'
     : p.tipo === 'tema' ? 'O teu tema'
+    : p.tipo === 'colega' ? 'A apresentação de um colega'
     : p.tipo === 'comp' ? p.comp!.rotulo
     : p.tipo === 'outra' ? 'O que fizeste hoje'
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
@@ -4366,7 +4464,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     });
     // Pergunta de substituição: quando uma pergunta «não aconteceu», a
     // aplicação faz logo outra, sobre uma situação de sempre (Rosa, out/2026).
-    const substituta = r.slice(0, 2).some(x => x === NAO_ACONTECEU) ? perguntaSubstituta(id, ehDeEvento) : null;
+    const substituta = r.slice(0, 2).some(x => x === NAO_ACONTECEU) ? perguntaSubstituta(id, ehDeEvento, ctxAula) : null;
     const radio = (on: boolean) => (
       <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
         border: on ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
@@ -4480,13 +4578,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     } else if (p.tipo === 'tema') {
       const t = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo;
       linhasRever.push({ nome: 'O teu tema', resposta: t ? `${t.n}. ${t.titulo}` : 'Por escolher', nota: null, passo: i });
+    } else if (p.tipo === 'colega') {
+      const t = regras.temasPossiveis.find(x => x.capitulo.n === obsColega.tema)?.capitulo;
+      linhasRever.push({ nome: 'A apresentação de um colega', resposta: !colegaOk ? 'Por responder'
+        : `${colegasDaTurma.find(a => a.id === obsColega.colegaId)?.nome || ''}${t ? ` (${t.n}. ${t.titulo})` : ''}. Fez bem: ${obsColega.bem.trim()} Faltou ou estava errado: ${obsColega.mal.trim()}`,
+        nota: null, passo: i });
     } else if (p.tipo === 'comp') {
       const v = notasMicro[p.comp!.id];
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
         : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
         : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não sei' : 'Não sei explicar') : 'Não fiz')
-        : fi >= 0 ? frasesVisiveis(p.comp!)[fi]
+        : fi >= 0 ? frasesDoItem(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
     } else if (p.tipo === 'outra') {
@@ -4593,7 +4696,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         // Frases de coisas que se veem (Rosa, set/2026): quem fez, se o professor
         // teve de corrigir, se ficou como o «bem feito é», se ajudou alguém.
         const ehConhecimento = c.rotulo === 'Conhecimento';
-        const frases = frasesVisiveis(c);
+        const frases = frasesDoItem(c);
+        const doTema = ehConhecimento && c.manual ? perguntaDoTema(faseDoItem(c), vezesDoCampo.get(c.id) || 0) : null;
         // Nas aulas teóricas não há «não tive oportunidade» nos conhecimentos:
         // os conteúdos foram dados à turma toda (Rosa, set/2026).
         const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico' && !soParte;
@@ -4632,6 +4736,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
             {rotuloSecao(ehCriterioTrabalho(c.id) ? 'Como correu?'
+              : doTema && c.doColega ? `Depois da apresentação de ${nomeColega}, sabes isto?`
+              : doTema && !emRecup ? doTema.titulo
               : ehConhecimento && emRecup ? 'Depois de estudares, já sabes isto?'
               : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
               : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
@@ -4680,8 +4786,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               Se apresentaste hoje, a seguir respondes sobre a tua apresentação. Se não, respondes sobre o que viste nas
               apresentações dos colegas, para melhorares o teu trabalho. O professor confirma.
             </div>
-            {opcoes.map(o => (
-              <button key={o.v} onClick={() => setApresentacaoOral(o.v)} style={estiloOpcao(apresentacaoOral === o.v)}>
+            {oralDoProfessor && (
+              <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:T.copperP, fontSize:14, color:'#8a4a15', lineHeight:1.5 }}>
+                <b>O professor indicou a resposta.</b> A tua autoavaliação anterior foi anulada: responde outra vez a tudo.
+              </div>
+            )}
+            {opcoes.filter(o => !oralDoProfessor || o.v === oralDoProfessor).map(o => (
+              <button key={o.v} disabled={!!oralDoProfessor} onClick={() => setApresentacaoOral(o.v)} style={estiloOpcao(apresentacaoOral === o.v)}>
                 {radio(apresentacaoOral === o.v)}
                 <span>{o.t}</span>
               </button>
@@ -4689,6 +4800,39 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           </div>
         );
       })()}
+
+      {/* ── Não apresentou hoje: a apresentação de um colega (Rosa, 12/out/2026) ── */}
+      {passo.tipo === 'colega' && (
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
+            A apresentação de um colega
+          </div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
+            Escolhe um colega que viste apresentar hoje. Diz o que explicou bem e o que faltou ou estava errado: é assim
+            que mostras o que sabes do tema dele. O professor confirma.
+          </div>
+          {rotuloSecao('Que colega viste apresentar?')}
+          <select value={obsColega.colegaId} onChange={e => setObsColega(o => ({ ...o, colegaId: e.target.value }))}
+            style={{ width:'100%', padding:'12px 10px', borderRadius:10, border:`1.5px solid ${T.border}`, fontSize:15, fontFamily:'inherit', background:'#fff' }}>
+            <option value="">Escolhe o colega</option>
+            {colegasDaTurma.map(a => <option key={a.id} value={a.id}>{a.numero}. {a.nome}</option>)}
+          </select>
+          {rotuloSecao('Qual era o tema dele?')}
+          <select value={obsColega.tema ?? ''} onChange={e => setObsColega(o => ({ ...o, tema: e.target.value ? Number(e.target.value) : null }))}
+            style={{ width:'100%', padding:'12px 10px', borderRadius:10, border:`1.5px solid ${T.border}`, fontSize:15, fontFamily:'inherit', background:'#fff' }}>
+            <option value="">Escolhe o tema</option>
+            {regras.temasPossiveis.map(t => <option key={t.capitulo.n} value={t.capitulo.n}>{t.capitulo.n}. {t.capitulo.titulo}</option>)}
+          </select>
+          {rotuloSecao(`O que é que ${nomeColega} explicou bem?`)}
+          <textarea value={obsColega.bem} onChange={e => setObsColega(o => ({ ...o, bem: e.target.value }))} rows={3} maxLength={400}
+            placeholder="Diz o quê, com as tuas palavras."
+            style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`, fontSize:15, fontFamily:'inherit' }} />
+          {rotuloSecao('O que faltou ou estava errado? Como estaria certo?')}
+          <textarea value={obsColega.mal} onChange={e => setObsColega(o => ({ ...o, mal: e.target.value }))} rows={3} maxLength={400}
+            placeholder="Por exemplo: disse que… mas o certo é…"
+            style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`, fontSize:15, fontFamily:'inherit' }} />
+        </div>
+      )}
 
       {/* ── Trabalho sobre o manual: o tema que o aluno escolheu ── */}
       {passo.tipo === 'tema' && (

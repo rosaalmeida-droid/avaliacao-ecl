@@ -79,6 +79,23 @@ const DE_TODAS = new Set(['fichas', 'materiasprimas', 'requisicoes', 'eventos', 
 
 let aLigar: Promise<{ app: FirebaseApp; db: Firestore } | null> | null = null;
 
+// ── Base esgotada ──────────────────────────────────────────────
+// A base gratuita deixa ler 50 000 registos por dia. Quando se esgota, o
+// Google responde «Quota exceeded» até à meia-noite da Califórnia (8 h em
+// Lisboa). Nesse tempo não vale a pena insistir: tudo vai e vem pelo Sheets,
+// como antes da base. Tenta outra vez de hora a hora (Rosa, 13/out/2026).
+const KEY_ESGOTADA = 'ecl_base_esgotada_ate';
+function esgotadaAte(): number {
+  try { return Number(localStorage.getItem(KEY_ESGOTADA)) || 0; } catch { return 0; }
+}
+/** A base está sem leituras (limite do dia esgotado)? */
+export function baseEsgotada(): boolean { return Date.now() < esgotadaAte(); }
+function verSeEsgotou(e: any): void {
+  const txt = `${e?.code || ''} ${e?.message || e || ''}`;
+  if (!/resource-exhausted|RESOURCE_EXHAUSTED|Quota exceeded/.test(txt)) return;
+  try { localStorage.setItem(KEY_ESGOTADA, String(Date.now() + 3600000)); } catch { /* */ }
+}
+
 /** Liga-se uma vez (o código do Firebase só se descarrega se a base estiver ligada). */
 function ligar(): Promise<{ app: FirebaseApp; db: Firestore } | null> {
   if (!baseLigada()) return Promise.resolve(null);
@@ -212,22 +229,53 @@ function registoDe(d: { data: (o?: any) => any }): { dados: any; ms: number } {
   return { dados: { ...base, ...(x?.eliminado ? { eliminado: true } : {}), gravadoNaBaseEm: ms ? new Date(ms).toISOString() : undefined }, ms };
 }
 
-/** O que a base tem de novo de um tipo, para uma turma (no formato do Sheets). */
-export async function lerDaBase(tipo: string, turmaId: string): Promise<any[] | null> {
+// O que está a ser ouvido neste aparelho (coleção da turma → desde quando):
+// o que chega pela escuta não se volta a pedir. Cada pedido conta pelo menos
+// uma leitura, mesmo sem nada de novo: o professor sincroniza de 20 em 20
+// segundos durante a aula, 21 coleções de cada vez — eram dezenas de milhares
+// de leituras por dia só para saber que não havia nada (13/out/2026).
+const aOuvir = new Map<string, number>();
+/** Até quando este aparelho já leu a coleção, nesta sessão (hora deste aparelho). */
+const lidaNestaSessao = new Map<string, number>();
+/** Quando se pediu pela última vez (no máximo de 5 em 5 minutos, sem escuta). */
+const pedidaEm = new Map<string, number>();
+
+// Num aparelho novo (ou depois de limpar os dados), as coleções grandes da
+// turma só se leem das últimas 3 semanas: o resto está no Sheets. Um telemóvel
+// novo lia milhares de registos de uma vez (a turma inteira desde setembro).
+const SO_O_RECENTE = new Set(['selecoes', 'validacoes', 'avaliacoes', 'presencas', 'pares', 'grupos', 'gruposinfo', 'lideres', 'sessoes']);
+const TRES_SEMANAS = 21 * 24 * 3600 * 1000;
+
+/** O que a base tem de novo de um tipo, para uma turma (no formato do Sheets).
+ *  `forcar`: pede mesmo que a escuta esteja ligada ou se tenha pedido há pouco. */
+export async function lerDaBase(tipo: string, turmaId: string, opcoes?: { forcar?: boolean }): Promise<any[] | null> {
   const colecao = COLECAO_DO_TIPO[tipo];
-  if (!colecao || !baseLigada()) return null;
+  if (!colecao || !baseLigada() || baseEsgotada()) return null;
+  const turma = turmaDaColecao(colecao, turmaId);
+  const chave = turma + '|' + colecao;
+  const desdeLida = lidaAte(turma, colecao);
+  if (!opcoes?.forcar) {
+    // A escuta já traz tudo o que chegou desde que começou, e antes disso
+    // já estava lido: não há nada para pedir.
+    const ouve = aOuvir.get(chave);
+    if (ouve !== undefined && ouve <= Math.max(desdeLida, lidaNestaSessao.get(chave) || 0)) return [];
+    if (Date.now() - (pedidaEm.get(chave) || 0) < 5 * 60000) return [];
+  }
   const l = await ligar();
   if (!l) return null;
   try {
     const { collection, getDocs, query, where, Timestamp } = await import('firebase/firestore');
-    const turma = turmaDaColecao(colecao, turmaId);
-    const desde = lidaAte(turma, colecao);
+    const desde = desdeLida || (SO_O_RECENTE.has(colecao) ? Date.now() - TRES_SEMANAS : 0);
     const c = collection(l.db, 'turmas', semBarras(turma), colecao);
+    const agora = Date.now();
+    pedidaEm.set(chave, agora);
     const r = await getDocs(desde ? query(c, where('gravadoNaBaseEm', '>', Timestamp.fromMillis(desde))) : c);
     const regs = r.docs.map(registoDe);
     marcarLida(turma, colecao, regs.map(x => x.ms));
+    lidaNestaSessao.set(chave, agora - 60000);
     return regs.map(x => x.dados);
   } catch (e) {
+    verSeEsgotou(e);
     console.warn('[base] não leu', tipo, turmaId, e);
     return null;
   }
@@ -236,8 +284,9 @@ export async function lerDaBase(tipo: string, turmaId: string): Promise<any[] | 
 /** Fica à escuta da turma: cada alteração chega na hora. Devolve a função que para. */
 export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados: any[]) => void,
   tipos: string[] = TIPOS_DO_PROFESSOR): () => void {
-  if (!baseLigada() || !turmaId) return () => {};
+  if (!baseLigada() || !turmaId || baseEsgotada()) return () => {};
   let parar: (() => void)[] = [];
+  const ouvidas: string[] = [];
   let vivo = true;
   ligar().then(async l => {
     if (!l || !vivo) return;
@@ -247,18 +296,21 @@ export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados:
       const colecao = COLECAO_DO_TIPO[tipo];
       if (!colecao) continue;
       const turma = turmaDaColecao(colecao, turmaId);
+      const chave = turma + '|' + colecao;
       // Só o que chegar a partir de agora (o que havia antes vem com lerDaBase).
       const desde = lidaAte(turma, colecao) || haUmMinuto;
       const q = query(collection(l.db, 'turmas', semBarras(turma), colecao),
         where('gravadoNaBaseEm', '>', Timestamp.fromMillis(desde)));
       parar.push(onSnapshot(q, snap => {
+        // Já responde o servidor: daqui em diante, o que chegar vem por aqui.
+        if (!snap.metadata.fromCache && vivo && !aOuvir.has(chave)) { aOuvir.set(chave, desde); ouvidas.push(chave); }
         const regs = snap.docChanges().filter(c => c.type !== 'removed').map(c => registoDe(c.doc));
         if (!regs.length) return;
         // As gravações deste aparelho ainda a caminho não contam como lidas.
         if (!snap.metadata.hasPendingWrites) marcarLida(turma, colecao, regs.map(x => x.ms));
         aoMudar(tipo, regs.map(x => x.dados));
-      }, e => console.warn('[base] escuta', colecao, e)));
+      }, e => { aOuvir.delete(chave); verSeEsgotou(e); console.warn('[base] escuta', colecao, e); }));
     }
   });
-  return () => { vivo = false; parar.forEach(p => p()); parar = []; };
+  return () => { vivo = false; parar.forEach(p => p()); parar = []; ouvidas.forEach(k => aOuvir.delete(k)); };
 }

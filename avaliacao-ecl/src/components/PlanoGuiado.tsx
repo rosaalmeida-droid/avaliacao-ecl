@@ -809,8 +809,10 @@ export function alteracoesPorEnviar(plano: PlanoAula): { sinal: '+' | '−' | '~
   try { return diferencas(registado, fotografia(plano)); } catch { return []; }
 }
 
-/** Envia aos alunos a versão atual do plano; se já havia respostas, pede que respondam outra vez. */
-export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez = true, sabeQueMudou = false): PlanoAula | undefined {
+/** Envia aos alunos a versão atual do plano. As respostas que já deram
+ *  continuam a contar: mudar o plano não os obriga a responder outra vez
+ *  (Rosa, 13/out/2026). Só com `pedirOutraVez` (o professor pediu). */
+export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez = false, sabeQueMudou = false): PlanoAula | undefined {
   const atual: any = getPlanosAula().find(x => x.id === planoId);
   if (!atual) return undefined;
   const mudou = sabeQueMudou || alteracoesPorEnviar(atual).length > 0;
@@ -836,13 +838,14 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const mudou = registado ? diferencas(registado, agora) : [];
   // Os que já responderam (às perguntas que tinham antes destas alterações).
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-  // Regra (Rosa, out/2026): mudou aquilo a que respondem → respondem outra vez, sempre.
-  const pedirOutraVez = !!registado && mudaramAsPerguntas(registado, agora);
+  // Regra (Rosa, 13/out/2026): mudar o plano já não obriga a responder outra
+  // vez — as respostas que deram continuam a contar e a aparecer para validar.
+  const mudaramPerguntas = !!registado && mudaramAsPerguntas(registado, agora);
   const [enviado, setEnviado] = useState(false);
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
   function enviar() {
-    const novo = enviarAlteracoesAosAlunos(plano.id, !!registado && pedirOutraVez);
+    const novo = enviarAlteracoesAosAlunos(plano.id, false);
     if (novo) onPlanoActualizado(novo);
     setEnviado(true);
   }
@@ -880,12 +883,12 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
           {responderam > 0 && (
             <div style={{ background: C.ambarP, borderRadius: 12, padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 14.5, color: '#5C3A08' }}>
-                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.</b> A nota que já
-                deste continua a contar até validares a nova.
+                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação.</b> As respostas
+                que deram continuam a contar e a aparecer para validar.
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 700 }}>
-                {pedirOutraVez
-                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno vai responder' : `estes ${responderam} vão responder`} outra vez.`
+                {mudaramPerguntas
+                  ? 'Mudaram as perguntas, mas não têm de responder outra vez. Se for mesmo preciso, use «Pedir que respondam outra vez» no início do plano.'
                   : 'As perguntas não mudaram: não precisam de responder outra vez.'}
               </div>
             </div>
