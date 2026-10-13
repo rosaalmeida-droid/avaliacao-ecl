@@ -124,3 +124,8 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 77. **Ao enviar uma, a aplicação mostra logo a seguinte** («Atividade de sábado, 10/10: feita!», «A seguir», «Avaliar a aula de segunda-feira» ou «Fica para depois»). Já não se volta ao início para descobrir o que falta.
 78. **Numa aula ou atividade de outro dia, as perguntas dizem o dia em vez de «hoje»** («Na aula de segunda-feira, 12/10, quando acabaste a tua tarefa…»), também nas atitudes, nos 5 C, nas competências e nas perguntas dos colegas. E o resto do ecrã também: «Quem faz o quê nesse dia», «A tua função nesse dia», «O que se fez nesse dia» (antes «O que vamos fazer» e «Vamos começar»), os avisos da farda e do compromisso.
 79. **Uma aula ou atividade de um dia que já passou abre logo na autoavaliação** (antes abria em «Produz… Já acabei», que era desse dia).
+
+## Envios sem esperas (13/out/2026, à noite)
+80. **«O plano ainda está a ser enviado» fecha-se mal o plano chega à base de dados** (é por ela que chega aos alunos), sem esperar pelo Sheets. Antes só via depois de conferir tudo no Sheets, incluindo as notas presas, e ficava minutos à espera com o plano já nos alunos.
+81. **Uma conferência de cada vez.** A janela, o ecrã do plano e a aplicação pediam conferências de 5 em 5, de 8 em 8 e de 60 em 60 segundos sem esperar pelas anteriores: as leituras do Sheets acumulavam-se. Agora juntam-se numa só, e a janela e o ecrã do plano conferem só o plano.
+82. **Para conferir as notas no Sheets, a aplicação pergunta só pelos códigos que faltam** (script v27.6), em vez de ler a folha das avaliações inteira (milhares de linhas). Com o script antigo, lê a folha inteira, como antes, e volta a experimentar de 10 em 10 minutos.

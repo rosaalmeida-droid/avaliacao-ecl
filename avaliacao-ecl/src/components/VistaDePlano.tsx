@@ -88,7 +88,7 @@ function EstadoEnvioPlano({ plano }: { plano: PlanoAula }) {
   React.useEffect(() => {
     if (!pendente) return;
     let vivo = true;
-    const ver = () => confirmarEReenviar().catch(() => null).then(() => {
+    const ver = () => confirmarEReenviar({ so: ['plano'] }).catch(() => null).then(() => {
       if (!vivo || planoPorConfirmar(plano.id)) return;
       setPendente(false); setChegou(true);
     });
