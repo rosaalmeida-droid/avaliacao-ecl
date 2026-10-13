@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.5';
+var VERSAO = 'ECL único v27.6';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -961,6 +961,8 @@ function doGet(e) {
     if (tipo === 'entrar_aluno')     return respostaDados(entrarAluno(p.alunoId, p.pin));
     // (v27.2) Só «sim» ou «não»: o email não sai daqui sem o PIN.
     if (tipo === 'tem_email_aluno')  return respostaDados({ temEmail: !!emailRegistadoDoAluno_(p.alunoId) });
+    // (v27.6) Quais destes códigos já cá estão — só a coluna dos códigos.
+    if (tipo === 'tem_ids')          return respostaDados(temIds_(p.folha, p.ids));
     if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }), { eliminados: eliminadosDe('AVALIACOES') });
     if (tipo === 'get_presencas')    return comDados('presencas',    ler('PRESENCAS',    { turmaId: turma }));
     if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }), { eliminados: eliminadosDe('SELECOES') });
@@ -1110,6 +1112,41 @@ function normalizarAvaliacao(d) {
   d.microcompetenciaId = d.microcompetenciaId || d.microcompetencia || '';
   d.nota = Number(d.nota) || 0;
   return d;
+}
+
+/** (v27.6) Quais destes códigos já estão na folha (e quais foram eliminados).
+ *  Lê só a coluna dos códigos e a da marca de eliminado. Para conferir 27
+ *  notas, a aplicação lia a folha AVALIACOES inteira da turma (milhares de
+ *  linhas, megas de texto) e o tablet desistia antes de chegar a resposta:
+ *  as notas ficavam «só neste computador» para sempre (Rosa, 13/out/2026). */
+var FOLHAS_TEM_IDS = { AVALIACOES: true, VALIDACOES: true, SELECOES: true, PLANOS: true, FICHAS: true, ALUNOS: true };
+function temIds_(nome, idsTexto) {
+  var ids = [];
+  try { ids = JSON.parse(idsTexto || '[]'); } catch (e) { ids = []; }
+  if (!FOLHAS_TEM_IDS[nome] || !ids.length) return { temIds: [], eliminados: [] };
+  var procurar = {};
+  ids.forEach(function (i) { procurar[String(i)] = true; });
+  var ss = ficheiro();
+  var f = folha(ss, nome);
+  var tem = {};
+  var ult = f.getLastRow();
+  if (ult >= 2) {
+    var cab = f.getRange(1, 1, 1, f.getLastColumn()).getValues()[0];
+    var iId = cab.indexOf('id'), iEl = cab.indexOf(COL_ELIMINADO);
+    if (iId >= 0) {
+      var colId = f.getRange(2, iId + 1, ult - 1, 1).getValues();
+      var colEl = iEl >= 0 ? f.getRange(2, iEl + 1, ult - 1, 1).getValues() : null;
+      for (var i = 0; i < colId.length; i++) {
+        var id = String(colId[i][0]);
+        if (procurar[id] && !(colEl && colEl[i][0])) tem[id] = true;
+      }
+    }
+  }
+  var el = idsEliminados(ss);
+  return {
+    temIds: Object.keys(tem),
+    eliminados: ids.filter(function (i) { return el[nome + '|' + String(i)]; }).map(String),
+  };
 }
 
 /** (v27.5) Um número que pode ser 0: o 0 fica 0 (com «x || ''» ficava vazio). */

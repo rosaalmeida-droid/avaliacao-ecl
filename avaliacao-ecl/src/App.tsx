@@ -139,7 +139,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, espacoOcupado, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
+  ucsPorFechar, confirmarEReenviar, subscreverEspera, enviarPlanoABaseJa, estadoDaEspera, espacoOcupado, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
 import { FechoDasAulas, deveAbrirFecho } from './components/FechoDasAulas';
 import { ouvirTurmaNaBase } from './baseDeDados';
 
@@ -163,15 +163,20 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 }
 
 /** Sair do plano enquanto ainda não chegou aos alunos: espera aqui, e sai
- *  sozinho mal chegue (Rosa, out/2026 — como «A enviar… não feches» no aluno). */
+ *  sozinho mal chegue (Rosa, out/2026 — como «A enviar… não feches» no aluno).
+ *  (13/out/2026) Sai mal a base de dados aceite o plano — é por ela que chega
+ *  aos alunos. Antes só via depois de conferir tudo no Sheets (as 27 notas
+ *  presas incluídas), e ficava minutos à espera com o plano já nos alunos. */
 function ModalPlanoAEnviar({ planoId, onSair, onFicar }: { planoId: string; onSair: () => void; onFicar: () => void }) {
   React.useEffect(() => {
     let vivo = true;
-    const ver = () => confirmarEReenviar().catch(() => null)
-      .then(() => { if (vivo && !planoPorConfirmar(planoId)) { vivo = false; onSair(); } });
+    const sair = () => { if (vivo && !planoPorConfirmar(planoId)) { vivo = false; onSair(); } };
+    const parar = subscreverEspera(sair);
+    enviarPlanoABaseJa(planoId);
+    const ver = () => confirmarEReenviar({ so: ['plano'] }).catch(() => null).then(sair);
     ver();
     const t = setInterval(ver, 5000);
-    return () => { vivo = false; clearInterval(t); };
+    return () => { vivo = false; parar(); clearInterval(t); };
   }, [planoId]);
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>

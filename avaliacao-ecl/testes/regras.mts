@@ -393,7 +393,7 @@ regra('63. Criar um plano antes de uma aula já gravada não lhe muda as pergunt
 }
 
 regra('62. O espaço do aparelho mede-se, e a lista do que falta enviar não se perde quando enche', () => {
-  localStorage.setItem('ecl_grande', 'x'.repeat(4_100_000));
+  localStorage.setItem('ecl_grande', 'x'.repeat(4_400_000));
   igual(b.espacoOcupado().fracao >= 0.8, true, 'acima dos 80%:');
   const ls: any = localStorage, antes = ls.setItem;
   ls.setItem = (k: string, v: string) => { if (k === 'ecl_por_confirmar') throw new Error('QuotaExceededError'); return antes.call(ls, k, v); };
@@ -403,6 +403,19 @@ regra('62. O espaço do aparelho mede-se, e a lista do que falta enviar não se 
     igual(b.espacoOcupado().cheio, true, 'aviso de cheio:');
   } finally { ls.setItem = antes; }
 });
+
+{
+  const ar = await import('../src/armazenamento');
+  regra('83. Os dados grandes guardam-se comprimidos e leem-se iguais', () => {
+    const lista = Array.from({ length: 3000 }, (_, i) => ({ id: `registo_3º ACP-${i % 25}_plano_${i}_KNW-R-UFCD_16-${i % 7}`, nota: (i % 5) + 1, titulo: 'Aula mista — 13/10/2026', data: '2026-10-13' }));
+    const texto = JSON.stringify(lista);
+    const guardado = ar.comprimir(texto);
+    igual(ar.estaComprimido(guardado), true, 'marcado como comprimido:');
+    igual(ar.estaComprimido(texto), false, 'o texto normal não:');
+    igual(ar.descomprimir(guardado) === texto, true, 'lê-se exatamente o mesmo:');
+    igual(guardado.length * 1 < texto.length * 2 / 8, true, `mais de 8 vezes mais pequeno (${guardado.length} contra ${texto.length * 2} bytes):`);
+  });
+}
 
 {
   const dd = await import('../src/diaDaAula');

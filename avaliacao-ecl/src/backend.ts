@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import { bytesOcupados, LIMITE_EM_BYTES } from './armazenamento';
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA, type ContextoPerguntas5C } from './triagem5c';
@@ -211,25 +212,19 @@ const KEYS = {
 // não coube fica na memória enquanto a aplicação estiver aberta. Antes, a
 // gravação falhava em silêncio e o aluno ficava sem ver planos nenhuns.
 const naMemoria: Record<string, string> = {};
-let semEspacoNoAparelho = false;
-/** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
-export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
+/** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado):
+ *  há alguma coisa que só está na memória. Deixa de estar quando volta a caber. */
+export function aparelhoSemEspaco(): boolean { return Object.keys(naMemoria).length > 0; }
 
-/** O espaço que a aplicação ocupa neste aparelho. O navegador dá a cada site
- *  cerca de 5 milhões de letras, seja qual for o espaço livre do aparelho: o
- *  tablet do professor guarda todas as turmas e enche ao fim de alguns meses
- *  (13/out/2026: 2,8 milhões ao fim de um mês). Quando enche, o que não coube
- *  só fica enquanto a aplicação estiver aberta. */
-export const LIMITE_DO_ARMAZENAMENTO = 5_000_000;
+/** O espaço que a aplicação ocupa neste aparelho, como o Safari o conta: o
+ *  navegador dá a cada site 5 MB, seja qual for o espaço livre do aparelho, e
+ *  com letras como «—» cada letra conta 2 bytes. O tablet da professora encheu
+ *  a 13/out/2026 (julgava-se que cabiam 5 milhões de letras; cabem metade).
+ *  Os textos grandes passaram a ser guardados comprimidos (armazenamento.ts).
+ *  `letras` são os bytes ocupados. */
 export function espacoOcupado(): { letras: number; fracao: number; cheio: boolean } {
-  let letras = 0;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i) || '';
-      letras += k.length + (localStorage.getItem(k) || '').length;
-    }
-  } catch { /* sem armazenamento */ }
-  return { letras, fracao: letras / LIMITE_DO_ARMAZENAMENTO, cheio: semEspacoNoAparelho };
+  const bytes = bytesOcupados();
+  return { letras: bytes, fracao: bytes / LIMITE_EM_BYTES, cheio: aparelhoSemEspaco() };
 }
 
 // Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
@@ -327,7 +322,6 @@ export function save<T>(key: string, data: T[]): void {
   try { localStorage.setItem(key, texto); delete naMemoria[key]; return; }
   catch (e) {
     naMemoria[key] = texto;
-    semEspacoNoAparelho = true;
     console.error('Sem espaço para guardar', key, e);
   }
 }
@@ -9304,7 +9298,7 @@ function guardarEspera(l: PorConfirmar[]): void {
   try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; return; } catch { /* sem espaço */ }
   libertarEspaco();
   try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; }
-  catch { naMemoria[KEY_ESPERA] = texto; semEspacoNoAparelho = true; }
+  catch { naMemoria[KEY_ESPERA] = texto; }
 }
 
 /** «validação de Diogo Neves, aula de 02/10» — para o professor saber o que ficou por enviar. */
@@ -9446,6 +9440,14 @@ export function esperaDoPlano(id: string): PorConfirmar | undefined {
   return espera().find(x => x.tipo === 'plano' && x.id === id);
 }
 
+/** O plano vai já para a base de dados (e, por ela, para os alunos), sem
+ *  esperar pela fila do Sheets: a janela «O plano ainda está a ser enviado»
+ *  fecha-se mal a base o aceite (Rosa, 13/out/2026). */
+export function enviarPlanoABaseJa(id: string): void {
+  const plano = getPlanosAula().find(x => x.id === id);
+  if (plano) paraABase('plano', { plano });
+}
+
 /** «Tentar outra vez»: o plano volta a ser enviado já, com as tentativas todas. */
 export function reenviarPlanoJa(id: string): void {
   const plano = getPlanosAula().find(x => x.id === id);
@@ -9543,6 +9545,27 @@ export async function confirmarSessoesAbertas(): Promise<number> {
 /** As respostas e as notas: nunca desistem de chegar ao Sheets. */
 const INSISTEM = new Set<PorConfirmar['tipo']>(['selecao', 'validacao', 'avaliacao']);
 
+/** Até quando não vale a pena perguntar «quais destes códigos tem»: o script
+ *  ainda é anterior à v27.6. Volta a experimentar de 10 em 10 minutos (pode
+ *  ter sido atualizado entretanto). */
+let semTemIdsAte = 0;
+/** Quais destes códigos já estão na folha, lendo só a coluna dos códigos.
+ *  null: não se conseguiu perguntar (o script antigo não sabe: lê-se tudo, como antes). */
+async function quaisEstaoNoSheets(url: string, folha: string, ids: string[]): Promise<{ tem: string[]; eliminados: string[] } | null> {
+  const tem: string[] = [];
+  const eliminados: string[] = [];
+  // Aos 40 de cada vez: o endereço do pedido não pode ser muito comprido.
+  for (let i = 0; i < ids.length; i += 40) {
+    let json: any = null;
+    try { json = await lerDoSheets(url, { tipo: 'tem_ids', folha, ids: JSON.stringify(ids.slice(i, i + 40)) }); } catch { json = null; }
+    if (!json?.ok) return null;
+    if (!Array.isArray(json.temIds)) { semTemIdsAte = Date.now() + 10 * 60000; return null; }
+    json.temIds.forEach((x: any) => tem.push(String(x)));
+    (Array.isArray(json.eliminados) ? json.eliminados : []).forEach((x: any) => eliminados.push(String(x)));
+  }
+  return { tem, eliminados };
+}
+
 /**
  * Confere o que está à espera e reenvia o que não chegou.
  * `forcar` («Tentar enviar agora»): manda logo tudo outra vez, à frente do
@@ -9550,14 +9573,33 @@ const INSISTEM = new Set<PorConfirmar['tipo']>(['selecao', 'validacao', 'avaliac
  * ou não se conseguiu conferir. Antes o botão só conferia: depois de 5
  * tentativas, as validações nunca mais saíam do tablet (Rosa, 13/out/2026).
  */
-export async function confirmarEReenviar(opcoes?: { forcar?: boolean }): Promise<{ confirmados: number; aRepetir: number; enviados: number }> {
+type ResultadoConferir = { confirmados: number; aRepetir: number; enviados: number };
+// Uma conferência de cada vez (por grupo de tipos). A janela «O plano ainda
+// está a ser enviado» pedia uma de 5 em 5 segundos, o ecrã do plano outra de
+// 8 em 8 e a aplicação outra de minuto a minuto, sem esperar pelas
+// anteriores: as leituras do Sheets acumulavam-se e a janela ficava minutos
+// à espera, com o plano já nos alunos (Rosa, 13/out/2026).
+const conferenciasEmCurso = new Map<string, Promise<ResultadoConferir>>();
+export function confirmarEReenviar(opcoes?: { forcar?: boolean; so?: PorConfirmar['tipo'][] }): Promise<ResultadoConferir> {
   const forcar = !!opcoes?.forcar;
+  const so = opcoes?.so?.length ? opcoes.so : null;
   let enviados = 0;
   if (forcar) {
-    for (const p of espera()) if (existeAinda(p)) { reenviar(p); enviados++; }
+    for (const p of espera()) if ((!so || so.includes(p.tipo)) && existeAinda(p)) { reenviar(p); enviados++; }
   }
-  await confirmarSessoesAbertas().catch(() => 0);
-  const l = espera();
+  const chave = so ? [...so].sort().join(',') : '*';
+  let emCurso = conferenciasEmCurso.get(chave);
+  if (!emCurso) {
+    emCurso = conferirAgora(forcar, so).finally(() => { conferenciasEmCurso.delete(chave); });
+    conferenciasEmCurso.set(chave, emCurso);
+  }
+  return emCurso.then(r => ({ ...r, enviados }));
+}
+
+async function conferirAgora(forcar: boolean, so: PorConfirmar['tipo'][] | null): Promise<ResultadoConferir> {
+  const enviados = 0;
+  if (!so || so.includes('plano')) await confirmarSessoesAbertas().catch(() => 0);
+  const l = espera().filter(x => !so || so.includes(x.tipo));
   if (!l.length) return { confirmados: 0, aRepetir: 0, enviados };
 
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
@@ -9583,6 +9625,20 @@ export async function confirmarEReenviar(opcoes?: { forcar?: boolean }): Promise
     const [url, pedido] = LEITURA_POR_TIPO[tipo];
     const ids = new Set<string>();
     let algumaLeitura = false;
+    // As avaliações: pergunta-se só pelos códigos que faltam (script v27.6).
+    // A folha AVALIACOES tem milhares de linhas por turma: lê-la inteira para
+    // conferir 27 notas demorava tanto que o tablet desistia, e as notas do
+    // Bruno ficaram «só neste computador» duas semanas (Rosa, 13/out/2026).
+    if (tipo === 'avaliacao' && Date.now() >= semTemIdsAte) {
+      const r = await quaisEstaoNoSheets(url, 'AVALIACOES', l.filter(x => x.tipo === tipo).map(x => String(x.id)));
+      if (r) {
+        r.tem.forEach(id => ids.add(id));
+        if (r.eliminados.length) eliminadosNoSheets.set(tipo, new Set(r.eliminados));
+        noSheets.set(tipo, ids);
+        lidoComSucesso.add(tipo);
+        continue;
+      }
+    }
     for (const t of (turmas.length ? turmas : [''])) {
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
@@ -9629,7 +9685,9 @@ export async function confirmarEReenviar(opcoes?: { forcar?: boolean }): Promise
   // Entretanto pode ter entrado outra coisa na lista (uma gravação nova).
   const atual = espera();
   for (const p0 of l) {
-    const p = atual.find(x => x.tipo === p0.tipo && x.id === p0.id) || p0;
+    // Já saiu da lista entretanto (outra conferência confirmou-o): não volta.
+    const p = atual.find(x => x.tipo === p0.tipo && x.id === p0.id);
+    if (!p) continue;
     // Já não existe neste aparelho (foi apagado de vez): não há nada para
     // enviar, sai da lista. Antes ficava «a caminho do arquivo» para sempre e
     // o botão não fazia nada (Rosa, 5/out/2026).

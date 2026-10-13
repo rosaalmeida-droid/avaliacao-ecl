@@ -3580,7 +3580,7 @@ function EstadoDoEnvio({ selecaoId }: { selecaoId: string }) {
   useEffect(() => {
     if (!pendente) return;
     let vivo = true;
-    const ver = () => confirmarEReenviar().catch(() => null)
+    const ver = () => confirmarEReenviar({ so: ['selecao'] }).catch(() => null)
       .then(() => { if (vivo) setPendente(selecaoPorConfirmar(selecaoId)); });
     const t0 = setTimeout(ver, 4000);
     const t = setInterval(ver, 10000);
