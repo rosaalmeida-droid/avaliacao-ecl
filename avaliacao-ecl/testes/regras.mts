@@ -353,16 +353,33 @@ regra('56. Numa aula teórica não há perguntas de cozinha nem de arrumação',
   });
 }
 
-regra('60. Mudar o plano não obriga a responder outra vez; cancelar o pedido devolve as respostas', () => {
-  por('ecl_planos', [{ id: 'p1', turmaId: 't', data: '2026-10-01', estado: 'publicado' }]);
+regra('60. Mudar o plano só pede outra resposta quando mudam as perguntas; cancelar o pedido devolve as respostas', () => {
+  const plano: any = { id: 'p1', turmaId: 't', data: '2026-10-01', estado: 'publicado', titulo: 'Aula', tipoPlanAula: 'pratico', compAdicionadas: [] };
+  por('ecl_planos', [{ ...plano, enviadoAosAlunos: g.fotografiaDoPlano(plano) }]);
   por('ecl_selecoes', [{ id: 's1', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', criadaEm: '2026-10-01T09:00:00Z', versaoPlano: '2026-10-01T08:00:00Z' }]);
-  g.enviarAlteracoesAosAlunos('p1', undefined, true);
-  igual(!!(b.getPlanosAula().find(p => p.id === 'p1') as any)?.pedirDeNovoEm, false, 'pedido sozinho:');
+  const pedido = () => !!(b.getPlanosAula().find(p => p.id === 'p1') as any)?.pedirDeNovoEm;
+  // Só o título: não pede.
+  b.addOrUpdatePlanoAula({ ...(b.getPlanosAula()[0] as any), titulo: 'Aula (corrigida)' });
+  g.enviarAlteracoesAosAlunos('p1');
+  igual(pedido(), false, 'título:');
   igual(b.getSelecoes().map(s => s.id), ['s1'], 'a resposta continua:');
-  b.pedirNovaAutoavaliacao('p1');
-  igual(b.getSelecoes().length, 0, 'depois de o professor pedir:');
+  // Uma atitude nova: pede.
+  b.addOrUpdatePlanoAula({ ...(b.getPlanosAula()[0] as any), compAdicionadas: ['ATI-020'] });
+  g.enviarAlteracoesAosAlunos('p1');
+  igual(pedido(), true, 'atitude nova:');
   b.cancelarNovaAutoavaliacao('p1');
+  igual(pedido(), false, 'cancelado:');
   igual(b.getSelecoes().map(s => s.id), ['s1'], 'depois de cancelar:');
+});
+
+regra('63. Criar um plano antes de uma aula já gravada não lhe muda as perguntas do Consciente e do Criativo', () => {
+  const aula = (id: string, data: string) => ({ id, turmaId: 't', data, estado: 'publicado', titulo: id, tipoPlanAula: 'pratico' });
+  const dia = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  por('ecl_planos', [aula('pa', dia(-3)), aula('pb', dia(-2))]);
+  b.fixarPerguntas5CEmFalta('t');
+  const antes = [b.perguntaCODaAula('pb'), b.perguntaCRDaAula('pb')];
+  b.addOrUpdatePlanoAula(aula('p0', dia(-9)) as any);
+  igual([b.perguntaCODaAula('pb'), b.perguntaCRDaAula('pb')], antes, 'perguntas da aula já gravada:');
 });
 
 {

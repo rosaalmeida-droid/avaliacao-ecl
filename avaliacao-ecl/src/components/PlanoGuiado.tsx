@@ -809,16 +809,20 @@ export function alteracoesPorEnviar(plano: PlanoAula): { sinal: '+' | '−' | '~
   try { return diferencas(registado, fotografia(plano)); } catch { return []; }
 }
 
-/** Envia aos alunos a versão atual do plano. As respostas que já deram
- *  continuam a contar: mudar o plano não os obriga a responder outra vez
- *  (Rosa, 13/out/2026). Só com `pedirOutraVez` (o professor pediu). */
-export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez = false, sabeQueMudou = false): PlanoAula | undefined {
+/** Envia aos alunos a versão atual do plano. Quem já respondeu só responde
+ *  outra vez se mudaram as perguntas — e só ao que é novo: o resto fica como
+ *  respondeu (Rosa, 13/out/2026: «verificar se é realmente preciso»). Sem
+ *  `pedirOutraVez`, decide-se pelo que mudou desde o último envio. */
+export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez?: boolean, sabeQueMudou = false): PlanoAula | undefined {
   const atual: any = getPlanosAula().find(x => x.id === planoId);
   if (!atual) return undefined;
+  const registado: EnvioRegistado | undefined = atual.enviadoAosAlunos;
+  const agora = fotografia(atual);
   const mudou = sabeQueMudou || alteracoesPorEnviar(atual).length > 0;
-  addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: fotografia(atual) });
+  const pedir = pedirOutraVez ?? (!!registado && mudaramAsPerguntas(registado, agora));
+  addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: agora });
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === planoId).map(s => s.alunoId)).size;
-  if (mudou && pedirOutraVez && responderam > 0) pedirNovaAutoavaliacao(planoId);
+  if (mudou && pedir && responderam > 0) pedirNovaAutoavaliacao(planoId);
   return getPlanosAula().find(x => x.id === planoId);
 }
 
@@ -838,14 +842,14 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const mudou = registado ? diferencas(registado, agora) : [];
   // Os que já responderam (às perguntas que tinham antes destas alterações).
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-  // Regra (Rosa, 13/out/2026): mudar o plano já não obriga a responder outra
-  // vez — as respostas que deram continuam a contar e a aparecer para validar.
+  // Regra (Rosa, 13/out/2026): só responde outra vez quem já respondeu e só
+  // se mudaram as perguntas; e responde só ao que é novo.
   const mudaramPerguntas = !!registado && mudaramAsPerguntas(registado, agora);
   const [enviado, setEnviado] = useState(false);
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
   function enviar() {
-    const novo = enviarAlteracoesAosAlunos(plano.id, false);
+    const novo = enviarAlteracoesAosAlunos(plano.id, mudaramPerguntas);
     if (novo) onPlanoActualizado(novo);
     setEnviado(true);
   }
@@ -883,12 +887,12 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
           {responderam > 0 && (
             <div style={{ background: C.ambarP, borderRadius: 12, padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 14.5, color: '#5C3A08' }}>
-                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação.</b> As respostas
-                que deram continuam a contar e a aparecer para validar.
+                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação.</b> A nota que já
+                deste continua a contar até validares a nova.
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 700 }}>
                 {mudaramPerguntas
-                  ? 'Mudaram as perguntas, mas não têm de responder outra vez. Se for mesmo preciso, use «Pedir que respondam outra vez» no início do plano.'
+                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno responde' : `estes ${responderam} respondem`} só ao que é novo (o resto fica como responderam).`
                   : 'As perguntas não mudaram: não precisam de responder outra vez.'}
               </div>
             </div>

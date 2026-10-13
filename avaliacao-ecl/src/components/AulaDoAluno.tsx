@@ -28,6 +28,19 @@ const nomeDe = (id: string, n?: string) => n || getAlunos().find(a => a.id === i
 /** O que os vistos querem dizer neste momento da aula. */
 export type MomentoVistos = 'entrou' | 'avaliou' | null;
 
+/** «A aula de hoje» só quando é hoje. Uma atividade de sábado aberta na
+ *  segunda dizia «A aula de hoje» e o aluno não sabia o que estava a avaliar
+ *  (Rosa, 13/out/2026): agora diz «A atividade de sábado, 10/10». */
+function quandoE(plano: PlanoAula): string {
+  const data = String(plano.data || '').slice(0, 10);
+  const d = new Date();
+  const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const oQue = (plano as any).tipoEvento ? 'A atividade' : 'A aula';
+  if (!data || data === hoje) return `${oQue} de hoje`;
+  const dia = new Date(data + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  return `${oQue} de ${dia}`;
+}
+
 export function ComandaDoGrupo({ plano, aluno, comGrupos, grande, vistos, linhaUC, horas, prato, funcao, onVerFuncoes }: {
   plano: PlanoAula; aluno: Aluno; comGrupos: boolean; grande?: boolean; vistos: MomentoVistos;
   linhaUC: string; horas: string; prato?: string; funcao?: string; onVerFuncoes?: () => void;
@@ -55,7 +68,7 @@ export function ComandaDoGrupo({ plano, aluno, comGrupos, grande, vistos, linhaU
         fontFamily: 'ui-monospace, "IBM Plex Mono", Menlo, monospace', fontSize: g ? 13 : 12, color: TINTA }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <div style={{ fontFamily: 'inherit', fontSize: g ? 22 : 17, fontWeight: 800, lineHeight: 1.15 }}>
-            {comGrupos ? (grupo ? grupo.nome : 'Grupo ?') : 'A aula de hoje'}
+            {comGrupos ? (grupo ? grupo.nome : 'Grupo ?') : quandoE(plano)}
           </div>
           <span style={{ whiteSpace: 'nowrap' }}>{horas}</span>
         </div>

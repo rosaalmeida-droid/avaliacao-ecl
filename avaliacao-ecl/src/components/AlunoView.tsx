@@ -1142,7 +1142,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         || getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === p.id))
       && !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id));
     // O professor reabriu a autoavaliação só deste aluno (sem PIN novo).
-    const reabertas = planosOrdenados.filter((p: any) => reabertaPorResponder(p, aluno.id) && !deNovo.includes(p));
+    const reabertas = planosOrdenados.filter((p: any) => reabertaPorResponder(p, aluno.id) && !deNovo.some((x: any) => x.id === p.id));
     if (reabertas.length > 0) {
       // Anulada pelo professor (12/out/2026): a resposta anterior já não conta.
       const anulada = reabertas.some((p: any) => p.anuladaPara?.[aluno.id] && p.anuladaPara[aluno.id] === p.reabertaPara?.[aluno.id]);
@@ -1159,14 +1159,14 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     }
     aulasPorAutoavaliar.current = [...deNovo, ...reabertas];
     motivoPorAutoavaliar.current = {};
-    deNovo.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'o professor pediu para responderes outra vez'; });
+    deNovo.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'há perguntas novas: respondes só a essas, o resto fica como respondeste'; });
     reabertas.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'o professor reabriu a tua autoavaliação'; });
     if (deNovo.length > 0) {
       av.push({
         id: 'responder_de_novo',
         titulo: 'O professor quer ouvir-te outra vez',
-        detalhe: `Há perguntas novas, mais claras, na autoavaliação de ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
-          + 'É a tua oportunidade de mostrar o que fizeste bem e o que queres melhorar. Leva 2 minutos. Enquanto não responderes, mantém-se a nota que tinhas.',
+        detalhe: `O professor mudou as perguntas de ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
+          + 'O que já respondeste fica: respondes só às perguntas novas. Enquanto não responderes, mantém-se a nota que tinhas.',
         // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
@@ -1230,7 +1230,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     // Aulas em que esteve e não se autoavaliou: as mesmas que contam 0 na nota da UC.
     const idsSemAuto = new Set(planosSemAutoavaliacao(aluno.id, aluno.turmaId).map(p => p.id));
     const semAuto = planosOrdenados.filter(p => idsSemAuto.has(p.id));
-    aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.includes(p))];
+    aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.some(x => x.id === p.id))];
     semAuto.forEach(p => { if (!motivoPorAutoavaliar.current[p.id]) motivoPorAutoavaliar.current[p.id] = 'ainda não te autoavaliaste: conta 0'; });
     if (semAuto.length > 0) {
       av.push({
@@ -1250,7 +1250,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (recAulas.length > 0) {
       const dm = (d: string) => `${String(d).slice(8, 10)}/${String(d).slice(5, 7)}`;
       const auto = recAulas.filter(x => x.r.automatica && !ultimaResposta(aluno.id, x.plano.id)).map(x => x.plano);
-      aulasPorAutoavaliar.current = [...auto, ...aulasPorAutoavaliar.current.filter(p => !auto.includes(p))];
+      aulasPorAutoavaliar.current = [...auto, ...aulasPorAutoavaliar.current.filter(p => !auto.some(x => x.id === p.id))];
       auto.forEach(p => { motivoPorAutoavaliar.current[p.id] = 'recuperação desta aula: autoavalia-te'; });
       av.unshift({
         id: 'recuperacao_aula',
@@ -1312,6 +1312,11 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       });
     }
 
+    // A mesma aula vinha de várias listas (atividade, sem autoavaliação,
+    // pedida outra vez) e aparecia repetida: «Catering — 10/10» três vezes e a
+    // conta errada (auditoria de 13/out/2026). Cada aula conta uma vez.
+    { const vistos = new Set<string>();
+      aulasPorAutoavaliar.current = aulasPorAutoavaliar.current.filter(p => !vistos.has(p.id) && !!vistos.add(p.id)); }
     return av;
   })();
 
@@ -1970,6 +1975,22 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 // ═════════════════════════════════════════════════════════════
 // VISTA DE UM PLANO — acordeão com os 4 passos
 // ═════════════════════════════════════════════════════════════
+/** O que, no plano, não muda as perguntas do aluno: gravar estes campos não refaz a autoavaliação. */
+const SEM_EFEITO_NAS_PERGUNTAS = new Set(['atualizadoEm', 'gravadoNaBaseEm', 'presencasConfirmadasEm', 'presencasConfirmadasPor',
+  'enviadoAosAlunos', 'titulo', 'horaInicio', 'horaFim', 'sumario', 'observacoes', 'eschoolingEm', 'ultimaAlteracao', 'realizadaEm',
+  'avisoDeslocacao', 'reabertaPara', 'anuladaPara', 'oralPeloProfessor', 'pedirDeNovoEm', 'criadoEm', 'professor', 'numeroPlan', 'json']);
+/** Muda quando muda o que este aluno responde nesta aula. */
+function chaveDaAutoavaliacao(plano: any, alunoId: string, fichas: any[]): string {
+  const resto: Record<string, unknown> = {};
+  for (const k of Object.keys(plano || {}).sort()) if (!SEM_EFEITO_NAS_PERGUNTAS.has(k)) resto[k] = plano[k];
+  const texto = JSON.stringify([resto, fichas.map(f => `${f.id}@${f.atualizadoEm || ''}`),
+    plano?.reabertaPara?.[alunoId] || '', plano?.anuladaPara?.[alunoId] || '', plano?.oralPeloProfessor?.[alunoId] || '',
+    pedidoParaOAluno(plano, alunoId) || '']);
+  let h = 2166136261;
+  for (let i = 0; i < texto.length; i++) { h ^= texto.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return `${plano?.id}:${(h >>> 0).toString(36)}`;
+}
+
 function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: soConsultaPedida = false }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
   /** Atividade em que o aluno não esteve: só vê o que se fez, a ficha técnica
@@ -1995,7 +2016,11 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   const aulaValidada = !!validacaoDestaAula && !temDeResponderOutraVez;
   const notaValidada = aulaValidada ? notaDaAulaValidada(validacaoDestaAula) : null;
   const soConsulta = soConsultaPedida || aulaValidada;
-  const versao = String((plano as any).atualizadoEm || '');
+  // A autoavaliação só se refaz quando muda o que o aluno responde (ou o que o
+  // professor decidiu para ele). Antes refazia-se a cada gravação do plano
+  // (confirmar presenças, mudar o título…) e o aluno perdia o que já tinha
+  // respondido (Rosa, 13/out/2026). E mesmo quando se refaz, o que respondeu fica.
+  const versao = chaveDaAutoavaliacao(plano, aluno.id, getFichasPorPlano(plano.id));
   const versaoAoAbrir = React.useRef(versao);
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
   // Esteve numa atividade ligada a esta aula e o professor disse que
@@ -2250,7 +2275,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             : soAtividade ? undefined : 'Uma pergunta de cada vez. Escolhe o que fizeste, e não a nota que gostavas de ter.'}>
           {mudouDesdeQueAbriu && !avaliou && (
             <div style={{ padding:'12px 14px', borderRadius:12, background:'#fff7e6', border:'1.5px solid #b5651d', fontSize:14, color:'#7a4310', fontWeight:600 }}>
-              O professor atualizou esta aula. As perguntas já são as novas.
+              O professor atualizou esta aula. As perguntas já são as novas; o que já tinhas respondido ficou.
             </div>
           )}
           {soAtividade ? (
@@ -2513,7 +2538,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             )}
             {secAberta==='avaliacao' && mudouDesdeQueAbriu && (
               <div style={{ margin:'0 0 12px', padding:'12px 14px', borderRadius:12, background:'#fff7e6', border:'1.5px solid #b5651d', fontSize:14, color:'#7a4310', fontWeight:600 }}>
-                O professor atualizou esta aula. As perguntas abaixo já são as novas.
+                O professor atualizou esta aula. As perguntas abaixo já são as novas; o que já tinhas respondido ficou.
               </div>
             )}
             {secAberta==='avaliacao' && soAtividade && (
@@ -2868,6 +2893,12 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
   // Se o aluno já entrou nesta aula, o ecrã tem de o saber. Começava
   // sempre do zero: ele voltava a "Entrar" e a preencher a farda, e
   // ficava um registo de farda novo de cada vez.
+  // Aula ou atividade de outro dia (aberta depois para a autoavaliação): a
+  // farda e as mãos eram desse dia. Antes, três dias depois, o aluno via
+  // «Tens a farda completa? Olha para ti antes de responder» (auditoria de
+  // 13/out/2026). A farda desse dia fica com o professor.
+  const hojeLocal = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const diaPassado = !!plano.data && String(plano.data).slice(0, 10) < hojeLocal;
   const [entrada, setEntrada] = useState<
     { foraDeTempo: boolean; minutosAposAbertura: number; jaExistia: boolean } | null
   >(() => {
@@ -2879,7 +2910,7 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
     // ficava sem a farda na validação (Rosa, 6/out/2026).
     const fardaRespondida = !!p.fardaDeclarada || getHistoricoAvaliacoes()
       .some((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01');
-    const faltaFarda = pedeFardaEHigiene(plano) && !fardaRespondida;
+    const faltaFarda = pedeFardaEHigiene(plano) && !fardaRespondida && !diaPassado;
     return { foraDeTempo: !!p.atrasado, minutosAposAbertura: p.atrasadoMins || 0, jaExistia: !faltaFarda };
   });
   // A farda em dois tempos: primeiro a pergunta, e só quem tem algo em
@@ -2936,6 +2967,8 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
     const r = marcarPresenca(aluno.id, plano.id, aluno.turmaId, plano.ucId);
     if (r) {
       setEntrada(r);
+      // Outro dia: só a presença; a farda e as mãos eram desse dia.
+      if (diaPassado) { onConcluido(); return; }
       // Aula atitudinal: conta a presença e a hora de entrada, mas não há
       // farda nem registos do KitchenFlow.
       // O mesmo quando o professor tirou a farda desta aula.
@@ -3005,7 +3038,7 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
     return (
       <EcraDeCor cor={CORES_AULA.entrar} total={total} feitos={feitos}
         titulo="Já entraste nesta aula."
-        sub={`${hora ? `Entraste às ${hora}. ` : ''}${pedeFardaEHigiene(plano) ? 'A entrada e a farda já ficaram registadas.' : 'A entrada já ficou registada.'}`}>
+        sub={`${hora ? `Entraste às ${hora}. ` : ''}${pedeFardaEHigiene(plano) && !diaPassado ? 'A entrada e a farda já ficaram registadas.' : 'A entrada já ficou registada.'}`}>
         <div style={{ marginTop:'auto' }}><BotaoDaAula cor="#2F7A3B" onClick={onConcluido}>Continuar</BotaoDaAula></div>
       </EcraDeCor>
     );
@@ -3530,12 +3563,75 @@ function EstadoDoEnvio({ selecaoId }: { selecaoId: string }) {
   );
 }
 
+// ── O que o aluno já respondeu fica no telemóvel (Rosa, 13/out/2026) ──
+// A autoavaliação recomeçava do zero sempre que o plano era gravado (até ao
+// confirmar presenças) ou quando o aluno fechava a aplicação a meio. Agora o
+// que já respondeu fica guardado enquanto responde. E, quando tem de
+// responder outra vez porque as perguntas mudaram, parte do que respondeu da
+// última vez: só responde ao que é novo. Anulada pelo professor: do zero.
+interface EstadoDaAutoavaliacao {
+  temaEscolhido?: number | null; apresentacaoOral?: ApresentacaoOral | null;
+  obsColega?: { colegaId: string; tema: number | null; bem: string; mal: string };
+  nivelHaccp?: string | null; notasMicro?: Record<string, string | null>; atitudeEscolhida?: string | null;
+  respAti?: Record<string, (number | null)[]>; atitudeApanhar?: string | null;
+  respPres?: Record<string, RespostaPresenca>; compromisso?: IdCompromisso | null; exemplos?: Record<string, string>;
+  tecEvento?: number | null; outraTarefa?: string; tecMenosBem?: string; triagem?: Triagem5C;
+  /** O passo em que estava. */
+  passoId?: string;
+}
+const chaveRascunhoAuto = (planoId: string, alunoId: string) => `ecl_rascunho_auto_${planoId}_${alunoId}`;
+const chaveUltimaAuto = (planoId: string, alunoId: string) => `ecl_ultima_auto_${planoId}_${alunoId}`;
+function lerGuardadoAuto(k: string): { em: string; estado: EstadoDaAutoavaliacao } | null {
+  try { const x = JSON.parse(localStorage.getItem(k) || 'null'); return x && x.estado ? x : null; } catch { return null; }
+}
+/** As respostas de uma autoavaliação enviada, no formato do ecrã (outro telemóvel). */
+function estadoDaResposta(s: any): EstadoDaAutoavaliacao {
+  const notasMicro: Record<string, string | null> = {}, respAti: Record<string, (number | null)[]> = {}, exemplos: Record<string, string> = {};
+  let nivelHaccp: string | null = null, outraTarefa = '', tecEvento: number | null = null, tecMenosBem = '';
+  for (const a of (s?.autoavaliacoes || []) as any[]) {
+    const id = String(a.competenciaId || '');
+    if (id === 'OBR_01') continue;
+    if (id === 'OBR_02') { nivelHaccp = a.nivel || null; continue; }
+    if (id === 'SUB-OUTRA') { outraTarefa = a.texto || ''; continue; }
+    if (id === TEC_EVENTO) { tecEvento = typeof a.nota === 'number' ? a.nota : null; tecMenosBem = a.comentario || ''; continue; }
+    if (id.startsWith('ATI-')) { if (Array.isArray(a.respIdx)) respAti[id] = a.respIdx; if (a.exemplo) exemplos[id] = a.exemplo; continue; }
+    notasMicro[id] = a.semOportunidade ? 'nop' : (a.nivel || null);
+  }
+  const escolhida = (s?.atitudes || [])[0];
+  const { textos: _t, ...triagem } = s?.triagem5c || {};
+  return { notasMicro, respAti, exemplos, nivelHaccp, outraTarefa, tecEvento, tecMenosBem,
+    atitudeEscolhida: escolhida && respAti[escolhida] ? escolhida : null,
+    ...(s?.triagem5c ? { triagem: triagem as Triagem5C } : {}),
+    ...(s?.apresentacaoOral ? { apresentacaoOral: s.apresentacaoOral } : {}),
+    ...(s?.observouColega ? { obsColega: { colegaId: s.observouColega.colegaId || '', tema: s.observouColega.tema ?? null,
+      bem: s.observouColega.bem || '', mal: s.observouColega.mal || '' } } : {}) };
+}
+/** Com que respostas abre a autoavaliação: as que estava a dar (rascunho) ou,
+ *  se o professor pediu para responder outra vez, as da última vez. */
+function estadoInicialDaAutoavaliacao(plano: any, alunoId: string): { estado: EstadoDaAutoavaliacao; deOnde: 'rascunho' | 'anterior' } | null {
+  const anuladaEm: string | undefined = plano?.anuladaPara?.[alunoId];
+  const depoisDaAnulacao = (em?: string) => !anuladaEm || quandoFoi(em) >= quandoFoi(anuladaEm);
+  const r = lerGuardadoAuto(chaveRascunhoAuto(plano.id, alunoId));
+  const enviada: any = respostasDoAlunoComAntigas(alunoId, plano.id)[0];
+  if (r && depoisDaAnulacao(r.em) && !(enviada && quandoFoi(enviada.criadaEm) > quandoFoi(r.em))) return { estado: r.estado, deOnde: 'rascunho' };
+  const pedido = pedidoParaOAluno(plano, alunoId);
+  // Anulada (e não pedida outra vez depois): responde a tudo do zero.
+  const anulada = !!anuladaEm && anuladaEm === plano?.reabertaPara?.[alunoId] && quandoFoi(anuladaEm) >= quandoFoi(plano?.pedirDeNovoEm);
+  if (!pedido || anulada) return null;
+  const u = lerGuardadoAuto(chaveUltimaAuto(plano.id, alunoId));
+  if (u && depoisDaAnulacao(u.em)) return { estado: { ...u.estado, passoId: undefined }, deOnde: 'anterior' };
+  return enviada ? { estado: estadoDaResposta(enviada), deOnde: 'anterior' } : null;
+}
+
 function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   abrirLogo?: boolean;
   plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void;
 }) {
   const ucId = plano.ucId||'';
   const compRemovidas: string[] = (plano as any).compRemovidas||[];
+  // O que já tinha respondido (rascunho) ou, a responder outra vez, a última resposta.
+  const [inicio] = useState(() => estadoInicialDaAutoavaliacao(plano, aluno.id));
+  const ini = inicio?.estado;
 
   // Evidências do KitchenFlow — carregadas automaticamente
   const [evidenciasKF, setEvidenciasKF] = useState<EvidenciaKitchenFlow[]>([]);
@@ -3626,18 +3722,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     }
     return null;
   });
-  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(temaDaAnterior);
+  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(ini?.temaEscolhido !== undefined ? ini.temaEscolhido : temaDaAnterior);
   // No trabalho de grupo, o tema assumido também fica marcado no grupo.
   useEffect(() => { if (temaDaAnterior != null) marcarTemaNoGrupo(plano.id, aluno.id, temaDaAnterior); }, []);
   // Aula com apresentação oral (Rosa, 12/out/2026): o aluno diz primeiro se apresentou.
   // O professor anulou a autoavaliação e disse se o aluno apresentou: fica assim.
   const oralDoProfessor: ApresentacaoOral | undefined = (getPlanosAula().find(x => x.id === plano.id) as any)?.oralPeloProfessor?.[aluno.id];
-  const [apresentacaoOral, setApresentacaoOral] = useState<ApresentacaoOral | null>(() => oralDoProfessor ??
+  const [apresentacaoOral, setApresentacaoOral] = useState<ApresentacaoOral | null>(() => oralDoProfessor ?? ini?.apresentacaoOral ??
     (respostasDoAlunoComAntigas(aluno.id, plano.id)[0] as any)?.apresentacaoOral ?? null);
   const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano), apresentacaoOral });
   // Quem não apresentou hoje responde sobre a apresentação de um colega: quem,
   // o tema, o que fez bem e o que faltou ou estava errado (Rosa, 12/out/2026).
-  const [obsColega, setObsColega] = useState<{ colegaId: string; tema: number | null; bem: string; mal: string }>({ colegaId: '', tema: null, bem: '', mal: '' });
+  const [obsColega, setObsColega] = useState<{ colegaId: string; tema: number | null; bem: string; mal: string }>(ini?.obsColega || { colegaId: '', tema: null, bem: '', mal: '' });
   const colegaOk = !!obsColega.colegaId && obsColega.tema != null && obsColega.bem.trim().length >= 8 && obsColega.mal.trim().length >= 8;
   // Quantas vezes o aluno já respondeu a cada campo do manual noutras aulas:
   // a pergunta do tema alterna entre as versões da fase.
@@ -3782,16 +3878,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   });
 
   const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
-  const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);
-  const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
+  const [nivelHaccp, setNivelHaccp] = useState<string|null>(ini?.nivelHaccp ?? null);
+  const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>(ini?.notasMicro || {});
   const [microAberta, setMicroAberta] = useState<string|null>(null);
-  const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
+  const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(ini?.atitudeEscolhida ?? null);
   const [verTodasAtitudes, setVerTodasAtitudes] = useState(false);
   /** Quantas atitudes se mostram antes de o aluno pedir a lista toda. */
   const MAX_ATITUDES_MOSTRADAS = 3;
   // Posição da frase escolhida (0-3). A nota sai daqui, não de um valor fixo.
   // As respostas às duas perguntas de cada atitude (posição 0-3, ou «não aconteceu»).
-  const [respAti, setRespAti] = useState<Record<string, (number | null)[]>>({});
+  const [respAti, setRespAti] = useState<Record<string, (number | null)[]>>(ini?.respAti || {});
   // Num evento ou concurso, as atitudes fixas perguntam o compromisso (treino, hora, farda, até ao fim).
   const ehDeEvento = !!(plano as any).tipoEvento;
   // Como é a aula (o professor diz no plano): só se pergunta o que faz
@@ -3801,11 +3897,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const atiOk = (id: string) => respondidaAtitude(id, respDe(id), ehDeEvento, ctxAula);
   const notaAti = (id: string) => nivelDaAtitude(respDe(id));
   // Turmas ACP: a segunda atitude, só entre as dos anos anteriores que faltam.
-  const [atitudeApanhar, setAtitudeApanhar] = useState<string|null>(null);
+  const [atitudeApanhar, setAtitudeApanhar] = useState<string|null>(ini?.atitudeApanhar ?? null);
   const [verTodasApanhar, setVerTodasApanhar] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState(false);
   /** Em que passo da autoavaliação está o aluno. */
-  const [passoIdx, setPassoIdx] = useState(0);
+  // -1: ainda por decidir (abre no passo em que estava, ou no primeiro por responder).
+  const [passoIdx, setPassoIdx] = useState(-1);
   /** A autoavaliação abre num ecrã só dela, por cima da aula: uma pergunta de cada vez.
    *  Abre logo quando o aluno vem do passo anterior no ecrã cheio. */
   const [aberto, setAberto] = useState(!!abrirLogo);
@@ -3815,8 +3912,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // E, por isso, umas perguntas sobre o que isso fez ao grupo e à confiança,
   // sem escrever: a resposta errada explica-se e escolhe-se outra vez.
   const presencaParcial = React.useMemo(() => horasDoAlunoNaAula(aluno.id, plano.id), [aluno.id, plano.id]);
-  const [respPres, setRespPres] = useState<Record<string, RespostaPresenca>>({});
-  const [compromisso, setCompromisso] = useState<IdCompromisso | null>(null);
+  const [respPres, setRespPres] = useState<Record<string, RespostaPresenca>>(ini?.respPres || {});
+  const [compromisso, setCompromisso] = useState<IdCompromisso | null>(ini?.compromisso ?? null);
   const escolherPres = (id: string, i: number) => setRespPres(r => ({ ...r, [id]: { id, primeira: r[id]?.primeira ?? i, final: i } }));
   /** As opções de cada pergunta numa ordem baralhada, sempre a mesma para este
    *  aluno nesta aula (Rosa, 6/out/2026: as respostas não ficam por ordem da
@@ -3863,7 +3960,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Medidas seletivas (2) ou adicionais (3): as mesmas perguntas, mais fáceis de ler.
   const simples = (aluno.nivelMedidas || 1) >= 2;
   // Um exemplo concreto de hoje (opcional).
-  const [exemplos, setExemplos] = useState<Record<string, string>>({});
+  const [exemplos, setExemplos] = useState<Record<string, string>>(ini?.exemplos || {});
   // Escrever é opcional (Rosa, set/2026): o aluno escolhe; o exemplo ajuda, mas não obriga.
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
@@ -3874,10 +3971,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // verificada à entrada e os registos do KitchenFlow marca-os o professor,
   // pelo relatório do KitchenFlow (Rosa, set/2026).
   const semRegistos = true;
-  const [tecEvento, setTecEvento] = useState<number | null>(null);
+  const [tecEvento, setTecEvento] = useState<number | null>(ini?.tecEvento ?? null);
   /** O que o aluno fez, quando não teve oportunidade em nenhuma técnica. */
-  const [outraTarefa, setOutraTarefa] = useState('');
-  const [tecMenosBem, setTecMenosBem] = useState('');
+  const [outraTarefa, setOutraTarefa] = useState(ini?.outraTarefa || '');
+  const [tecMenosBem, setTecMenosBem] = useState(ini?.tecMenosBem || '');
   const tecEventoFeito = !ehEvento || tecEvento !== null;
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
   // O Consciente e o Criativo têm uma pergunta do dia, igual para a turma toda.
@@ -3885,11 +3982,35 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // pergunta de sempre; sozinho na cozinha, a do espaço e do material que
   // partilha; sozinho fora da cozinha (visita, sala) não se pergunta.
   const clNaoSePergunta = regras.clNaoSePergunta;
-  const [triagem, setTriagem] = useState<Triagem5C>(() => ({
-    ...(!partes.atitudes ? { naoPerguntado: true } : {}),
-    cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
-    ...(regras.clSempre ? { clId: CL_SEMPRE.id } : regras.clAula ? { clId: CL_AULA.id } : {}),
-    coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
+  const [triagem, setTriagem] = useState<Triagem5C>(() => {
+    const base: Triagem5C = {
+      ...(!partes.atitudes ? { naoPerguntado: true } : {}),
+      cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
+      ...(regras.clSempre ? { clId: CL_SEMPRE.id } : regras.clAula ? { clId: CL_AULA.id } : {}),
+      coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) };
+    // O que já respondeu conta, se a pergunta for a mesma (ou se chegou a
+    // ela depois de «não aconteceu» na de hoje). Pergunta nova: responde.
+    const t = ini?.triagem;
+    if (!t || !partes.atitudes) return base;
+    const out: any = { ...base, problema: t.problema || '' };
+    for (const k of ['cl', 'cr', 'co'] as const) {
+      const idK = (k + 'Id') as 'clId' | 'crId' | 'coId';
+      const mesma = (t as any)[idK] === (base as any)[idK] || (t.semAntes?.[k] || []).includes((base as any)[idK]);
+      if (!mesma || (t as any)[k] == null || (base as any)[k] === 'sem') continue;
+      out[k] = (t as any)[k]; out[idK] = (t as any)[idK];
+      if (t.semAntes?.[k]) out.semAntes = { ...(out.semAntes || {}), [k]: t.semAntes[k] };
+    }
+    return out;
+  });
+  // Guarda o que já respondeu, a cada resposta (e o passo em que está).
+  const passoAtualRef = React.useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (submetido) return;
+    const estado: EstadoDaAutoavaliacao = { temaEscolhido, apresentacaoOral, obsColega, nivelHaccp, notasMicro, atitudeEscolhida, respAti,
+      atitudeApanhar, respPres, compromisso, exemplos, tecEvento, outraTarefa, tecMenosBem, triagem, passoId: passoAtualRef.current };
+    try { localStorage.setItem(chaveRascunhoAuto(plano.id, aluno.id), JSON.stringify({ em: new Date().toISOString(), estado })); } catch { /* sem espaço */ }
+  }, [temaEscolhido, apresentacaoOral, obsColega, nivelHaccp, notasMicro, atitudeEscolhida, respAti, atitudeApanhar, respPres,
+    compromisso, exemplos, tecEvento, outraTarefa, tecMenosBem, triagem, passoIdx, submetido]);
   // As perguntas com o plano do aluno lá dentro: o prato, o guião, o tema e o
   // que fez noutras aulas (Rosa, 12/out/2026: «Vieste preparado como?»).
   const temaTitulo = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo.titulo;
@@ -4003,6 +4124,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
       { ...triagem, textos: textosTriagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
+    // A resposta enviada fica como ponto de partida, se tiver de responder outra vez.
+    try {
+      localStorage.removeItem(chaveRascunhoAuto(plano.id, aluno.id));
+      localStorage.setItem(chaveUltimaAuto(plano.id, aluno.id), JSON.stringify({ em: agora, estado: { temaEscolhido, apresentacaoOral, obsColega,
+        nivelHaccp, notasMicro, atitudeEscolhida, respAti, atitudeApanhar, respPres, compromisso, exemplos, tecEvento, outraTarefa, tecMenosBem, triagem } }));
+    } catch { /* sem espaço */ }
     setSubmetido(true); setModalConfirmar(false); onConcluido();
   }
 
@@ -4367,25 +4494,37 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       .map(chave => ({ id: 'tri_' + chave, tipo: 'triagem' as const, chave })),
     { id: 'rever', tipo: 'rever' as const },
   ];
-  const idx = Math.min(passoIdx, passos.length - 1);
-  const passo = passos[idx];
-  const nPerguntas = passos.length - 1;
-  const podeAvancar =
-    passo.tipo === 'presenca' ? presCerta(passo.atiId!)
-    : passo.tipo === 'compromisso' ? !!compromisso
-    : passo.tipo === 'oral' ? apresentacaoOral != null
-    : passo.tipo === 'tema' ? temaEscolhido != null
-    : passo.tipo === 'colega' ? colegaOk
-    : passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
-    : passo.tipo === 'haccp' ? nivelHaccp !== null
-    : passo.tipo === 'atiAula' ? atiOk(passo.atiId!)
-    : passo.tipo === 'tecEvento' ? tecEventoFeito
-    : passo.tipo === 'atitude' ? (atitudeObrigatoria ? atitudeRespondida
+  /** Este passo já está respondido? */
+  const passoCompleto = (p: Passo): boolean =>
+    p.tipo === 'presenca' ? presCerta(p.atiId!)
+    : p.tipo === 'compromisso' ? !!compromisso
+    : p.tipo === 'oral' ? apresentacaoOral != null
+    : p.tipo === 'tema' ? temaEscolhido != null
+    : p.tipo === 'colega' ? colegaOk
+    : p.tipo === 'comp' ? !!notasMicro[p.comp!.id]
+    : p.tipo === 'haccp' ? nivelHaccp !== null
+    : p.tipo === 'atiAula' ? atiOk(p.atiId!)
+    : p.tipo === 'tecEvento' ? tecEventoFeito
+    : p.tipo === 'atitude' ? (atitudeObrigatoria ? atitudeRespondida
       : (!atitudeEscolhida || atiOk(atitudeEscolhida)))
-    : passo.tipo === 'apanhar' ? (!atitudeApanhar || atiOk(atitudeApanhar))
-    : passo.tipo === 'outra' ? outraTarefaOk
-    : passo.tipo === 'triagem' ? triagemFeita(passo.chave!)
+    : p.tipo === 'apanhar' ? (!atitudeApanhar || atiOk(atitudeApanhar))
+    : p.tipo === 'outra' ? outraTarefaOk
+    : p.tipo === 'triagem' ? triagemFeita(p.chave!)
     : true;
+  // Abre no passo em que estava; a responder outra vez, no primeiro que é
+  // novo (o que já tinha respondido fica); tudo respondido: no «Rever».
+  const posicaoInicial = (): number => {
+    if (!inicio) return 0;
+    const i = inicio.deOnde === 'rascunho' && inicio.estado.passoId ? passos.findIndex(p => p.id === inicio.estado.passoId) : -1;
+    if (i >= 0) return i;
+    const j = passos.findIndex(p => p.tipo !== 'rever' && !passoCompleto(p));
+    return j >= 0 ? j : passos.length - 1;
+  };
+  const idx = Math.min(passoIdx < 0 ? posicaoInicial() : passoIdx, passos.length - 1);
+  const passo = passos[idx];
+  passoAtualRef.current = passo?.id;
+  const nPerguntas = passos.length - 1;
+  const podeAvancar = passoCompleto(passo);
   const irPara = (i: number) => setPassoIdx(Math.max(0, Math.min(i, passos.length - 1)));
   const tituloPasso = (p: Passo) =>
     p.tipo === 'presenca' ? 'Estiveste só parte da aula'
@@ -4649,7 +4788,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       </div>
       <button onClick={() => setAberto(true)} style={{ width:'100%', minHeight:54, borderRadius:12, border:'none',
         background:V, color:'#fff', fontSize:17, fontWeight:700, fontFamily:'inherit', cursor:'pointer' }}>
-        {passoIdx > 0 ? 'Continuar a autoavaliação' : 'Começar a autoavaliação'}
+        {idx > 0 ? 'Continuar a autoavaliação' : 'Começar a autoavaliação'}
       </button>
     </div>
   );

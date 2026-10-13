@@ -442,6 +442,8 @@ const VAO_DUAS_VEZES = new Set(['presenca', 'selecao', 'avaliacao', 'grupo_membr
 // pacote: o aluno submete e fecha a aplicação, e o que estava na fila
 // perdia-se (Rosa, set/2026).
 const SAEM_LOGO = new Set(['selecao', 'avaliacao_par']);
+/** O plano à espera de sair, por plano: segue sempre a versão mais recente. */
+const planosAEnviar = new Map<string, Record<string, unknown>>();
 
 // As validações, as autoavaliações, as avaliações e as presenças passam à
 // frente do resto (as notas da turma, a tabela de preços…), mas continuam em
@@ -458,6 +460,26 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>,
     setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
   }
   const corpo = { tipo, ...dados };
+  // O plano vai à frente de tudo, e só a versão mais recente: o professor
+  // muda uma coisa e o aluno tem de a receber logo (Rosa, 13/out/2026). Ia
+  // na fila normal, atrás das notas da turma; e dez cliques eram dez envios.
+  if (tipo === 'plano' && url === SHEETS_ECL_URL) {
+    const id = String((dados as any)?.plano?.id || (dados as any)?.id || '');
+    if (id) {
+      const jaNaFila = planosAEnviar.has(id);
+      planosAEnviar.set(id, corpo);
+      if (jaNaFila) return Promise.resolve();
+      return new Promise<void>(resolve => {
+        (modoFundo ? filaFundo : filaUrgente).push(async () => {
+          const ultimo = planosAEnviar.get(id);
+          planosAEnviar.delete(id);
+          if (ultimo) await postar(url, ultimo);
+          resolve();
+        });
+        correrFila();
+      });
+    }
+  }
   if (!repetida && !modoFundo && SAEM_LOGO.has(tipo)) return postar(url, corpo);
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
@@ -1319,6 +1341,7 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarNotasDaTurma(turmaId);
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') fixarPerguntas5CEmFalta(turmaId);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -2754,6 +2777,23 @@ export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false
     .filter(p => p.turmaId === turmaId)
     .filter(p => incluirArquivados || p.estado !== 'arquivado')
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+}
+
+/**
+ * Os planos gravados antes de a pergunta do Consciente e do Criativo ficar
+ * fixada (rotacao5C) calculam-na pela posição entre os planos da turma: criar,
+ * apagar ou arquivar outro plano mudava as perguntas dessas aulas, a meio das
+ * autoavaliações (auditoria de 13/out/2026: 5 de 7 aulas recentes). No
+ * aparelho do professor, fixa-se a que está agora, nas aulas das últimas 3
+ * semanas e nas que vêm. Uma vez só por plano.
+ */
+export function fixarPerguntas5CEmFalta(turmaId: string): number {
+  const desde = new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10);
+  const porFixar = getPlanosAula().filter((p: any) => p.turmaId === turmaId && !p.rotacao5C && !p.tipoEvento
+    && p.estado !== 'arquivado' && String(p.data || '').slice(0, 10) >= desde);
+  if (!porFixar.length) return 0;
+  emSegundoPlano(() => porFixar.forEach(p => { try { addOrUpdatePlanoAula(p); } catch (e) { console.error(e); } }));
+  return porFixar.length;
 }
 
 export function addOrUpdatePlanoAula(p: PlanoAula): void {

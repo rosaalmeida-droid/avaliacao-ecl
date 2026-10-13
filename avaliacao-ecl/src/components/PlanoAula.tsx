@@ -1717,7 +1717,10 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               As fichas, o guião e a requisição juntam-se no plano, no campo «Fichas, guião e requisição».
             </div>
           )}
-          <SumarioAula key={alvo.id + String((alvo as any).atualizadoEm || '')} plano={alvo} onGuardado={(np) => aoMudarPlano(np as any)} />
+          {/* Refaz-se só quando o sumário guardado muda: outra gravação do plano
+              (confirmar presenças, por exemplo) apagava o que o professor
+              estava a escrever (auditoria de 13/out/2026). */}
+          <SumarioAula key={alvo.id + '|' + String((alvo as any).sumario || '')} plano={alvo} onGuardado={(np) => aoMudarPlano(np as any)} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button className="btn btn-secondary" onClick={() => setPasso(4)} style={{ flex: 1 }}>← Anterior</button>
             <button className="btn btn-primary" onClick={() => setPasso(6)} style={{ flex: 2, fontSize: 15, padding: '13px' }}>Seguinte →</button>

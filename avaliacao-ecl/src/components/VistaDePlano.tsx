@@ -1786,15 +1786,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>Confirme o plano antes de finalizar</div>
                 <EstadoDoPlano plano={atual} mudancas={finalizar.mud} />
                 {finalizar.obrig && (
-                  <div style={{ fontSize: 13.5, background: '#eef4eb', color: '#2d4a22', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
-                    Mudaste aquilo a que os alunos respondem. As respostas que {finalizar.responderam === 1 ? 'o aluno já deu continuam' : `os ${finalizar.responderam} alunos já deram continuam`} a
-                    contar e a aparecer para validar: não têm de responder outra vez.
+                  <div style={{ fontSize: 13.5, background: '#fdf0ef', color: '#8e2418', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
+                    Mudaste aquilo a que os alunos respondem. {finalizar.responderam === 1 ? 'O aluno que já respondeu responde' : `Os ${finalizar.responderam} alunos que já responderam respondem`} só
+                    ao que é novo (o resto fica como responderam). A nota que já deste conta até validares a nova.
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
                   <button onClick={() => {
-                      // (13/out/2026) Mudar o plano já não obriga a turma a responder outra vez.
-                      const novo = enviarAlteracoesAosAlunos(plano.id, false, true);
+                      // (13/out/2026) Só pede outra vez se mudaram as perguntas.
+                      const novo = enviarAlteracoesAosAlunos(plano.id, finalizar.obrig, true);
                       if (novo) onPlanoActualizado(novo);
                       setFinalizar({ ...finalizar, fase: 'feito' });
                     }} style={btn('var(--copper)', true)}>Está certo, finalizar</button>
