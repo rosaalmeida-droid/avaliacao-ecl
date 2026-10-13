@@ -39,6 +39,8 @@ export const MANUAIS_UFCD: Manual[] = [
   { ficheiro: 'UFCD14', titulo: 'Preparar e confecionar carnes, aves, caça e acompanhamentos', ano: 2, modulos: ['UFCD 14', 'UC02003'] },
   { ficheiro: 'UFCD15', titulo: 'Preparar e confecionar peixes, mariscos e acompanhamentos', ano: 2, modulos: ['UFCD 15', 'UC02004'] },
   { ficheiro: 'UFCD20', titulo: 'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria', ano: 2, modulos: ['UFCD 20', 'UC02005'] },
+  { ficheiro: 'UFCD21-1', titulo: 'Pastelaria de sobremesa: sobremesas quentes e frias', ano: 2, modulos: ['UFCD 21.1'] },
+  { ficheiro: 'UFCD21-2', titulo: 'Pastelaria de sobremesa: gelados e sorvetes', ano: 2, modulos: ['UFCD 21.2'] },
   { ficheiro: 'UFCD16', titulo: 'Planeamento e confeção de cozinha tradicional portuguesa', ano: 3, modulos: ['UFCD 16'] },
   { ficheiro: 'UFCD22-1', titulo: 'Pastelaria tradicional portuguesa', ano: 3, modulos: ['UFCD 22.1'] },
   { ficheiro: 'UFCD22-2', titulo: 'Doçaria conventual portuguesa', ano: 3, modulos: ['UFCD 22.2'] },
@@ -77,5 +79,5 @@ export const manualDoModulo = (moduloId: string): Manual | undefined =>
 export const ehManualUC = (m: Manual) => MANUAIS_UC_1ANO.includes(m) || MANUAIS_UC.includes(m);
 
 /** Módulos de cozinha/pastelaria do cronograma sem manual (para dizer à Rosa). */
-export const SEM_MANUAL = ['UC03593', 'UFCD 21.1', 'UFCD 21.2'];
+export const SEM_MANUAL = ['UC03593'];
 export { anoDaTurma };
