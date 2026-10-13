@@ -200,6 +200,40 @@ export const PCC_NO_KF: { re: RegExp; modulo: string; tabela: string; nome: stri
 ];
 export const pccNoKF = (texto: string) => PCC_NO_KF.find(x => x.re.test(texto || ''));
 
+/** O registo que um passo da ficha pede ao KitchenFlow (ou nenhum). */
+export interface RegistoDoPasso { modulo: string; tabela: string; nome: string; onde?: 'frigorifico' | 'congelador' | 'abatedor' }
+const semAcentos = (t: string) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+/**
+ * (13/out/2026) Só há botão quando o passo pede mesmo um registo. Antes bastava
+ * uma palavra: «conservação da manteiga», «fora de refrigeração» ou «refrigerar
+ * se a espera for prolongada» abriam a Conservação, e um aluno registou as
+ * bolachas como matéria-prima. Guardar no frio só conta com o frio indicado
+ * (uma temperatura de frio, ou o frigorífico, o congelador ou o abatedor), e
+ * não quando o passo fala de verificar embalagens e validades ou de evitar.
+ */
+export function registoDoPasso(p: { haccp?: string; temperatura?: string; descricao?: string; forcar?: 'testemunho' }): RegistoDoPasso | null {
+  const porModulo = (m: string) => PCC_NO_KF.find(x => x.modulo === m)!;
+  if (p.forcar === 'testemunho') return porModulo('testemunho');
+  const h = semAcentos(p.haccp || '');
+  if (!h) return null;
+  const tudo = semAcentos(`${p.haccp || ''} ${p.temperatura || ''} ${p.descricao || ''}`);
+  if (/testemunho/.test(h)) return porModulo('testemunho');
+  if (/regenera|reaquec|cook.?chill/.test(h)) return porModulo('regeneracao');
+  if (/fritura|fritadeira/.test(tudo) && /oleo/.test(tudo)) return porModulo('oleos');
+  if (/banho.?maria|buffet|manter.{0,12}quente|temperatura de servico/.test(h)) return porModulo('servico');
+  if (/desinfe\w*\s+(os |as |o |a )?(legumes|hort|fruta|alface|vegeta|ervas)|consumo em cru|hortofrut|horticola/.test(h)) return porModulo('desinfecao');
+  // Guardar no frio.
+  if (/integridade|validade|embalage|rececao|fora de refrigera|minimiz|evitar que derreta/.test(h)) return null;
+  if (!/refrigera|conserva|congela|abatedor|arrefec|frigorific/.test(h)) return null;
+  const graus = [...tudo.matchAll(/(-?\d+(?:[.,]\d+)?)\s*(?:a|-|–|ate)?\s*(-?\d+(?:[.,]\d+)?)?\s*°?\s*c\b/g)]
+    .flatMap(m => [m[1], m[2]].filter(Boolean).map(x => Number(String(x).replace(',', '.'))));
+  const frio = graus.some(g => g <= 8);
+  // «Refrigerar se a espera for prolongada» sozinho não chega: tem de haver o frio ou o sítio.
+  const sitio = /congelador|congela|-18/.test(tudo) ? 'congelador' : /abatedor/.test(tudo) ? 'abatedor' : /frigorific/.test(tudo) ? 'frigorifico' : null;
+  if (!frio && !sitio) return null;
+  return { ...porModulo('conservacao'), onde: (sitio || 'frigorifico') as RegistoDoPasso['onde'] };
+}
+
 /**
  * Alguém do grupo já fez hoje este registo para este prato? (Rosa, set/2026:
  * quatro alunos na mesma ficha não registam o mesmo PCC quatro vezes.)

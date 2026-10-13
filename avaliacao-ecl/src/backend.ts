@@ -158,8 +158,18 @@ export function abrirKitchenFlow(modulo?: string, user?: {
   turma: string; numero?: number; pin?: string; tipo?: string;
   ucId?: string; ucNome?: string; pratos?: string[];
   planoHoraInicio?: string; planoHoraFim?: string; planoData?: string;
+  /** Veio de um passo da ficha técnica: o KitchenFlow abre nas perguntas, com o
+   *  prato preenchido, e diz o que a ficha pede (13/out/2026). */
+  daFicha?: { passo?: string; texto?: string; temperatura?: string; onde?: string };
 }): void {
   const params = new URLSearchParams();
+  if (user?.daFicha) {
+    params.set('origem', 'ficha');
+    if (user.daFicha.passo) params.set('passo', user.daFicha.passo);
+    if (user.daFicha.texto) params.set('pcc', user.daFicha.texto);
+    if (user.daFicha.temperatura) params.set('tempFicha', user.daFicha.temperatura);
+    if (user.daFicha.onde) params.set('onde', user.daFicha.onde);
+  }
   if (modulo) params.set('mod', modulo);
   if (user?.turma) params.set('turma', user.turma);
   if (user?.numero) params.set('num', String(user.numero));

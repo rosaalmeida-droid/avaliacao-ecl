@@ -3461,11 +3461,15 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                             n.has(i)?n.delete(i):n.add(i);
                             guardar(f.id,undefined,n);
                           }} />
+                        <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:14, textDecoration:marcado?'line-through':'none', lineHeight:1.4 }}>
                           <strong>{p.num}.</strong> {p.descricao}
                           {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:13 }}>🌡 {p.temperatura}</span>}
                           {p.haccp&&<div style={{ color:T.danger, fontSize:13, marginTop:2 }}>⚠️ {p.haccp}</div>}
-                          {p.haccp && <BotaoPCC texto={p.haccp} prato={f.nomePrato || ''} aluno={aluno} plano={plano} />}
+                        </div>
+                          {/* Fora do texto riscado: o registo continua a ler-se depois de marcar o passo. */}
+                          {p.haccp && <BotaoPCC texto={p.haccp} prato={f.nomePrato || ''} aluno={aluno} plano={plano}
+                            passo={p.num} temperatura={p.temperatura} descricao={p.descricao} />}
                         </div>
                       </label>
                     );
