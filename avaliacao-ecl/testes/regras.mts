@@ -375,5 +375,17 @@ regra('60. Mudar o plano não obriga a responder outra vez; cancelar o pedido de
   });
 }
 
+regra('62. O espaço do aparelho mede-se, e a lista do que falta enviar não se perde quando enche', () => {
+  localStorage.setItem('ecl_grande', 'x'.repeat(4_100_000));
+  igual(b.espacoOcupado().fracao >= 0.8, true, 'acima dos 80%:');
+  const ls: any = localStorage, antes = ls.setItem;
+  ls.setItem = (k: string, v: string) => { if (k === 'ecl_por_confirmar') throw new Error('QuotaExceededError'); return antes.call(ls, k, v); };
+  try {
+    b.porConfirmar('validacao', 'v_cheio', 'validação', 't');
+    igual(b.estadoDaEspera().total, 1, 'na lista (na memória):');
+    igual(b.espacoOcupado().cheio, true, 'aviso de cheio:');
+  } finally { ls.setItem = antes; }
+});
+
 console.log(`\n${total - falhas} de ${total} regras certas.`);
 process.exit(falhas ? 1 : 0);

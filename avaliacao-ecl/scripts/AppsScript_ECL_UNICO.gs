@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v27.4';
+var VERSAO = 'ECL único v27.5';
 
 // ══════════════════════════════════════════════════════════════
 // (v26.1) PARA EXECUTAR À MÃO — os primeiros da lista «Executar»,
@@ -1112,8 +1112,13 @@ function normalizarAvaliacao(d) {
   return d;
 }
 
+/** (v27.5) Um número que pode ser 0: o 0 fica 0 (com «x || ''» ficava vazio). */
+function num0_(x) { return x === 0 || x === '0' ? 0 : (x === undefined || x === null ? '' : x); }
+
 function normalizarValidacao(d) {
-  d.notaMedia20 = d.notaMedia20 || d.nota_media_0_20 || '';
+  // (v27.5) A nota 0 (uma falta) ficava vazia: no Sheets a aula parecia por
+  // validar e a aplicação reenviava a validação sem parar (Rosa, 13/out/2026).
+  d.notaMedia20 = num0_(d.notaMedia20) !== '' ? num0_(d.notaMedia20) : num0_(d.nota_media_0_20);
   d.turmaId = d.turmaId || d.turma || '';
   return d;
 }
@@ -1479,8 +1484,8 @@ function abrirNotasDaValidacao(v) {
       id: (v.id || '') + '_' + (n.competenciaId || i),
       validacaoId: v.id || '', alunoId: v.alunoId || '',
       turmaId: v.turmaId || v.turma || '', planoAulaId: v.planoAulaId || '',
-      competenciaId: n.competenciaId || '', notaAluno: n.notaAluno || '',
-      notaProfessor: n.notaProfessor || '', notaFinal: n.notaFinal || n.nota || '',
+      competenciaId: n.competenciaId || '', notaAluno: num0_(n.notaAluno),
+      notaProfessor: num0_(n.notaProfessor), notaFinal: num0_(n.notaFinal) !== '' ? num0_(n.notaFinal) : num0_(n.nota),
       validadoEm: v.validadoEm || ''
     };
   });

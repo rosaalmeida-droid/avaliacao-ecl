@@ -215,6 +215,23 @@ let semEspacoNoAparelho = false;
 /** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
 export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
 
+/** O espaço que a aplicação ocupa neste aparelho. O navegador dá a cada site
+ *  cerca de 5 milhões de letras, seja qual for o espaço livre do aparelho: o
+ *  tablet do professor guarda todas as turmas e enche ao fim de alguns meses
+ *  (13/out/2026: 2,8 milhões ao fim de um mês). Quando enche, o que não coube
+ *  só fica enquanto a aplicação estiver aberta. */
+export const LIMITE_DO_ARMAZENAMENTO = 5_000_000;
+export function espacoOcupado(): { letras: number; fracao: number; cheio: boolean } {
+  let letras = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      letras += k.length + (localStorage.getItem(k) || '').length;
+    }
+  } catch { /* sem armazenamento */ }
+  return { letras, fracao: letras / LIMITE_DO_ARMAZENAMENTO, cheio: semEspacoNoAparelho };
+}
+
 // Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
 // GMT+0100 (…)», ou «Sat Dec 30 1899 08:30:00 …» numa hora) voltam a
 // «2026-09-05» e «08:30». Vale para todos os dados guardados (Rosa, 5/out/2026).
@@ -9237,10 +9254,17 @@ export interface PorConfirmar {
 }
 
 function espera(): PorConfirmar[] {
-  try { return JSON.parse(localStorage.getItem(KEY_ESPERA) || '[]'); } catch { return []; }
+  try { return JSON.parse(naMemoria[KEY_ESPERA] ?? localStorage.getItem(KEY_ESPERA) ?? '[]'); } catch { return []; }
 }
 function guardarEspera(l: PorConfirmar[]): void {
-  try { localStorage.setItem(KEY_ESPERA, JSON.stringify(l.slice(-300))); } catch { /* */ }
+  // Sem espaço no aparelho, a lista do que falta enviar não pode perder-se:
+  // liberta o que já não serve e, se ainda assim não couber, fica na memória
+  // (e o professor vê o aviso de armazenamento cheio).
+  const texto = JSON.stringify(l.slice(-300));
+  try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; return; } catch { /* sem espaço */ }
+  libertarEspaco();
+  try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; }
+  catch { naMemoria[KEY_ESPERA] = texto; semEspacoNoAparelho = true; }
 }
 
 /** «validação de Diogo Neves, aula de 02/10» — para o professor saber o que ficou por enviar. */

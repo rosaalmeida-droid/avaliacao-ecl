@@ -105,3 +105,6 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 63. **As perguntas do tema mudam com a fase do trabalho** (investigação, desenvolvimento, apresentação, colega) e, na mesma fase, alternam entre duas versões de aula para aula.
 64. **Atitudes a consolidar**: se a última nota que o professor deu a uma atitude, em qualquer aula, ficou abaixo de 3, ela entra na escolha do aluno, marcada «Para melhorar» (no máximo duas).
 65. **A base de dados lê menos**: o que já chega pela escuta não se volta a pedir, sem escuta pede-se no máximo de 5 em 5 minutos, e um aparelho novo só lê as últimas 3 semanas das coleções grandes (o resto está no Sheets). Quando o limite gratuito do dia se esgota («Quota exceeded»), a aplicação deixa de insistir durante uma hora e tudo vai e vem pelo Sheets.
+66. **O professor é avisado quando o espaço da aplicação no aparelho passa dos 80%** (e quando enche). O navegador dá a cada site um espaço fixo; libertar fotografias ou aplicações não ajuda. A lista do que falta enviar nunca se perde: se não couber, fica na memória enquanto a aplicação está aberta.
+67. **No Sheets (script v27.5), a nota 0 fica 0** (antes ficava vazia): a validação de uma falta aparece com 0, como na aplicação, e deixa de parecer por validar.
+

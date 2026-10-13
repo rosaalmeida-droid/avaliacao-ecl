@@ -1544,7 +1544,8 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           <div style={{ margin: '0 0 12px', padding: '12px 14px', borderRadius: 12, background: '#fdf0ef', border: '1.5px solid #c0392b',
             color: '#8e2418', fontSize: 14, lineHeight: 1.5 }}>
             <b>Este telemóvel não tem espaço para guardar a aplicação.</b> Podes ver as aulas agora, mas, quando fechares a
-            aplicação, terão de ser descarregadas outra vez. Liberta espaço no telemóvel (fotografias, vídeos, aplicações) ou usa outro navegador.
+            aplicação, terão de ser descarregadas outra vez. O navegador dá a cada site um espaço fixo (libertar fotografias
+            não ajuda): avisa o professor.
           </div>
         )}
         {aba === 'inicio' && !destino && aluno.turmaId === '3º ACP' && <AgradecimentoTurmaPiloto alunoId={aluno.id} />}
