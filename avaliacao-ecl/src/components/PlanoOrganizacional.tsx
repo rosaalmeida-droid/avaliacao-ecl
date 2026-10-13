@@ -9,6 +9,7 @@
 //   autoavaliação), a lista do que tem de fazer, para não se esquecer de
 //   nada, com o sítio do KitchenFlow onde regista.
 import { cozinhamNaAula } from '../contextoAula';
+import { textoParaODia, jaPassou } from '../diaDaAula';
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import { getSessaoAula, guardarColaboracao, colaboracoesDaAula } from '../backend';
@@ -151,7 +152,7 @@ export function QuadroOrganizacional({ plano, alunoId, modo, onPlanoMudou }: {
         const ajudas = new Map(colaboracoesDaAula(plano.id).map(c => [c.alunoId, c.texto]));
         return (
           <div style={{ background: '#fff', border: '1px dashed #CFC6DB', borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 800 }}>Sem função hoje</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800 }}>{textoParaODia('Sem função hoje', plano)}</div>
             <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', lineHeight: 1.45, margin: '2px 0 6px' }}>
               Podem colaborar e ajudar os colegas, e dizer na aplicação o que fizeram.
             </div>
@@ -189,11 +190,11 @@ export function CartaoMinhaFuncao({ plano, alunoId, onVerQuadro }: {
     <div style={{ background: '#fff', borderRadius: 16, padding: '16px 17px', marginBottom: 12,
       border: `2px solid ${V}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: V }}>
-        A tua função hoje
+        {textoParaODia('A tua função hoje', plano)}
       </div>
       {funcoes.length === 0 ? (
         <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6, lineHeight: 1.4 }}>
-          Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.
+          {jaPassou(plano) ? 'Nesse dia não tiveste nenhuma função: podias colaborar e ajudar os colegas.' : 'Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.'}
         </div>
       ) : funcoes.map(f => (
         <div key={f.id} style={{ marginTop: 6 }}>
@@ -204,7 +205,7 @@ export function CartaoMinhaFuncao({ plano, alunoId, onVerQuadro }: {
       {substitui.length > 0 && (
         <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 10, background: '#FDF0E8', color: '#8A4E15',
           fontSize: 14, lineHeight: 1.45 }}>
-          Hoje substituis {[...new Set(substitui.map(l => nomeDoAluno(l.substituiu!)))].join(' e ')}.
+          {jaPassou(plano) ? 'Nesse dia substituíste' : 'Hoje substituis'} {[...new Set(substitui.map(l => nomeDoAluno(l.substituiu!)))].join(' e ')}.
         </div>
       )}
       {!funcoes.some(f => f.id === 'lider') && cozinhamNaAula(plano) && (
@@ -262,7 +263,7 @@ export function PassoMinhaFuncao({ plano, alunoId, momento, onConcluido, onAbrir
   if (funcoes.length === 0) return (
     <div>
       <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.3, marginBottom: 8 }}>
-        Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.
+        {jaPassou(plano) ? 'Nesse dia não tiveste nenhuma função: podias colaborar e ajudar os colegas.' : 'Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.'}
       </div>
       {momento === 'fim' ? (
         <>

@@ -19,16 +19,20 @@ export function diaDaAula(data: string, extenso = false): string {
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('pt-PT', extenso ? { weekday: 'long', day: 'numeric', month: 'long' } : { weekday: 'long', day: '2-digit', month: '2-digit' });
 }
+/** A aula ou atividade é de um dia que já passou. */
+export function jaPassou(plano: any): boolean {
+  const data = String(plano?.data || '').slice(0, 10);
+  return !!data && data < hojeLocalISO();
+}
 /** As perguntas dizem «Hoje»: numa aula ou atividade que já passou, dizem o dia. */
 export function textoParaODia(t: string, plano: any): string {
-  if (!t || !plano?.data || !/hoje/i.test(t)) return t;
+  if (!t || !/hoje/i.test(t) || !jaPassou(plano)) return t;
   const data = String(plano.data).slice(0, 10);
-  if (data >= hojeLocalISO()) return t;
   const qual = eAtividade(plano) ? 'atividade' : 'aula';
   const dia = diaDaAula(data);
   return t
     .replace(/^Hoje,?\s+/, `Na ${qual} de ${dia}, `)
-    .replace(/\b(a|da|na) (aula|atividade) de hoje\b/g, (_m, art) => `${art} ${qual} de ${dia}`)
+    .replace(/\b(a|da|na) (aula|atividade) de hoje\b/gi, (_m, art) => `${art} ${qual} de ${dia}`)
     .replace(/\bde hoje\b/g, 'desse dia')
     .replace(/\bHoje\b/g, 'Nesse dia')
     .replace(/\bhoje\b/g, 'nesse dia');

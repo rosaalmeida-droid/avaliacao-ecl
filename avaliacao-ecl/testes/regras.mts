@@ -414,6 +414,12 @@ regra('62. O espaço do aparelho mede-se, e a lista do que falta enviar não se 
     igual(dd.textoParaODia('Em que atitude trabalhaste hoje?', passada), 'Em que atitude trabalhaste nesse dia?');
     igual(dd.textoParaODia('Depois da aula de hoje, já sabes isto?', aula), 'Depois da aula de segunda-feira, 12/10, já sabes isto?');
     igual(dd.textoParaODia('Hoje, quando acabaste a tua tarefa, o que fizeste?', { data: hoje }), 'Hoje, quando acabaste a tua tarefa, o que fizeste?', 'hoje fica:');
+    // Também fora das perguntas: o plano, a função e os avisos.
+    igual(dd.textoParaODia('Quem faz o quê hoje', aula), 'Quem faz o quê nesse dia');
+    igual(dd.textoParaODia('A aula de hoje', aula), 'A aula de segunda-feira, 12/10');
+    igual(dd.textoParaODia('Hoje não aconteceu.', passada), 'Na atividade de sábado, 10/10, não aconteceu.');
+    igual(dd.textoParaODia('O trabalho de hoje', aula), 'O trabalho desse dia');
+    igual([dd.jaPassou(aula), dd.jaPassou({ data: hoje }), dd.jaPassou({})], [true, false, false]);
     const f = dd.faixaDaAula(passada);
     igual([f.atividade, f.titulo, f.linha.startsWith('sábado, 10 de outubro · 09:00–18:00')], [true, 'Catering', true]);
   });

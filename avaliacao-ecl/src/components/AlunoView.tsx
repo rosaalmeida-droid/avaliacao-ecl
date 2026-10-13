@@ -87,7 +87,7 @@ import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { notaDaUCComDecimas } from '../pautaUC';
 import { pedeFardaEHigiene, cozinhamNaAula, fardaIncompletaNaPresenca } from '../contextoAula';
-import { hojeLocalISO, eAtividade, textoParaODia, faixaDaAula } from '../diaDaAula';
+import { hojeLocalISO, eAtividade, textoParaODia, faixaDaAula, jaPassou } from '../diaDaAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
@@ -1457,7 +1457,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               {comFarda != null && (
                 <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fdf0ef', border:'1.5px solid #c0392b',
                   color:'#7a1f14', fontSize:15, lineHeight:1.5 }}>
-                  <b>Não tinhas a farda completa: as técnicas de hoje contaram 0.</b> Com a farda completa, a tua nota
+                  <b>{textoParaODia('Não tinhas a farda completa: as técnicas de hoje contaram 0.', planoAtivo)}</b> Com a farda completa, a tua nota
                   desta aula seria <b>{v20(comFarda)}/20</b>, e não {v20(nota20)}/20. O que fizeste nas técnicas fica no teu percurso.
                 </div>
               )}
@@ -1469,7 +1469,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             return c && c.cumpriu === false ? (
               <div style={{ margin:'8px 16px 0', padding:'12px 16px', borderRadius:14, background:'#fff7e6', border:'1.5px solid #b5651d',
                 color:'#7a4310', fontSize:15, lineHeight:1.5 }}>
-                <b>⚠ Na aula de {c.data.split('-').reverse().slice(0, 2).join('/')} comprometeste-te a: «{textoCompromisso(c.compromisso)}»</b> Hoje não aconteceu.
+                <b>⚠ Na aula de {c.data.split('-').reverse().slice(0, 2).join('/')} comprometeste-te a: «{textoCompromisso(c.compromisso)}»</b> {textoParaODia('Hoje não aconteceu.', planoAtivo)}
                 O teu grupo e o professor contavam com isso.
               </div>
             ) : null;
@@ -2205,7 +2205,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
       if (temGuiao) { setGuiaoConcluido(true); _save('guia'); }
       setVerAqui(null); setSecAberta(antesDaAvaliacao());
     };
-    const titulosVer: Record<string, string> = { orientacao: 'O que vamos fazer', ficha: 'A ficha técnica', guia: 'O guião',
+    const titulosVer: Record<string, string> = { orientacao: jaPassou(plano) ? 'O que se fez nesse dia' : 'O que vamos fazer', ficha: 'A ficha técnica', guia: 'O guião',
       requisicao: 'A requisição', funcao_inicio: 'A tua função: início', funcao_fim: 'A tua função: fim', feito: 'O que já fizeste' };
     const colegasDe = (g: any) => (g?.membros || []).filter((m: any) => m.alunoId !== aluno.id)
       .map((m: any) => String(m.nomeAluno || '').split(/\s+/)[0]).filter(Boolean);
@@ -2425,7 +2425,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
         )}
         {verQuadro && (
           <EcraCheio titulo={`Plano organizacional · ${plano.titulo || 'aula'}`} onSair={() => setVerQuadro(false)}>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>Quem faz o quê hoje</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>{textoParaODia('Quem faz o quê hoje', plano)}</div>
             <QuadroOrganizacional plano={planoVivo} alunoId={aluno.id} modo="aluno" />
           </EcraCheio>
         )}
@@ -2644,7 +2644,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
       </div>
       {verQuadro && (
         <EcraCheio titulo={`Plano organizacional · ${plano.titulo || 'aula'}`} onSair={() => setVerQuadro(false)}>
-          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>Quem faz o quê hoje</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>{textoParaODia('Quem faz o quê hoje', plano)}</div>
           <QuadroOrganizacional plano={planoVivo} alunoId={aluno.id} modo="aluno" />
         </EcraCheio>
       )}
@@ -2677,7 +2677,7 @@ function OQueVaisResponder({ plano, fichas, aluno }: { plano: PlanoAula; fichas:
         </div>
       )}
       <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'#6B3FA0', marginBottom:4 }}>
-        No fim, vais responder a {ecras.length} pergunta{ecras.length === 1 ? '' : 's'}
+        {jaPassou(plano) ? 'Na autoavaliação respondes a' : 'No fim, vais responder a'} {ecras.length} pergunta{ecras.length === 1 ? '' : 's'}
       </div>
       <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginBottom:8, lineHeight:1.45 }}>
         Cada uma trabalha um dos teus 5 C: {cs.map(c => `${CINCO_C[c].sigla} ${CINCO_C[c].nome}`).join(' · ')}.
@@ -2774,7 +2774,8 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
       <div style={{ background:'#fff', borderRadius:16, padding:18, marginBottom:12,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
-          {fichas.length === 0 ? (cozinhamNaAula(plano) ? 'Sem fichas atribuídas' : 'O trabalho de hoje')
+          {fichas.length === 0 ? (cozinhamNaAula(plano) ? 'Sem fichas atribuídas' : textoParaODia('O trabalho de hoje', plano))
+            : jaPassou(plano) ? (fichas.length === 1 ? 'Nesse dia fizeste' : `Nesse dia fizeste ${fichas.length} fichas`)
             : fichas.length === 1 ? 'Hoje vais fazer' : `Hoje vais fazer ${fichas.length} fichas`}
         </div>
         {fichas.length === 0 ? (
@@ -2782,8 +2783,8 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
           // trabalho é o do sumário (auditoria 5/out/2026).
           <div style={{ fontSize:15.5, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.55, whiteSpace:'pre-wrap' }}>
             {cozinhamNaAula(plano)
-              ? 'O professor ainda não te atribuiu nenhuma ficha para esta aula. Pergunta-lhe o que vais trabalhar.'
-              : (sumarioDoPlano(plano, fichas) || 'O professor explica na aula o trabalho de hoje.')}
+              ? (jaPassou(plano) ? 'Nesta aula não tinhas nenhuma ficha atribuída.' : 'O professor ainda não te atribuiu nenhuma ficha para esta aula. Pergunta-lhe o que vais trabalhar.')
+              : (sumarioDoPlano(plano, fichas) || textoParaODia('O professor explica na aula o trabalho de hoje.', plano))}
           </div>
         ) : (
           fichas.map((f:any, n:number) => (
@@ -2808,7 +2809,7 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
         padding:'20px 18px', cursor:'pointer', fontFamily:'inherit',
         display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
       }}>
-        <span style={{ fontSize:20, fontWeight:700, color:'#fff' }}>Vamos começar</span>
+        <span style={{ fontSize:20, fontWeight:700, color:'#fff' }}>{jaPassou(plano) ? 'Continuar' : 'Vamos começar'}</span>
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff"
           strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M5 12h14M13 6l6 6-6 6" />
@@ -3051,10 +3052,10 @@ function SecaoEntrada({ aluno, plano, onConcluido, total, feitos, comGrupos, tem
     const semGrupoAinda = comGrupos && !temGrupo;
     return (
       <EcraDeCor cor={CORES_AULA.esperar} total={total} feitos={feitos}
-        titulo={semGrupoAinda ? 'Hoje trabalhas em grupo.' : 'Espera pelo professor.'}
+        titulo={semGrupoAinda ? textoParaODia('Hoje trabalhas em grupo.', plano) : 'Espera pelo professor.'}
         sub={semGrupoAinda
           ? <>O professor ainda está a formar os grupos. O teu aparece aqui sozinho. <b>Não precisas de fazer nada.</b></>
-          : comGrupos ? 'Este é o teu grupo de hoje. Quando o professor abrir a entrada, o botão acende-se.'
+          : comGrupos ? textoParaODia('Este é o teu grupo de hoje. Quando o professor abrir a entrada, o botão acende-se.', plano)
           : 'Quando o professor abrir a entrada, o botão acende-se. Isto atualiza-se sozinho.'}>
         <div style={{ marginTop:'auto' }}><BotaoDaAula desligado>Entrar na aula</BotaoDaAula></div>
       </EcraDeCor>
@@ -3368,8 +3369,8 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
       <div>
         {semCozinha ? (
           <div style={{ padding:'16px 4px', fontSize:15.5, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', marginBottom:6 }}>O trabalho de hoje</div>
-            {sumarioDoPlano(plano, fichas) || 'O professor explica na aula o trabalho de hoje.'}
+            <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', marginBottom:6 }}>{textoParaODia('O trabalho de hoje', plano)}</div>
+            {sumarioDoPlano(plano, fichas) || textoParaODia('O professor explica na aula o trabalho de hoje.', plano)}
           </div>
         ) : (
           <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
@@ -4768,7 +4769,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não sei' : 'Não sei explicar') : 'Não fiz')
         : fi >= 0 ? frasesDoItem(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
-      linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
+      linhasRever.push({ nome: D(p.comp!.nome), resposta, nota: v ? notaDoNivel(v) : null, passo: i });
     } else if (p.tipo === 'outra') {
       linhasRever.push({ nome: 'O que fizeste em vez das técnicas',
         resposta: outraTarefa.trim() || 'Por responder', nota: null, passo: i });
@@ -4892,7 +4893,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 {c.contexto}
               </div>
             )}
-            <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>{c.nome}</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>{D(c.nome)}</div>
             {c.descricao && (
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
                 {/* Numa preparação base (aparelho) diz-se sempre o que é: o sabayon,

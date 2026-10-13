@@ -13,6 +13,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Aluno, PlanoAula } from '../types';
 import { grupoDoAluno, estadosNaAula, getAlunos, getFichasProducao } from '../backend';
+import { textoParaODia } from '../diaDaAula';
 
 export const CORES_AULA = {
   esperar: '#F2C14E', entrar: '#E6F2E2', farda: '#FFFFFF', maos: '#DDEBF5',
@@ -85,7 +86,7 @@ export function ComandaDoGrupo({ plano, aluno, comGrupos, grande, vistos, linhaU
         )}
         {onVerFuncoes && (
           <button onClick={onVerFuncoes} style={{ marginTop: 6, padding: 0, border: 'none', background: 'none', color: '#6B3FA0',
-            fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Quem faz o quê hoje</button>
+            fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>{textoParaODia('Quem faz o quê hoje', plano)}</button>
         )}
       </div>
 
