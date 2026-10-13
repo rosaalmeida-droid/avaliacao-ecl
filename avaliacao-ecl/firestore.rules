@@ -16,5 +16,10 @@ service cloud.firestore {
                        'requisicoes', 'eventos', 'recuperacoes', 'evidencias',
                        'notasprodutos', 'fantasmas', 'configs', 'avisoscoord', 'ocorrencias'];
     }
+    // (13/out/2026) Os registos do KitchenFlow, na mesma base: cada telemóvel
+    // grava os seus e lê os do dia. Não se apagam (o registo oficial é o Sheets).
+    match /kitchenflow/{id} {
+      allow read, create, update: if request.auth != null;
+    }
   }
 }
