@@ -1,3 +1,5 @@
+// Primeiro de tudo: os dados grandes passam a ser guardados comprimidos (o tablet encheu).
+import './armazenamento';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';

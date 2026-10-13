@@ -11,5 +11,5 @@ Agora, com o PIN certo, o aluno entra na mesma: o PIN passa para esse telemóvel
 - Segurança: os PIN dos professores e da coordenação estão no código. A lista de alunos (com PIN) pode ser pedida ao Sheets por quem tiver o endereço. As regras do Firebase aceitam qualquer aparelho com a aplicação.
 - Partir os ficheiros enormes (backend.ts, AlunoView.tsx, ProfessorView.tsx, VistaDePlano.tsx), aos poucos.
 - **Banco novo de perguntas (docs/perguntas_novas.html, gerado por `npx tsx scripts/gerarPerguntasNovas.mts`)**: à espera da aprovação da Rosa. Ao ligá-lo, o Colaborativo novo tem um `cl03` («Dividir o trabalho») com o mesmo código da pergunta `cl03` que já está em uso («Participar e ajudar», CL_AULA): mudar os códigos do banco novo (e as chaves em perguntas5CMuitoSimples.ts) antes de ligar.
-- **Espaço no tablet do professor (13/out/2026)**: o navegador dá cerca de 5 milhões de letras por site; o tablet guarda todas as turmas e ia em ~2,8 milhões ao fim de um mês (quase tudo do 3.º ACP). Já há aviso aos 80%. Falta guardar as coleções grandes comprimidas (ou noutro armazenamento) antes de encher.
+- **Espaço no tablet do professor (13/out/2026) — resolvido**: os dados grandes guardam-se comprimidos (src/armazenamento.ts, regra 83). Se um dia voltar a encher, passar as coleções grandes para o IndexedDB.
 

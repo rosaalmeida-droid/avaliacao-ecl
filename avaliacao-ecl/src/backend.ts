@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import { bytesOcupados, LIMITE_EM_BYTES } from './armazenamento';
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA, type ContextoPerguntas5C } from './triagem5c';
@@ -211,25 +212,19 @@ const KEYS = {
 // não coube fica na memória enquanto a aplicação estiver aberta. Antes, a
 // gravação falhava em silêncio e o aluno ficava sem ver planos nenhuns.
 const naMemoria: Record<string, string> = {};
-let semEspacoNoAparelho = false;
-/** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
-export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
+/** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado):
+ *  há alguma coisa que só está na memória. Deixa de estar quando volta a caber. */
+export function aparelhoSemEspaco(): boolean { return Object.keys(naMemoria).length > 0; }
 
-/** O espaço que a aplicação ocupa neste aparelho. O navegador dá a cada site
- *  cerca de 5 milhões de letras, seja qual for o espaço livre do aparelho: o
- *  tablet do professor guarda todas as turmas e enche ao fim de alguns meses
- *  (13/out/2026: 2,8 milhões ao fim de um mês). Quando enche, o que não coube
- *  só fica enquanto a aplicação estiver aberta. */
-export const LIMITE_DO_ARMAZENAMENTO = 5_000_000;
+/** O espaço que a aplicação ocupa neste aparelho, como o Safari o conta: o
+ *  navegador dá a cada site 5 MB, seja qual for o espaço livre do aparelho, e
+ *  com letras como «—» cada letra conta 2 bytes. O tablet da professora encheu
+ *  a 13/out/2026 (julgava-se que cabiam 5 milhões de letras; cabem metade).
+ *  Os textos grandes passaram a ser guardados comprimidos (armazenamento.ts).
+ *  `letras` são os bytes ocupados. */
 export function espacoOcupado(): { letras: number; fracao: number; cheio: boolean } {
-  let letras = 0;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i) || '';
-      letras += k.length + (localStorage.getItem(k) || '').length;
-    }
-  } catch { /* sem armazenamento */ }
-  return { letras, fracao: letras / LIMITE_DO_ARMAZENAMENTO, cheio: semEspacoNoAparelho };
+  const bytes = bytesOcupados();
+  return { letras: bytes, fracao: bytes / LIMITE_EM_BYTES, cheio: aparelhoSemEspaco() };
 }
 
 // Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
@@ -327,7 +322,6 @@ export function save<T>(key: string, data: T[]): void {
   try { localStorage.setItem(key, texto); delete naMemoria[key]; return; }
   catch (e) {
     naMemoria[key] = texto;
-    semEspacoNoAparelho = true;
     console.error('Sem espaço para guardar', key, e);
   }
 }
@@ -9304,7 +9298,7 @@ function guardarEspera(l: PorConfirmar[]): void {
   try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; return; } catch { /* sem espaço */ }
   libertarEspaco();
   try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; }
-  catch { naMemoria[KEY_ESPERA] = texto; semEspacoNoAparelho = true; }
+  catch { naMemoria[KEY_ESPERA] = texto; }
 }
 
 /** «validação de Diogo Neves, aula de 02/10» — para o professor saber o que ficou por enviar. */
