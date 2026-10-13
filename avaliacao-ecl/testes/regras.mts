@@ -404,5 +404,20 @@ regra('62. O espaço do aparelho mede-se, e a lista do que falta enviar não se 
   } finally { ls.setItem = antes; }
 });
 
+{
+  const dd = await import('../src/diaDaAula');
+  regra('64. Numa aula ou atividade que já passou, as perguntas dizem o dia e o topo diz o que se avalia', () => {
+    const hoje = dd.hojeLocalISO();
+    const passada = { data: '2026-10-10', tipoEvento: 'evento', titulo: 'Catering — 10/10/2026', horaInicio: '09:00', horaFim: '18:00' };
+    const aula = { data: '2026-10-12', titulo: 'Aula prática — 12/10/2026' };
+    igual(dd.textoParaODia('Hoje, quando acabaste a tua tarefa, o que fizeste?', aula), 'Na aula de segunda-feira, 12/10, quando acabaste a tua tarefa, o que fizeste?');
+    igual(dd.textoParaODia('Em que atitude trabalhaste hoje?', passada), 'Em que atitude trabalhaste nesse dia?');
+    igual(dd.textoParaODia('Depois da aula de hoje, já sabes isto?', aula), 'Depois da aula de segunda-feira, 12/10, já sabes isto?');
+    igual(dd.textoParaODia('Hoje, quando acabaste a tua tarefa, o que fizeste?', { data: hoje }), 'Hoje, quando acabaste a tua tarefa, o que fizeste?', 'hoje fica:');
+    const f = dd.faixaDaAula(passada);
+    igual([f.atividade, f.titulo, f.linha.startsWith('sábado, 10 de outubro · 09:00–18:00')], [true, 'Catering', true]);
+  });
+}
+
 console.log(`\n${total - falhas} de ${total} regras certas.`);
 process.exit(falhas ? 1 : 0);

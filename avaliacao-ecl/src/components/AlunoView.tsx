@@ -16,7 +16,7 @@ import { AvaliarColegas, configGrupos } from './GruposAluno';
 import { ligarTraducaoIngles } from '../traducao';
 import { ComandaDoGrupo, EcraDeCor, BotaoDaAula, CORES_AULA, MESA, useMudancaDeGrupo, type MomentoVistos } from './AulaDoAluno';
 import { atitudeEmPalavrasSimples } from '../atitudesSimples';
-import { JanelaAutoavaliacoesEmFalta } from './JanelaAutoavaliacoesEmFalta';
+import { JanelaAutoavaliacoesEmFalta, CartaoPorAvaliar, diaDaSemana } from './JanelaAutoavaliacoesEmFalta';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, respostasDoAlunoComAntigas, faltasQueContamNaNota, bonusPorAtividade, type BonusDaAtividade,
   recuperacoesDeAulasPorFazer, recuperacaoDaAula, aulasFaltadasParaRecuperar, aulasPorValidarNaNota } from '../backend';
 import { RecuperarAulasAluno } from './RecuperarAulasAluno';
@@ -76,7 +76,7 @@ import {
 import { temOrganizacao, organizacaoDe, funcoesDoAluno, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
 import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, CL_SEMPRE, CL_AULA, concretizar, type Triagem5C } from '../triagem5c';
-import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
+import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides, COR_ATIVIDADE } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula, perguntas5CDoAluno, contextoPerguntas5C, alunosDoPlano } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
@@ -87,6 +87,7 @@ import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { notaDaUCComDecimas } from '../pautaUC';
 import { pedeFardaEHigiene, cozinhamNaAula, fardaIncompletaNaPresenca } from '../contextoAula';
+import { hojeLocalISO, eAtividade, textoParaODia, faixaDaAula } from '../diaDaAula';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
@@ -1316,7 +1317,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     // pedida outra vez) e aparecia repetida: «Catering — 10/10» três vezes e a
     // conta errada (auditoria de 13/out/2026). Cada aula conta uma vez.
     { const vistos = new Set<string>();
-      aulasPorAutoavaliar.current = aulasPorAutoavaliar.current.filter(p => !vistos.has(p.id) && !!vistos.add(p.id)); }
+      aulasPorAutoavaliar.current = aulasPorAutoavaliar.current.filter(p => !vistos.has(p.id) && !!vistos.add(p.id))
+        // Uma de cada vez, pela ordem dos dias (Rosa, 13/out/2026).
+        .sort((a: any, b: any) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`)); }
     return av;
   })();
 
@@ -1473,8 +1476,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           })()}
           {/* Atividade extra para a qual o aluno não foi escolhido (nem está a
               recuperar nela): só para ver — não entra nem se autoavalia (Rosa, out/2026). */}
-          <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)}
-            soConsulta={eventoForaDoHorario(planoAtivo) && !participantesDoEvento(planoAtivo).includes(aluno.id) && !recuperaNaAtividade(planoAtivo, aluno.id)} />
+          <VistaDePlanoAluno key={planoAtivo.id} plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)}
+            soConsulta={eventoForaDoHorario(planoAtivo) && !participantesDoEvento(planoAtivo).includes(aluno.id) && !recuperaNaAtividade(planoAtivo, aluno.id)}
+            porAvaliarDepois={aulasPorAutoavaliar.current.filter(p => p.id !== planoAtivo.id)} onAbrir={p => setPlanoAtivo(p)} />
         </ModalFullscreen>
       )}
 
@@ -1586,8 +1590,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             e a janela volta da próxima vez que a abrir, até responder. */}
         {aba === 'inicio' && !destino && !janelaPendentesFechada && aulasPorAutoavaliar.current.length > 0 && (
           <JanelaAutoavaliacoesEmFalta
-            aulas={aulasPorAutoavaliar.current.map(p => ({ id: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10),
-              motivo: motivoPorAutoavaliar.current[p.id] || 'ainda não te autoavaliaste' }))}
+            aulas={aulasPorAutoavaliar.current.map(p => ({ id: p.id, titulo: faixaDaAula(p).titulo, data: String(p.data || '').slice(0, 10),
+              motivo: motivoPorAutoavaliar.current[p.id] || 'ainda não te autoavaliaste',
+              atividade: eAtividade(p), comFarda: pedeFardaEHigiene(p), naCozinha: cozinhamNaAula(p) }))}
             onResponder={() => { setJanelaPendentesFechada(true); const p = aulasPorAutoavaliar.current[0]; if (p) setPlanoAtivo(p); }}
             onFechar={() => setJanelaPendentesFechada(true)} />
         )}
@@ -1991,8 +1996,10 @@ function chaveDaAutoavaliacao(plano: any, alunoId: string, fichas: any[]): strin
   return `${plano?.id}:${(h >>> 0).toString(36)}`;
 }
 
-function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: soConsultaPedida = false }: {
+function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: soConsultaPedida = false, porAvaliarDepois = [], onAbrir }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
+  /** As outras aulas e atividades por avaliar: ao acabar esta, aparece a seguinte (Rosa, 13/out/2026). */
+  porAvaliarDepois?: PlanoAula[]; onAbrir?: (p: PlanoAula) => void;
   /** Atividade em que o aluno não esteve: só vê o que se fez, a ficha técnica
    *  e o guião; não se inscreve nem se avalia (Rosa, out/2026). */
   soConsulta?: boolean;
@@ -2021,6 +2028,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   // (confirmar presenças, mudar o título…) e o aluno perdia o que já tinha
   // respondido (Rosa, 13/out/2026). E mesmo quando se refaz, o que respondeu fica.
   const versao = chaveDaAutoavaliacao(plano, aluno.id, getFichasPorPlano(plano.id));
+  const seguinte: PlanoAula | undefined = porAvaliarDepois[0];
   const versaoAoAbrir = React.useRef(versao);
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
   // Esteve numa atividade ligada a esta aula e o professor disse que
@@ -2146,7 +2154,9 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
   };
 
   // Depois da entrada (e do grupo): a função de início, se houver; senão, produzir.
-  const depoisDaEntrada = () => String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao'
+  // Aula ou atividade que já passou: depois da entrada, logo a autoavaliação (13/out/2026).
+  const diaJaPassou = !!plano.data && String(plano.data).slice(0, 10) < hojeLocalISO();
+  const depoisDaEntrada = () => String((plano as any).tipoPlanAula || '').startsWith('atitudinal') || diaJaPassou ? 'avaliacao'
     : PASSOS.some(p => p.id === 'funcao_inicio') ? 'funcao_inicio' : 'ficha';
   // Depois de produzir: a função de fim, se houver; senão, a autoavaliação.
   const antesDaAvaliacao = () => PASSOS.some(p => p.id === 'funcao_fim') ? 'funcao_fim' : 'avaliacao';
@@ -2165,6 +2175,12 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
     _abriuNoPasso.current = true;
     if (soConsulta) { setSecAberta('orientacao'); return; }
     const falta = PASSOS.find(p => estadoPasso(p.id) !== 'concluido');
+    // Uma aula ou atividade que já passou abre logo na autoavaliação: a
+    // atividade de sábado, aberta na segunda, pedia «Produz. Segue a ficha
+    // técnica… Já acabei» (auditoria de 13/out/2026). A ficha continua à mão.
+    // Com a presença já registada, nem o «Já entraste» aparece.
+    const comPresenca = getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
+    if (diaJaPassou && falta && (falta.id !== 'entrada' || comPresenca) && PASSOS.some(p => p.id === 'avaliacao')) { setSecAberta('avaliacao'); return; }
     setSecAberta(falta ? falta.id : PASSOS[PASSOS.length - 1].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2243,7 +2259,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
       ecraPasso = (
         <EcraDeCor cor={CORES_AULA.farda} total={totalPassos} feitos={passosConcluidos}
           titulo={fim ? (minhasFuncoes.length ? 'Acaba a tua função.' : 'Ajudaste os colegas?') : 'Faz a tua função.'}
-          sub={minhasFuncoes.length ? `Hoje és: ${minhasFuncoes.map(f => f.nome).join(' + ')}.` : 'Diz ao professor como ajudaste hoje.'}>
+          sub={minhasFuncoes.length ? textoParaODia(`Hoje és: ${minhasFuncoes.map(f => f.nome).join(' + ')}.`, plano) : textoParaODia('Diz ao professor como ajudaste hoje.', plano)}>
           <div style={{ marginTop:'auto' }}><BotaoDaAula onClick={() => setVerAqui(secAberta as any)}>Abrir</BotaoDaAula></div>
         </EcraDeCor>
       );
@@ -2270,9 +2286,25 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
         ? [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ') : '';
       ecraPasso = (
         <EcraDeCor cor={avaliou ? CORES_AULA.fim : CORES_AULA.avaliar} total={totalPassos} feitos={passosConcluidos}
-          titulo={avaliou ? 'Aula feita. Bom trabalho!' : 'Como correu a tua aula?'}
+          titulo={avaliou ? (seguinte ? `${eAtividade(plano) ? 'Atividade' : 'Aula'} de ${diaDaSemana(String(plano.data).slice(0, 10))}: feita!` : 'Aula feita. Bom trabalho!')
+            : 'Como correu a tua aula?'}
           sub={avaliou ? 'A tua autoavaliação foi enviada. O professor vai validá-la.'
             : soAtividade ? undefined : 'Uma pergunta de cada vez. Escolhe o que fizeste, e não a nota que gostavas de ter.'}>
+          {avaliou && seguinte && onAbrir && (
+            // A seguinte, com o dia e o tipo, para o aluno não se baralhar (Rosa, 13/out/2026).
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <div style={{ fontSize:14.5, fontWeight:600 }}>
+                {porAvaliarDepois.length === 1 ? 'Falta 1 autoavaliação.' : `Faltam ${porAvaliarDepois.length} autoavaliações.`}
+              </div>
+              <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.06em', textTransform:'uppercase', opacity:0.75 }}>A seguir</div>
+              <CartaoPorAvaliar a={{ id: seguinte.id, titulo: faixaDaAula(seguinte).titulo, data: String(seguinte.data || '').slice(0, 10), motivo: '',
+                atividade: eAtividade(seguinte), comFarda: pedeFardaEHigiene(seguinte), naCozinha: cozinhamNaAula(seguinte) }} />
+              <BotaoDaAula escuro onClick={() => onAbrir(seguinte)}>
+                {`Avaliar a ${eAtividade(seguinte) ? 'atividade' : 'aula'} de ${diaDaSemana(String(seguinte.data).slice(0, 10))}`}
+              </BotaoDaAula>
+              <BotaoDaAula contorno escuro onClick={onVoltar}>Fica para depois</BotaoDaAula>
+            </div>
+          )}
           {mudouDesdeQueAbriu && !avaliou && (
             <div style={{ padding:'12px 14px', borderRadius:12, background:'#fff7e6', border:'1.5px solid #b5651d', fontSize:14, color:'#7a4310', fontWeight:600 }}>
               O professor atualizou esta aula. As perguntas já são as novas; o que já tinhas respondido ficou.
@@ -2280,14 +2312,14 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
           )}
           {soAtividade ? (
             <div style={{ padding:'14px 16px', borderRadius:12, background:'#fff', fontSize:15, lineHeight:1.5 }}>
-              <b>Hoje estiveste na atividade «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
+              <b>{textoParaODia('Hoje estiveste na atividade', plano)} «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
               encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
             </div>
           ) : (
             <>
               {quais && !avaliou && (
                 <div style={{ padding:'12px 14px', borderRadius:12, background:'#fff', fontSize:14.5, lineHeight:1.5 }}>
-                  Hoje estiveste numa atividade. Nesta aula respondes só {quais}: o resto já se avalia na atividade.
+                  {textoParaODia('Hoje estiveste numa atividade.', plano)} Nesta aula respondes só {quais}: o resto já se avalia na atividade.
                 </div>
               )}
               <div style={{ color:'#1A1A1A' }}>
@@ -2296,7 +2328,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
               </div>
             </>
           )}
-          {avaliou && <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={onVoltar}>Ir para o Início</BotaoDaAula></div>}
+          {avaliou && !(seguinte && onAbrir) && <div style={{ marginTop:'auto' }}><BotaoDaAula escuro onClick={onVoltar}>Ir para o Início</BotaoDaAula></div>}
         </EcraDeCor>
       );
     }
@@ -2338,7 +2370,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             )}
             <button onClick={() => setVerAqui('orientacao')} style={{ border:'none', background:'none', padding:'6px 0', color:'#4a3a63',
               fontSize:14.5, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-              Ver o que vamos fazer hoje
+              {hojeLocalISO() > String(plano.data || '').slice(0, 10) ? 'Ver o que se fez nesse dia' : 'Ver o que vamos fazer hoje'}
             </button>
             <BotaoManualDaUC turmaId={aluno.turmaId} ucId={(plano as any).ucId} />
           </div>
@@ -2543,7 +2575,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
             )}
             {secAberta==='avaliacao' && soAtividade && (
               <div style={{ padding:'14px 16px', borderRadius:12, background:'#f3eefa', border:'1.5px solid #6B3FA0', fontSize:15, lineHeight:1.5 }}>
-                <b>Hoje estiveste na atividade «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
+                <b>{textoParaODia('Hoje estiveste na atividade', plano)} «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
                 encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
               </div>
             )}
@@ -2553,7 +2585,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta: so
               const quais = [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ');
               return (
                 <div style={{ margin:'0 0 12px', padding:'12px 14px', borderRadius:12, background:'#f3eefa', border:'1.5px solid #6B3FA0', fontSize:14.5, lineHeight:1.5 }}>
-                  Hoje estiveste numa atividade. Nesta aula respondes só {quais}: o resto já se avalia na atividade.
+                  {textoParaODia('Hoje estiveste numa atividade.', plano)} Nesta aula respondes só {quais}: o resto já se avalia na atividade.
                 </div>
               );
             })()}
@@ -3632,6 +3664,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // O que já tinha respondido (rascunho) ou, a responder outra vez, a última resposta.
   const [inicio] = useState(() => estadoInicialDaAutoavaliacao(plano, aluno.id));
   const ini = inicio?.estado;
+  // Numa aula ou atividade que já passou, «Hoje» passa a ser o dia (13/out/2026).
+  const D = (t: string) => textoParaODia(t, plano);
 
   // Evidências do KitchenFlow — carregadas automaticamente
   const [evidenciasKF, setEvidenciasKF] = useState<EvidenciaKitchenFlow[]>([]);
@@ -4015,7 +4049,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // que fez noutras aulas (Rosa, 12/out/2026: «Vieste preparado como?»).
   const temaTitulo = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo.titulo;
   const ctx5C = React.useMemo(() => contextoPerguntas5C(plano, fichas, aluno.id, temaTitulo), [plano.id, fichas.map(f => f.id).join(), aluno.id, temaTitulo]);
-  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId).map(q => concretizar(q, ctx5C));
+  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId).map(q => concretizar(q, ctx5C))
+    .map(q => ({ ...q, pergunta: D(q.pergunta), perguntaSimples: D(q.perguntaSimples), semOcasiao: D(q.semOcasiao),
+      semOcasiaoSimples: D(q.semOcasiaoSimples), frases: q.frases.map(D), frasesSimples: (q.frasesSimples || []).map(D) }));
   const textosTriagem = Object.fromEntries(perguntasTriagem.map(q => [q.chave, q.pergunta]));
   // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.
   const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null;
@@ -4278,7 +4314,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 {(Array.isArray((val as any).naoReparou) ? (val as any).naoReparou : []).map((x: any, i: number) => (
                   <div key={i} style={{ marginBottom:10, padding:'10px 12px', borderRadius:10, background:'#fdf0e6',
                     color:'#8a4a15', fontSize:13.5, lineHeight:1.5 }}>
-                    <b>O professor observou que isto aconteceu hoje:</b> {x.pergunta}
+                    <b>{D('O professor observou que isto aconteceu hoje:')}</b> {D(x.pergunta)}
                     {x.proxima && <div>➡️ <b>Para a próxima:</b> {x.proxima}</div>}
                   </div>
                 ))}
@@ -4366,7 +4402,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Uma coisa de cada vez: cada técnica no seu ecrã, depois a higiene e
   // segurança alimentar, a atitude, e no fim um ecrã para rever e enviar.
   // As regras e as contas são as mesmas do submeterDefinitivo.
-  const V = '#6B3FA0';
+  // Atividade a verde, aula a roxo, como a faixa do topo (13/out/2026).
+  const V = eAtividade(plano) ? COR_ATIVIDADE : '#6B3FA0';
   const notaDoNivel = (v: string | null | undefined) => OPCOES.find(o => o.v === v)?.nota ?? 0;
   // As quatro frases de cada técnica correspondem aos níveis 2 a 5;
   // "Ainda não fiz" é o nível 1.
@@ -4533,7 +4570,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     : p.tipo === 'tema' ? 'O teu tema'
     : p.tipo === 'colega' ? 'A apresentação de um colega'
     : p.tipo === 'comp' ? p.comp!.rotulo
-    : p.tipo === 'outra' ? 'O que fizeste hoje'
+    : p.tipo === 'outra' ? D('O que fizeste hoje')
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
     : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
     : p.tipo === 'tecEvento' ? 'Técnica no evento'
@@ -4624,16 +4661,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           return (
             <div key={qi} style={{ marginTop: numero > 1 ? 18 : 6 }}>
               <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.4, margin:'8px 0 10px' }}>
-                {umaSo ? '' : `${numero}. `}{q.pergunta}
+                {umaSo ? '' : `${numero}. `}{D(q.pergunta)}
               </div>
               {ordem(q.respostas.length, `ati_${qi}_${q.pergunta}`).map(i => (
                 <button key={i} onClick={() => responder(qi, i)} style={estiloOpcao(v === i)}>
-                  {radio(v === i)}{q.respostas[i]}
+                  {radio(v === i)}{D(q.respostas[i])}
                 </button>
               ))}
               {q.naoAconteceu && !umaSo && (
                 <button onClick={() => responder(qi, NAO_ACONTECEU)} style={{ ...estiloOpcao(v === NAO_ACONTECEU), fontStyle:'italic' }}>
-                  {radio(v === NAO_ACONTECEU)}{q.naoAconteceu}
+                  {radio(v === NAO_ACONTECEU)}{D(q.naoAconteceu)}
                 </button>
               )}
               {v != null && (
@@ -4641,7 +4678,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   background: v === NAO_ACONTECEU ? '#f3f0f7' : v >= 2 ? '#eef4eb' : T.copperP,
                   color: v === NAO_ACONTECEU ? 'rgba(26,23,20,0.7)' : v >= 2 ? '#3f5e34' : '#8a4a15' }}>
                   {v === NAO_ACONTECEU
-                    ? (substituta ? 'Esta resposta não conta para a nota. Responde a esta, que faz mais sentido hoje:' : 'Esta resposta não conta para a nota. A outra pergunta passa a valer por toda esta atitude.')
+                    ? (substituta ? D('Esta resposta não conta para a nota. Responde a esta, que faz mais sentido hoje:') : 'Esta resposta não conta para a nota. A outra pergunta passa a valer por toda esta atitude.')
                     : v >= 2 ? '✅ É isto que se espera de ti.'
                     : <>➡️ <b>Para a próxima:</b> {q.respostas[2]}</>}
                 </div>
@@ -4652,10 +4689,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {substituta && (
           <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${V}`, background: '#faf7fd' }}>
             <div style={{ fontSize:12.5, fontWeight:700, color:V, textTransform:'uppercase', letterSpacing:'0.05em' }}>Em vez da que não aconteceu</div>
-            <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.4, margin:'6px 0 10px' }}>{substituta.pergunta}</div>
+            <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.4, margin:'6px 0 10px' }}>{D(substituta.pergunta)}</div>
             {substituta.respostas.map((t, i) => (
               <button key={i} onClick={() => responder(2, i)} style={estiloOpcao(r[2] === i)}>
-                {radio(r[2] === i)}{t}
+                {radio(r[2] === i)}{D(t)}
               </button>
             ))}
             {r[2] != null && (
@@ -4713,7 +4750,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   passos.forEach((p, i) => {
     if (p.tipo === 'oral') {
       linhasRever.push({ nome: 'A apresentação oral', resposta: !apresentacaoOral ? 'Por responder'
-        : apresentacaoOral === 'hoje' ? 'Apresentei hoje' : apresentacaoOral === 'antes' ? 'Já tinha apresentado noutra aula' : 'Ainda não apresentei',
+        : apresentacaoOral === 'hoje' ? D('Apresentei hoje') : apresentacaoOral === 'antes' ? 'Já tinha apresentado noutra aula' : 'Ainda não apresentei',
         nota: null, passo: i });
     } else if (p.tipo === 'tema') {
       const t = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo;
@@ -4727,7 +4764,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       const v = notasMicro[p.comp!.id];
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
-        : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
+        : v === 'nop' ? D('Não tive oportunidade hoje (o professor confirma)')
         : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não sei' : 'Não sei explicar') : 'Não fiz')
         : fi >= 0 ? frasesDoItem(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
@@ -4773,7 +4810,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     <div style={{ background:'#fff', borderRadius:14, border:`1px solid ${T.border}`, padding:'16px 16px 18px' }}>
       <div style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:800 }}>Autoavaliação desta aula</div>
       <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 14px', lineHeight:1.5 }}>
-        {nPerguntas} perguntas, uma de cada vez. Responde pelo que fizeste hoje.
+        {nPerguntas} perguntas, uma de cada vez. {D('Responde pelo que fizeste hoje.')}
       </div>
       {/* As perguntas trabalham os 5 C: o aluno vê quais, antes de começar. */}
       <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', marginBottom:6 }}>Nesta aula, as tuas respostas contam para:</div>
@@ -4794,16 +4831,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   );
 
   return (
-    <EcraCheio titulo={`Autoavaliação · ${plano.titulo}`} onSair={() => setAberto(false)}>
+    <EcraCheio titulo={`Autoavaliação · ${plano.titulo}`} onSair={() => setAberto(false)} faixa={faixaDaAula(plano)}>
     <div ref={topoRef}>
       {/* De que aula se trata — numa aula que já passou, o aluno lembra-se.
           Sem o sumário: ocupava o ecrã todo antes da 1.ª pergunta (Rosa, 6/out/2026). */}
-      {idx === 0 && (
+      {/* O nome e o dia estão na faixa do topo; aqui só os avisos desta aula. */}
+      {idx === 0 && (semPratica || temFaltaMarcada(aluno.id, plano.id)) && (
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
           fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
-          <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
-          {semPratica && <div style={{ marginTop:6, fontWeight:700, color:'#8e2418' }}>
-            Hoje não fizeste prática (sem farda completa): respondes só aos conhecimentos e às atitudes.</div>}
+          {semPratica && <div style={{ fontWeight:700, color:'#8e2418' }}>
+            {D('Hoje não fizeste prática (sem farda completa): respondes só aos conhecimentos e às atitudes.')}</div>}
           {temFaltaMarcada(aluno.id, plano.id) && <div style={{ marginTop:6, fontWeight:700, color:'#8A4E15' }}>
             Recuperação desta aula: faltaste, por isso respondes só aos conhecimentos, a partir do que estudaste.
             O professor valida, e a nota substitui o 0 desta aula.</div>}
@@ -4824,7 +4861,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         <div style={{ display:'flex', gap:4 }}>
           {passos.slice(0, -1).map((p, i) => (
             <div key={p.id} style={{ flex:1, height:5, borderRadius:3,
-              background: i < idx || passo.tipo === 'rever' ? V : i === idx ? '#B98FD9' : '#E4E1E8' }} />
+              background: i < idx || passo.tipo === 'rever' ? V : i === idx ? (eAtividade(plano) ? '#8FCFC2' : '#B98FD9') : '#E4E1E8' }} />
           ))}
         </div>
       </div>
@@ -4879,8 +4916,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               : doTema && c.doColega ? `Depois da apresentação de ${nomeColega}, sabes isto?`
               : doTema && !emRecup ? doTema.titulo
               : ehConhecimento && emRecup ? 'Depois de estudares, já sabes isto?'
-              : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
-              : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
+              : ehConhecimento && c.manual ? D('Depois da aula de hoje, já sabes isto?')
+              : ehConhecimento ? D('Hoje, o que consegues fazer com isto?') : D('Hoje, o que aconteceu quando fizeste isto?'))}
             {ordem(NIVEIS_FRASES.length, 'c_' + c.id).map(i => { const nivel = NIVEIS_FRASES[i]; return (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
                 {/* Sem números: o aluno escolhia o número, não o que fez. */}
@@ -4892,7 +4929,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
-              {([['nop', soParte ? 'Não pude fazer: não estava nessa parte da aula' : simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
+              {([['nop', soParte ? 'Não pude fazer: não estava nessa parte da aula' : simples ? D('Hoje não tive oportunidade') : D('Não tive oportunidade de fazer esta hoje')],
                  ['nf', ehCriterioTrabalho(c.id) ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
@@ -4905,7 +4942,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             </div>
             {v === 'nop' && (
               <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', lineHeight:1.5, marginTop:2 }}>
-                Esta competência não conta para a nota de hoje e volta a aparecer noutra aula. O professor confirma.
+                {D('Esta competência não conta para a nota de hoje e volta a aparecer noutra aula. O professor confirma.')}
               </div>
             )}
           </div>
@@ -4915,16 +4952,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {/* ── Apresentação oral: apresentou hoje, noutra aula, ou ainda não ── */}
       {passo.tipo === 'oral' && (() => {
         const opcoes: { v: ApresentacaoOral; t: string }[] = regras.perguntaApresentacao === 'jaFez'
-          ? [{ v: 'antes', t: 'Sim, numa aula anterior.' }, { v: 'hoje', t: 'Sim, apresentei hoje.' }, { v: 'nao', t: 'Não, ainda não apresentei.' }]
-          : [{ v: 'hoje', t: 'Sim, apresentei hoje.' }, { v: 'nao', t: 'Não, hoje não apresentei.' }];
+          ? [{ v: 'antes', t: 'Sim, numa aula anterior.' }, { v: 'hoje', t: D('Sim, apresentei hoje.') }, { v: 'nao', t: 'Não, ainda não apresentei.' }]
+          : [{ v: 'hoje', t: D('Sim, apresentei hoje.') }, { v: 'nao', t: D('Não, hoje não apresentei.') }];
         return (
           <div>
             <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
-              {regras.perguntaApresentacao === 'jaFez' ? 'Já fizeste a apresentação oral?' : 'Fizeste a apresentação oral hoje?'}
+              {regras.perguntaApresentacao === 'jaFez' ? 'Já fizeste a apresentação oral?' : D('Fizeste a apresentação oral hoje?')}
             </div>
             <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
-              Se apresentaste hoje, a seguir respondes sobre a tua apresentação. Se não, respondes sobre o que viste nas
-              apresentações dos colegas, para melhorares o teu trabalho. O professor confirma.
+              {D('Se apresentaste hoje, a seguir respondes sobre a tua apresentação. Se não, respondes sobre o que viste nas apresentações dos colegas, para melhorares o teu trabalho. O professor confirma.')}
             </div>
             {oralDoProfessor && (
               <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:T.copperP, fontSize:14, color:'#8a4a15', lineHeight:1.5 }}>
@@ -4948,8 +4984,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             A apresentação de um colega
           </div>
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
-            Escolhe um colega que viste apresentar hoje. Diz o que explicou bem e o que faltou ou estava errado: é assim
-            que mostras o que sabes do tema dele. O professor confirma.
+            {D('Escolhe um colega que viste apresentar hoje. Diz o que explicou bem e o que faltou ou estava errado: é assim que mostras o que sabes do tema dele. O professor confirma.')}
           </div>
           {rotuloSecao('Que colega viste apresentar?')}
           <select value={obsColega.colegaId} onChange={e => setObsColega(o => ({ ...o, colegaId: e.target.value }))}
@@ -5035,7 +5070,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           <div>
             {q.id === PERGUNTAS_PRESENCA[0].id && (
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginBottom:10, lineHeight:1.5 }}>
-                Hoje estiveste {horasEmTexto(presencaParcial.esteve)} das {horasEmTexto(presencaParcial.total)} horas da aula
+                {D('Hoje estiveste')} {horasEmTexto(presencaParcial.esteve)} das {horasEmTexto(presencaParcial.total)} horas da aula
                 ({presencaParcial.blocosEsteve} de {presencaParcial.blocosTotal} tempos). Antes de te avaliares, pensa no que isso quis dizer para o teu grupo.
               </div>
             )}
@@ -5083,11 +5118,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {passo.tipo === 'outra' && (
         <div>
           <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3 }}>
-            Disseste que não tiveste oportunidade de fazer nenhuma das técnicas. O que fizeste hoje na cozinha?
+            {D('Disseste que não tiveste oportunidade de fazer nenhuma das técnicas. O que fizeste hoje na cozinha?')}
           </div>
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 10px', lineHeight:1.5 }}>
             Certamente fizeste alguma coisa: escreve o quê (por exemplo, «descasquei e cortei as batatas para a sopa»).
-            O professor lê a tua resposta e atribui a nota, que conta como a técnica de hoje.
+            {D('O professor lê a tua resposta e atribui a nota, que conta como a técnica de hoje.')}
           </div>
           <textarea value={outraTarefa} onChange={e => setOutraTarefa(e.target.value)} rows={3} maxLength={300}
             style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`,
@@ -5107,7 +5142,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
             Os registos no KitchenFlow: temperaturas e prevenção de contaminações. É obrigatória.
           </div>
-          {rotuloSecao('Como correu hoje?')}
+          {rotuloSecao(D('Como correu hoje?'))}
           {/* Baralhadas como nas técnicas (o «não fiz» à parte), sem números:
               o aluno escolhe o que fez, não a nota. */}
           {(() => { const ops = OPCOES.filter(op => op.v !== 'nf'); return ordem(ops.length, 'haccp').map(i => ops[i]); })().map(op => (
@@ -5195,7 +5230,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {passo.tipo === 'atitude' && (
         <div>
           <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.25, marginBottom:10 }}>
-            Em que atitude trabalhaste hoje?
+            {D('Em que atitude trabalhaste hoje?')}
           </div>
           {/* Não é recuperação — essa palavra fica só para faltas acima de
               10% ou módulo terminado sem positiva. */}
@@ -5231,7 +5266,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               Apanha uma do {anos} ano
             </div>
             <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 12px', lineHeight:1.5 }}>
-              Ainda te faltam {faltamApanhar.length}. Escolhe uma que reconheces em ti hoje, ou passa à frente.
+              Ainda te faltam {faltamApanhar.length}. {D('Escolhe uma que reconheces em ti hoje, ou passa à frente.')}
             </div>
             {blocoAtitude(
               mostrar.map(x => ({ id: x.id, nome: x.nome, etiqueta: `${x.ano}º ano` })),
@@ -5273,7 +5308,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           <div>
             {anterior && (
               <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:'#f3f0f7', fontSize:13.5, lineHeight:1.5 }}>
-                Disseste que hoje não aconteceu: «{simples ? anterior.perguntaSimples : anterior.pergunta}»
+                {D('Disseste que hoje não aconteceu:')} «{D(simples ? anterior.perguntaSimples : anterior.pergunta)}»
                 Responde então a esta, que se aplica a todas as aulas.
                 <button onClick={voltarAtras} style={{ display:'block', marginTop:4, background:'none', border:'none', padding:0,
                   color:V, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
@@ -5282,10 +5317,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               </div>
             )}
             <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
-              {simples ? q.perguntaSimples : q.pergunta}
+              {D(simples ? q.perguntaSimples : q.pergunta)}
             </div>
             <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 14px', lineHeight:1.5 }}>
-              Escolhe o que fizeste hoje. O professor confirma.
+              {D('Escolhe o que fizeste hoje. O professor confirma.')}
             </div>
             {(() => { const frs = simples ? q.frasesSimples : q.frases; return ordem(frs.length, 'tri_' + q.chave + '_' + idDe(q.chave, triagem)).map(i => (
               <button key={i} onClick={() => escolher(i)} style={estiloOpcao(r === i)}>
@@ -5302,7 +5337,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             )}
             {q.chave === 'cr' && (
               <>
-                {rotuloSecao(simples ? 'O que foi mais difícil hoje?' : 'O que foi mais difícil hoje e o que fizeste?')}
+                {rotuloSecao(D(simples ? 'O que foi mais difícil hoje?' : 'O que foi mais difícil hoje e o que fizeste?'))}
                 <textarea value={triagem.problema || ''} maxLength={200} rows={3}
                   onChange={e => setTriagem(t => ({ ...t, problema: e.target.value }))}
                   placeholder={simples ? 'Se quiseres, escreve aqui' : 'Se quiseres, escreve aqui (opcional)'}

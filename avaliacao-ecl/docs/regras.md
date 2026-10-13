@@ -117,3 +117,10 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 73. **Uma aula ou atividade de outro dia diz o dia** («A atividade de sábado, 10/10») em vez de «A aula de hoje», e não pergunta a farda nem as mãos (eram desse dia).
 74. **O sumário que o professor está a escrever não se apaga** quando o plano é gravado por outro motivo.
 
+
+## Saber o que se está a avaliar (13/out/2026)
+75. **Durante a autoavaliação, a faixa do topo diz sempre o que o aluno está a avaliar**: «Estás a avaliar · atividade» (verde) ou «· aula» (roxo), o nome, o dia, as horas e se foi com farda. Fica no topo sem ser preciso fazer scroll.
+76. **A lista «Tens N autoavaliações por fazer» vai pela ordem dos dias** e cada uma mostra o dia (10 · SÁB · OUT), se é atividade ou aula, o nome, onde foi (na cozinha, na sala, fora do horário) e se foi com farda.
+77. **Ao enviar uma, a aplicação mostra logo a seguinte** («Atividade de sábado, 10/10: feita!», «A seguir», «Avaliar a aula de segunda-feira» ou «Fica para depois»). Já não se volta ao início para descobrir o que falta.
+78. **Numa aula ou atividade de outro dia, as perguntas dizem o dia em vez de «hoje»** («Na aula de segunda-feira, 12/10, quando acabaste a tua tarefa…»), também nas atitudes, nos 5 C, nas competências e nas perguntas dos colegas.
+79. **Uma aula ou atividade de um dia que já passou abre logo na autoavaliação** (antes abria em «Produz… Já acabei», que era desse dia).

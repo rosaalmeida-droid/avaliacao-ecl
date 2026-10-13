@@ -10,8 +10,13 @@ import React, { useEffect } from 'react';
 export const FUNDO_ECRA = '#E2D8EE';
 const V = '#6B3FA0';
 
-export function EcraCheio({ titulo, onSair, children }: {
-  titulo: string; onSair: () => void; children: React.ReactNode;
+/** O que o aluno está a avaliar, sempre à vista no topo (Rosa, 13/out/2026):
+ *  atividade (verde) ou aula (roxo), o nome e o dia. */
+export interface FaixaDoEcra { atividade: boolean; titulo: string; linha: string }
+export const COR_ATIVIDADE = '#1F7A6B';
+
+export function EcraCheio({ titulo, onSair, children, faixa }: {
+  titulo: string; onSair: () => void; children: React.ReactNode; faixa?: FaixaDoEcra;
 }) {
   // A página por baixo não se mexe enquanto o ecrã está aberto.
   useEffect(() => {
@@ -22,6 +27,21 @@ export function EcraCheio({ titulo, onSair, children }: {
   return (
     <div role="dialog" aria-modal="true" aria-label={titulo} style={{ position: 'fixed', inset: 0, zIndex: 2000,
       background: FUNDO_ECRA, display: 'flex', flexDirection: 'column' }}>
+      {faixa ? (
+        <div style={{ background: faixa.atividade ? COR_ATIVIDADE : V, color: '#fff', padding: '10px 16px 12px',
+          paddingTop: 'max(10px, env(safe-area-inset-top))', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85 }}>
+              Estás a avaliar · {faixa.atividade ? 'atividade' : 'aula'}
+            </div>
+            <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.2, marginTop: 2 }}>{faixa.titulo}</div>
+            <div style={{ fontSize: 13.5, marginTop: 3, opacity: 0.95, lineHeight: 1.35 }}>{faixa.linha}</div>
+          </div>
+          <button onClick={onSair} style={{ padding: '6px 10px', borderRadius: 10, flexShrink: 0,
+            border: '1.5px solid rgba(255,255,255,0.6)', background: 'transparent', color: '#fff', fontSize: 13.5,
+            fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Sair</button>
+        </div>
+      ) : (
       <div style={{ background: V, color: '#fff', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
         paddingTop: 'max(10px, env(safe-area-inset-top))' }}>
         <button onClick={onSair} style={{ padding: '8px 12px', borderRadius: 10,
@@ -30,6 +50,7 @@ export function EcraCheio({ titulo, onSair, children }: {
         <div style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 700, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titulo}</div>
       </div>
+      )}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '16px 16px 40px' }}>{children}</div>
       </div>
