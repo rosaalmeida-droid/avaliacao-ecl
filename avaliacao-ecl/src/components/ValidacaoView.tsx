@@ -52,6 +52,7 @@ function labelNivelAluno(nivel: string, nota?: number): string {
   if (nivel === 'ca'  || nivel === 'ajuda'     || nivel === 'desenvolvimento') return 'Consegui com ajuda';
   if (nivel === 'tp')  return 'Tentei mas ainda preciso de mais prática';
   if (nivel === 'nf'  || nivel === 'nao'       || nivel === 'nao_atingi') return 'Ainda não fiz';
+  if (nivel === 'nop') return 'Hoje não tive oportunidade de fazer';
   return nivel;
 }
 
@@ -397,7 +398,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     || ((selecao.autoavaliacoes || []) as any[]).some(a => /^KNW-P-F-(oral|digital|pratico)-/.test(String(a?.competenciaId || '')));
   /** Antes de guardar: tudo a 0, ou o comentário diz que faltou? Talvez seja falta, ou o aluno errado. */
   async function antesDeGuardar() {
-    const tudoZero = autoavaliacoes.length > 0 && autoavaliacoes.every(a => Number(notasProf[a.competenciaId]) === 1);
+    // Só o que conta: o «não tive oportunidade» confirmado não é um 0.
+    const contam = autoavaliacoes.filter(a => contaParaNota(a.competenciaId));
+    const tudoZero = contam.length > 0 && contam.every(a => Number(notasProf[a.competenciaId]) === 1);
     const dizQueFaltou = /n[ãa]o (esteve|estava|veio|compareceu)|faltou|ausente/i.test(comentario);
     if ((tudoZero || dizQueFaltou) && !faltaMarcada) {
       const nome = nomeDoAluno(selecao.alunoId);
@@ -1210,6 +1213,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {/* Só quando a lista de cima não existe: eram os mesmos critérios duas vezes. */}
             {criterios.length === 0 && <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />}
 
+            {/* «Não tive oportunidade» confirmado: não conta, e o cartão diz isso.
+                Antes mostrava «0 Não fez» e «Nota final 0/20 Insuficiente», como
+                se contasse 0 (Rosa, 13/out/2026). */}
+            {semOport[auto.competenciaId] ? (
+              <div style={{ marginTop: 4, padding: '10px 12px', borderRadius: 8, background: 'var(--cream-dark)', fontSize: 14, color: 'rgba(26,23,20,0.7)' }}>
+                <b>Não conta para a nota desta aula.</b> A nota da aula é feita só com o que o aluno fez.
+              </div>
+            ) : (<>
             {/* Avaliação do professor (1-4) */}
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 12, color: 'rgba(26,23,20,0.5)' }}>
               A sua avaliação
@@ -1283,6 +1294,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 </span>
               </div>
             )}
+            </>)}
           </div>
         );
       })}
