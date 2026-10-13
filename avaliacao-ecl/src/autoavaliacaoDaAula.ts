@@ -20,8 +20,8 @@ import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO, atitudesSugeridasEvento } from 
 import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
-import { perguntasDaAula, CL_SEMPRE, CL_AULA } from './triagem5c';
-import { getPlanosAula } from './backend';
+import { perguntasDaAula, CL_SEMPRE, CL_AULA, concretizar } from './triagem5c';
+import { getPlanosAula, contextoPerguntas5C } from './backend';
 import { porqueNao, triagemDoPlano, escolheTema, fasesDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
 import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
@@ -73,6 +73,13 @@ export interface RegrasAutoavaliacao {
    *  hoje ('hoje') ou se já apresentou ('jaFez', o trabalho continua de uma
    *  aula com apresentação). null: não se pergunta. */
   perguntaApresentacao: 'hoje' | 'jaFez' | null;
+  /** Em que fase está o trabalho do tema hoje: as perguntas do tema mudam com
+   *  ela (Rosa, 12/out/2026: «enquanto desenvolve e investiga, as perguntas têm
+   *  de aparecer, mas diferentes»). null: não é um trabalho com tema. */
+  faseDoTema: 'investigacao' | 'desenvolvimento' | 'apresentacao' | null;
+  /** Numa aula com apresentações, o aluno não apresentou hoje: responde sobre a
+   *  apresentação de um colega (o que fez bem, o que faltou, o tema dele). */
+  observaColegas: boolean;
 }
 
 export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[], opts: {
@@ -223,6 +230,11 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     clAula: !ctx.cozinha && !ctx.equipa,
     clSempre: !ctx.colegas && ctx.cozinha,
     escolheTema: temTema, temasPossiveis, formatos, perguntaApresentacao,
+    faseDoTema: !temTema ? null
+      : apresentou && fases.some(f => APRESENTACAO_AO_VIVO.includes(f)) ? 'apresentacao'
+      : fases.some(f => f !== 'investigacao' && f !== 'observar' && !f.startsWith('apres_')) ? 'desenvolvimento'
+      : fases.includes('investigacao') ? 'investigacao' : 'desenvolvimento',
+    observaColegas: !!perguntaApresentacao && !!opts.apresentacaoOral && opts.apresentacaoOral !== 'hoje',
   };
 }
 
@@ -366,7 +378,9 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
   if (R.tecEvento) ecras.push({ tipo: 'evento', rotulo: 'Evento', nome: NOME_TEC_EVENTO, perguntas: [], porque: 'é um evento', c: 'cl' });
 
   if (R.semAtitudes) return { ecras, fora, regras: R };
-  const qs = perguntasDaAula(perguntaCOId, perguntaCRId, R.clSempre ? CL_SEMPRE.id : R.clAula ? CL_AULA.id : undefined);
+  // Com o plano lá dentro (o prato, o guião, o tema), como o aluno as vai ler.
+  const ctx5C = contextoPerguntas5C(plano, fichas);
+  const qs = perguntasDaAula(perguntaCOId, perguntaCRId, R.clSempre ? CL_SEMPRE.id : R.clAula ? CL_AULA.id : undefined).map(q => concretizar(q, ctx5C));
   const qcl = qs.find(q => q.chave === 'cl')!;
   if (R.clNaoSePergunta) fora.push({ nome: 'Trabalho com os colegas (CL)', motivo: porqueNao(['colegas'], ctx) + ', fora da cozinha' });
   else ecras.push({ tipo: 'cl', rotulo: 'Trabalho com os colegas', nome: qcl.titulo, perguntas: [qcl.pergunta],

@@ -268,7 +268,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     }
     // A farda e os registos de higiene acompanham o tipo — também numa
     // atividade extra (antes ficava de fora, como o tipo; auditoria out/2026).
-    if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || (!definida && !atual.tipoEvento)) {
+    if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || 'registos' in parcial || (!definida && !atual.tipoEvento)) {
       const ob = obrigatoriasDaTriagem(nova);
       const tiradas = new Set<string>(atual.compRemovidas || []);
       if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
@@ -287,7 +287,17 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       if (prox) novo.conhecimentosProf = indicadoresDoConteudo(prox.ficheiro, prox.capitulo);
     }
     // Trabalho de grupo: o professor faz os grupos no plano (Rosa, 6/out/2026).
-    if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
+    // Também quando os alunos trabalham «em grupos (brigadas)»: sem os grupos
+    // ligados, ninguém tinha colegas para avaliar (Rosa, 12/out/2026: no 3.º ACP
+    // só a atividade de 1/10 tinha os grupos ligados). Liga-se ao responder como
+    // trabalham (ou se nunca se decidiu): se o professor os desligou à mão, ficam.
+    const mudouTrabalho = 'trabalho' in parcial || 'modo' in parcial;
+    const emGrupo = nova.modo === 'grupo' || nova.trabalho === 'grupos';
+    if (emGrupo && !novo.gruposAlunos?.ativo && (mudouTrabalho || !novo.gruposAlunos))
+      novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
+    // Cada um sozinho (ou a turma toda): sem grupos, se ainda ninguém formou nenhum.
+    else if (mudouTrabalho && !emGrupo && novo.gruposAlunos?.ativo && !gruposDaAula(atual.id).length)
+      novo.gruposAlunos = { ...novo.gruposAlunos, ativo: false };
     addOrUpdatePlanoAula(novo);
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
   }
@@ -395,6 +405,18 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
               : 'Ninguém é avaliado na farda nesta aula, nem perde nada por não a ter.'}>
             <Opcao ativo={valor.farda === true} onClick={() => gravar({ farda: true })}>Sim, os alunos têm de vir de farda</Opcao>
             <Opcao ativo={valor.farda === false} onClick={() => gravar({ farda: false })}>Não, a farda não foi pedida</Opcao>
+          </Q>
+        )}
+
+        {/* Higiene e segurança alimentar (registos do KitchenFlow): numa aula prática
+            só de arrumação do material não há registos a fazer (Rosa, 12/out/2026). */}
+        {definida && (tipo === 'pratico' || tipo === 'misto') && (
+          <Q n={n++} titulo="Há registos de higiene e segurança alimentar nesta aula?"
+            ajuda={ob.registos
+              ? 'Os alunos fazem os registos no KitchenFlow (temperaturas, higienização…), e o professor confirma-os na validação. Conta na nota da aula.'
+              : 'Nesta aula não há registos no KitchenFlow: não se pergunta aos alunos nem conta na nota (por exemplo, uma aula só de arrumação do material).'}>
+            <Opcao ativo={ob.registos} onClick={() => gravar({ registos: true })}>Sim, os alunos fazem os registos no KitchenFlow</Opcao>
+            <Opcao ativo={!ob.registos} onClick={() => gravar({ registos: false })}>Não, nesta aula não há registos</Opcao>
           </Q>
         )}
 
@@ -787,14 +809,20 @@ export function alteracoesPorEnviar(plano: PlanoAula): { sinal: '+' | '−' | '~
   try { return diferencas(registado, fotografia(plano)); } catch { return []; }
 }
 
-/** Envia aos alunos a versão atual do plano; se já havia respostas, pede que respondam outra vez. */
-export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez = true, sabeQueMudou = false): PlanoAula | undefined {
+/** Envia aos alunos a versão atual do plano. Quem já respondeu só responde
+ *  outra vez se mudaram as perguntas — e só ao que é novo: o resto fica como
+ *  respondeu (Rosa, 13/out/2026: «verificar se é realmente preciso»). Sem
+ *  `pedirOutraVez`, decide-se pelo que mudou desde o último envio. */
+export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez?: boolean, sabeQueMudou = false): PlanoAula | undefined {
   const atual: any = getPlanosAula().find(x => x.id === planoId);
   if (!atual) return undefined;
+  const registado: EnvioRegistado | undefined = atual.enviadoAosAlunos;
+  const agora = fotografia(atual);
   const mudou = sabeQueMudou || alteracoesPorEnviar(atual).length > 0;
-  addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: fotografia(atual) });
+  const pedir = pedirOutraVez ?? (!!registado && mudaramAsPerguntas(registado, agora));
+  addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: agora });
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === planoId).map(s => s.alunoId)).size;
-  if (mudou && pedirOutraVez && responderam > 0) pedirNovaAutoavaliacao(planoId);
+  if (mudou && pedir && responderam > 0) pedirNovaAutoavaliacao(planoId);
   return getPlanosAula().find(x => x.id === planoId);
 }
 
@@ -814,13 +842,14 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const mudou = registado ? diferencas(registado, agora) : [];
   // Os que já responderam (às perguntas que tinham antes destas alterações).
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-  // Regra (Rosa, out/2026): mudou aquilo a que respondem → respondem outra vez, sempre.
-  const pedirOutraVez = !!registado && mudaramAsPerguntas(registado, agora);
+  // Regra (Rosa, 13/out/2026): só responde outra vez quem já respondeu e só
+  // se mudaram as perguntas; e responde só ao que é novo.
+  const mudaramPerguntas = !!registado && mudaramAsPerguntas(registado, agora);
   const [enviado, setEnviado] = useState(false);
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
   function enviar() {
-    const novo = enviarAlteracoesAosAlunos(plano.id, !!registado && pedirOutraVez);
+    const novo = enviarAlteracoesAosAlunos(plano.id, mudaramPerguntas);
     if (novo) onPlanoActualizado(novo);
     setEnviado(true);
   }
@@ -858,12 +887,12 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
           {responderam > 0 && (
             <div style={{ background: C.ambarP, borderRadius: 12, padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 14.5, color: '#5C3A08' }}>
-                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.</b> A nota que já
+                <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação.</b> A nota que já
                 deste continua a contar até validares a nova.
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 700 }}>
-                {pedirOutraVez
-                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno vai responder' : `estes ${responderam} vão responder`} outra vez.`
+                {mudaramPerguntas
+                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno responde' : `estes ${responderam} respondem`} só ao que é novo (o resto fica como responderam).`
                   : 'As perguntas não mudaram: não precisam de responder outra vez.'}
               </div>
             </div>

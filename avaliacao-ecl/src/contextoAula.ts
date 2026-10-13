@@ -23,6 +23,10 @@ export interface TriagemAula {
    *  resposta (planos antigos): prática e mista sim, teórica não, atitudinal
    *  se for na cozinha. */
   farda?: boolean;
+  /** Há registos de higiene e segurança alimentar (KitchenFlow) nesta aula?
+   *  Só numa aula prática ou mista; sem resposta, sim. Numa aula prática só de
+   *  arrumação do material não há registos a fazer (Rosa, 12/out/2026). */
+  registos?: boolean;
   /** Onde é a aula: na cozinha da escola, numa sala, ou fora da escola (visita, evento). */
   onde: OndeAula;
   /** Os alunos cozinham (prática ou mista)? Acompanha o tipo. */
@@ -282,7 +286,7 @@ export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtu
 export function obrigatoriasDaTriagem(t: TriagemAula): { farda: boolean; registos: boolean } {
   const tipo = tipoDe(t);
   // A resposta do professor à «A farda conta?» manda, em qualquer tipo de aula.
-  if (tipo === 'pratico' || tipo === 'misto') return { farda: t.farda ?? true, registos: true };
+  if (tipo === 'pratico' || tipo === 'misto') return { farda: t.farda ?? true, registos: t.registos ?? true };
   if (tipo === 'teorico') return { farda: t.farda ?? false, registos: false };
   return { farda: t.farda ?? t.onde === 'cozinha', registos: false };
 }

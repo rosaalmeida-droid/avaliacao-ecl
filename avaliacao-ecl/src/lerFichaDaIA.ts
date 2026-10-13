@@ -59,6 +59,22 @@ const LIMIAR_MANTER_MEDIDA = 20; // abaixo de 20g → manter medida original
 export function semPontoFinal(t: string): string {
   return String(t ?? '').trim().replace(/([^.])\.$/, '$1').trim();
 }
+
+/** Onde começa o campo seguinte quando a resposta da IA vem toda numa linha
+ *  («Bolo de Bolacha FAMÍLIA PRINCIPAL: Pastelaria … ALERGÉNICOS: …»): uma
+ *  palavra em maiúsculas (4 letras ou mais, às vezes com mais palavras)
+ *  seguida de dois pontos. */
+const CAMPO_SEGUINTE = /\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]{3,}(?:\s+(?:DE|DA|DO|DAS|DOS|[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]{2,}))*\s*(?:\([^)]*\))?\s*:/;
+
+/** O nome do prato sem o resto da ficha colado. Na requisição, o cabeçalho
+ *  levava «FAMÍLIA PRINCIPAL: … ALERGÉNICOS: …», e o assunto do e-mail ficava
+ *  tão grande que o Google o recusava (Rosa, 13/out/2026). */
+export function nomeDoPratoLimpo(t: string): string {
+  let n = String(t ?? '').split(/\r?\n/)[0];
+  const m = n.match(CAMPO_SEGUINTE);
+  if (m && m.index !== undefined && m.index > 0) n = n.slice(0, m.index);
+  return semPontoFinal(n.replace(/\s+/g, ' ').replace(/[\s—–\-|·,;]+$/, ''));
+}
 const CAMPOS_TITULO = ['nomePrato', 'classificacao', 'fichaNum', 'tempoPrep', 'tempoConf', 'numPorcoes'];
 
 export function normalizarFicha(f: any): FichaTecnica {
@@ -338,7 +354,8 @@ export function extrairFicha(texto: string): FichaTecnica {
       return m ? semPontoFinal(m[1]) : '';
     };
 
-    const nomeIA = extrair('NOME DO PRATO');
+    // Só até ao campo seguinte, se a IA os pôs todos na mesma linha.
+    const nomeIA = nomeDoPratoLimpo(extrair('NOME DO PRATO'));
     const classificacaoIA = extrair('CLASSIFICAÇÃO');
     const familia1IA = extrair('FAMÍLIA PRINCIPAL') || extrair('FAMILIA PRINCIPAL') || '';
     const familia2IA = extrair('FAMÍLIA SECUNDÁRIA') || extrair('FAMILIA SECUNDARIA') || '';

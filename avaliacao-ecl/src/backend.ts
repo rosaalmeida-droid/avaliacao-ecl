@@ -6,9 +6,9 @@
 
 import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
-import { bancoDe, perguntaDoCiclo } from './triagem5c';
+import { bancoDe, perguntaDoCiclo, SO_AULA_PRATICA, type ContextoPerguntas5C } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, pedeFardaEHigiene, fardaIncompletaNaPresenca, type ContextoAula } from './contextoAula';
-import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
+import { manualDaUC, proximoConteudo, indicadoresDoConteudo, capituloDoCampo } from './bancoManuais';
 import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
 import { planoNumDiaSemAulas, almocoNoDia } from './horarios';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
@@ -214,6 +214,23 @@ const naMemoria: Record<string, string> = {};
 let semEspacoNoAparelho = false;
 /** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
 export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
+
+/** O espaço que a aplicação ocupa neste aparelho. O navegador dá a cada site
+ *  cerca de 5 milhões de letras, seja qual for o espaço livre do aparelho: o
+ *  tablet do professor guarda todas as turmas e enche ao fim de alguns meses
+ *  (13/out/2026: 2,8 milhões ao fim de um mês). Quando enche, o que não coube
+ *  só fica enquanto a aplicação estiver aberta. */
+export const LIMITE_DO_ARMAZENAMENTO = 5_000_000;
+export function espacoOcupado(): { letras: number; fracao: number; cheio: boolean } {
+  let letras = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      letras += k.length + (localStorage.getItem(k) || '').length;
+    }
+  } catch { /* sem armazenamento */ }
+  return { letras, fracao: letras / LIMITE_DO_ARMAZENAMENTO, cheio: semEspacoNoAparelho };
+}
 
 // Datas e horas que ficaram escritas à inglesa («Sat Sep 05 2026 00:00:00
 // GMT+0100 (…)», ou «Sat Dec 30 1899 08:30:00 …» numa hora) voltam a
@@ -425,6 +442,14 @@ const VAO_DUAS_VEZES = new Set(['presenca', 'selecao', 'avaliacao', 'grupo_membr
 // pacote: o aluno submete e fecha a aplicação, e o que estava na fila
 // perdia-se (Rosa, set/2026).
 const SAEM_LOGO = new Set(['selecao', 'avaliacao_par']);
+/** O plano à espera de sair, por plano: segue sempre a versão mais recente. */
+const planosAEnviar = new Map<string, Record<string, unknown>>();
+
+// As validações, as autoavaliações, as avaliações e as presenças passam à
+// frente do resto (as notas da turma, a tabela de preços…), mas continuam em
+// pacote. Iam na mesma fila que as notas da turma inteira e esperavam atrás
+// delas: 29 validações presas no tablet (Rosa, 13/out/2026).
+const PRIMEIRO = new Set(['validacao', 'selecao', 'avaliacao', 'presenca', 'avaliacao_par']);
 
 async function enviar(url: string, tipo: string, dados: Record<string, unknown>, repetida = false): Promise<void> {
   if (!url) return;
@@ -435,12 +460,32 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>,
     setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
   }
   const corpo = { tipo, ...dados };
+  // O plano vai à frente de tudo, e só a versão mais recente: o professor
+  // muda uma coisa e o aluno tem de a receber logo (Rosa, 13/out/2026). Ia
+  // na fila normal, atrás das notas da turma; e dez cliques eram dez envios.
+  if (tipo === 'plano' && url === SHEETS_ECL_URL) {
+    const id = String((dados as any)?.plano?.id || (dados as any)?.id || '');
+    if (id) {
+      const jaNaFila = planosAEnviar.has(id);
+      planosAEnviar.set(id, corpo);
+      if (jaNaFila) return Promise.resolve();
+      return new Promise<void>(resolve => {
+        (modoFundo ? filaFundo : filaUrgente).push(async () => {
+          const ultimo = planosAEnviar.get(id);
+          planosAEnviar.delete(id);
+          if (ultimo) await postar(url, ultimo);
+          resolve();
+        });
+        correrFila();
+      });
+    }
+  }
   if (!repetida && !modoFundo && SAEM_LOGO.has(tipo)) return postar(url, corpo);
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
     return enviarAgora(url, corpo, URGENTES.has(tipo) ? 'urgente' : modoFundo ? 'fundo' : 'normal');
   }
-  const chave = url + '|' + (modoFundo ? 'fundo' : 'normal');
+  const chave = url + '|' + (modoFundo ? 'fundo' : PRIMEIRO.has(tipo) ? 'urgente' : 'normal');
   return new Promise<void>(resolve => {
     let f = filas.get(chave);
     if (!f) { f = { itens: [], resolver: [], t: setTimeout(() => despejarFila(chave), 300) }; filas.set(chave, f); }
@@ -1228,8 +1273,7 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       if (jsonVal?.ok && perfilDoAparelho && perfilDoAparelho !== 'aluno') {
         const noSheets = new Map<string, any>((jsonVal.dados || []).map((x: any) => [String(x.id), x]));
         getValidacoes().filter(v => v.turmaId === turmaId).forEach(v => {
-          const x = noSheets.get(String(v.id));
-          const falta = !x || String(x.notaMedia20 ?? '') === '' || quandoFoi(x.validadoEm) < quandoFoi((v as any).validadoEm) - 1000;
+          const falta = !validacaoNoSheets(v, noSheets.get(String(v.id)));
           if (falta) { enviarValidacaoAoSheets(v); porConfirmar('validacao', v.id, rotuloAlunoAula('validação', (v as any).alunoId, (v as any).planoAulaId), v.turmaId); }
         });
       }
@@ -1274,6 +1318,8 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       const daBase = await Promise.all(Object.keys(COLECAO_DO_TIPO)
         .map(async tipo => [tipo, await lerDaBase(tipo, turmaId)] as const));
       for (const [tipo, dados] of daBase) if (dados) juntarDaBase(tipo, dados);
+      // Os alunos fantasma marcados aqui e que não chegaram à base.
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') reenviarFantasmasPorConfirmar();
     }
 
     // ── Preços revistos (Continente) — iguais para todas as turmas ────
@@ -1295,6 +1341,7 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarNotasDaTurma(turmaId);
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') fixarPerguntas5CEmFalta(turmaId);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -1851,7 +1898,9 @@ function juntarConfigs(lista: any[]): void {
 // presenças da aula, nas funções e responsabilidades, nas recuperações e
 // no ranking (assume que faltam a tudo). Continuam na pauta oficial e
 // podem ser repostos. A marca é partilhada por todos os aparelhos.
-export interface MarcaFantasma { alunoId: string; turmaId: string; fantasma: boolean; marcadoPor: string; atualizadoEm: string }
+export interface MarcaFantasma { alunoId: string; turmaId: string; fantasma: boolean; marcadoPor: string; atualizadoEm: string;
+  /** Já chegou à base de dados (e, por ela, aos outros aparelhos). */
+  naBase?: boolean }
 const KEY_FANTASMAS = 'ecl_alunos_fantasma';
 let cacheFantasmas: Set<string> | null = null;
 export function alunosFantasma(): Set<string> {
@@ -1863,7 +1912,23 @@ export function marcarFantasma(aluno: { id: string; turmaId: string }, fantasma:
   const m: MarcaFantasma = { alunoId: aluno.id, turmaId: aluno.turmaId, fantasma, marcadoPor: quem || 'coordenação', atualizadoEm: new Date().toISOString() };
   save(KEY_FANTASMAS, [...load<MarcaFantasma>(KEY_FANTASMAS).filter(x => x.alunoId !== aluno.id), m]);
   cacheFantasmas = null;
-  gravarNaBase('aluno_fantasma', m as any);
+  enviarFantasma(m);
+}
+/** A marca vai para a base; só fica «naBase» quando a base a aceitou. Antes ia
+ *  uma vez e, se falhasse, ficava só neste aparelho: os outros continuavam a
+ *  ver o aluno (Rosa, 12/out/2026: «continuam a aparecer depois de anulados»;
+ *  a base não tinha nenhuma marca). */
+function enviarFantasma(m: MarcaFantasma): void {
+  const { naBase: _n, ...semEstado } = m;
+  gravarNaBase('aluno_fantasma', semEstado as any).then(ok => {
+    if (!ok) return;
+    save(KEY_FANTASMAS, load<MarcaFantasma>(KEY_FANTASMAS).map(x =>
+      x.alunoId === m.alunoId && x.atualizadoEm === m.atualizadoEm ? { ...x, naBase: true } : x));
+  }).catch(() => {});
+}
+/** As marcas deste aparelho que ainda não chegaram à base vão outra vez. */
+export function reenviarFantasmasPorConfirmar(): void {
+  load<MarcaFantasma>(KEY_FANTASMAS).filter(m => !m.naBase && m.alunoId).forEach(enviarFantasma);
 }
 function juntarFantasmas(lista: any[]): void {
   const m = new Map(load<MarcaFantasma>(KEY_FANTASMAS).map(x => [x.alunoId, x]));
@@ -1872,7 +1937,7 @@ function juntarFantasmas(lista: any[]): void {
     const velho = m.get(x.alunoId);
     if (!velho || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) {
       m.set(x.alunoId, { alunoId: x.alunoId, turmaId: x.turmaDoAluno || x.turmaId || velho?.turmaId || '', fantasma: x.fantasma === true || x.fantasma === 'true',
-        marcadoPor: x.marcadoPor || '', atualizadoEm: x.atualizadoEm || '' });
+        marcadoPor: x.marcadoPor || '', atualizadoEm: x.atualizadoEm || '', naBase: true });
     }
   }
   save(KEY_FANTASMAS, [...m.values()]);
@@ -2714,6 +2779,23 @@ export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 }
 
+/**
+ * Os planos gravados antes de a pergunta do Consciente e do Criativo ficar
+ * fixada (rotacao5C) calculam-na pela posição entre os planos da turma: criar,
+ * apagar ou arquivar outro plano mudava as perguntas dessas aulas, a meio das
+ * autoavaliações (auditoria de 13/out/2026: 5 de 7 aulas recentes). No
+ * aparelho do professor, fixa-se a que está agora, nas aulas das últimas 3
+ * semanas e nas que vêm. Uma vez só por plano.
+ */
+export function fixarPerguntas5CEmFalta(turmaId: string): number {
+  const desde = new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10);
+  const porFixar = getPlanosAula().filter((p: any) => p.turmaId === turmaId && !p.rotacao5C && !p.tipoEvento
+    && p.estado !== 'arquivado' && String(p.data || '').slice(0, 10) >= desde);
+  if (!porFixar.length) return 0;
+  emSegundoPlano(() => porFixar.forEach(p => { try { addOrUpdatePlanoAula(p); } catch (e) { console.error(e); } }));
+  return porFixar.length;
+}
+
 export function addOrUpdatePlanoAula(p: PlanoAula): void {
   // O registo fica no fim da função, depois de gravar e enviar.
   // Toda a gravação leva a hora: é por ela que o telemóvel do aluno aceita a
@@ -2721,6 +2803,17 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   // professor não chegavam aos alunos (Rosa, set/2026).
   p = { ...p, atualizadoEm: new Date().toISOString() } as PlanoAula;
   const all = getPlanosAula();
+  // A pergunta da rotação do Consciente e do Criativo fica fixada já, na 1.ª
+  // gravação (perguntaDaAula): igual em todos os aparelhos e para sempre.
+  // Volta a fixar-se se a aula passou a teórica e a fixada era só da cozinha.
+  try {
+    const soDaCozinha = (id?: string) => !!id && SO_AULA_PRATICA.has(id);
+    const passouATeorica = () => (soDaCozinha(p.rotacao5C?.co) || soDaCozinha(p.rotacao5C?.cr)) && !contextoDoPlano(p).producao;
+    if (!(p as any).tipoEvento && (!p.rotacao5C || passouATeorica())) {
+      const comEste = [...all.filter(x => x.id !== p.id), p];
+      p = { ...p, rotacao5C: { co: perguntaDaRotacao('co', p, comEste), cr: perguntaDaRotacao('cr', p, comEste) } } as PlanoAula;
+    }
+  } catch (e) { console.error(e); }
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
@@ -3331,11 +3424,26 @@ export function getSelecoes(): SelecaoAluno[] {
   // validadas (Rosa, set/2026). O aluno volta a ter a autoavaliação por
   // fazer; a nota antiga continua a contar até o professor validar a nova.
   const pedidos = new Map(getPlanosAula().filter((p: any) => p.pedirDeNovoEm).map((p: any) => [p.id, p.pedirDeNovoEm as string]));
-  if (!pedidos.size) return todas;
+  const anuladas = respostasAnuladas();
+  if (!pedidos.size && !anuladas.size) return todas;
   return todas.filter(s => {
     const em = pedidos.get(s.planoAulaId || '');
-    return !em || respostaDepoisDoPedido(s, em);
+    return (!em || respostaDepoisDoPedido(s, em)) && !foiAnulada(s, anuladas);
   });
+}
+/** As autoavaliações que o professor anulou: aula → aluno → quando (anularAutoavaliacao). */
+function respostasAnuladas(): Map<string, Record<string, string>> {
+  return new Map(getPlanosAula().filter((p: any) => p.anuladaPara && Object.keys(p.anuladaPara).length)
+    .map((p: any) => [p.id, p.anuladaPara as Record<string, string>]));
+}
+/** Esta resposta é de antes de o professor a anular? Então não conta para nada. */
+function foiAnulada(s: { alunoId?: string; planoAulaId?: string; criadaEm?: string }, anuladas = respostasAnuladas()): boolean {
+  const em = anuladas.get(s.planoAulaId || '')?.[s.alunoId || ''];
+  if (!em) return false;
+  // Anulada só se for de antes pela versão do plano E pela hora: uma resposta
+  // nova dada num telemóvel com o plano ainda antigo não se perde.
+  const versao = (s as any).versaoPlano;
+  return quandoFoi(s.criadaEm) < quandoFoi(em) && (!versao || quandoFoi(versao) < quandoFoi(em));
 }
 
 /**
@@ -3351,7 +3459,8 @@ export function selecoesDoProfessor(): SelecaoAluno[] {
   const todas = semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
   if (todas.length === visiveis.length) return visiveis;
   const tem = new Set(visiveis.map(s => s.alunoId + '|' + s.planoAulaId));
-  const escondidas = selecoesQueContam(todas.filter(s => !tem.has(s.alunoId + '|' + s.planoAulaId)));
+  const anuladas = respostasAnuladas();
+  const escondidas = selecoesQueContam(todas.filter(s => !tem.has(s.alunoId + '|' + s.planoAulaId) && !foiAnulada(s, anuladas)));
   return [...visiveis, ...escondidas.map(s => ({ ...s, antesDoPedido: true } as SelecaoAluno))];
 }
 
@@ -3363,11 +3472,21 @@ export function respostasAntesDaAlteracao(planoId: string): number {
   return getSelecoes().filter(s => s.planoAulaId === planoId && String(s.criadaEm || '') < alterado).length;
 }
 
-/** O professor mudou o plano: os alunos que já responderam (validados ou não) respondem outra vez. */
+/** O professor pede à turma que responda outra vez (só quando ele o pede no
+ *  botão: mudar o plano já não o pede sozinho — Rosa, 13/out/2026). */
 export function pedirNovaAutoavaliacao(planoId: string): void {
   const p = getPlanosAula().find(x => x.id === planoId);
   if (!p) return;
   addOrUpdatePlanoAula({ ...p, pedirDeNovoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() } as any);
+}
+/** Cancela o «responder outra vez» da turma: voltam a contar as últimas
+ *  respostas de cada aluno, e ninguém tem de responder de novo (Rosa,
+ *  13/out/2026: «os alunos estão fartos de se avaliar»). Fica vazio (e não
+ *  apagado) para a versão nova do plano substituir a antiga em todo o lado. */
+export function cancelarNovaAutoavaliacao(planoId: string): void {
+  const p = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return;
+  addOrUpdatePlanoAula({ ...p, pedirDeNovoEm: '', atualizadoEm: new Date().toISOString() } as any);
 }
 /** Regra (Rosa, out/2026): o professor reabre a autoavaliação de UM aluno,
  *  sem PIN novo. Fica no plano (reabertaPara), chega ao telemóvel dele, e
@@ -3376,6 +3495,22 @@ export function reabrirAutoavaliacao(planoId: string, alunoId: string): void {
   const p: any = getPlanosAula().find(x => x.id === planoId);
   if (!p) return;
   addOrUpdatePlanoAula({ ...p, reabertaPara: { ...(p.reabertaPara || {}), [alunoId]: new Date().toISOString() } });
+}
+/** Anular a autoavaliação de UM aluno (Rosa, 12/out/2026: «um aluno mentiu e
+ *  disse que fez a apresentação oral»). A resposta deixa de contar (não fica
+ *  para validar) e o aluno tem de a fazer toda de novo, sem nada preenchido:
+ *  abre sozinha no telemóvel dele, como ao reabrir. Até responder, a aula
+ *  conta como sem autoavaliação. Numa aula com apresentação oral, o professor
+ *  pode dizer já se o aluno apresentou; o aluno não o pode mudar. */
+export function anularAutoavaliacao(planoId: string, alunoId: string, oral?: 'hoje' | 'antes' | 'nao'): void {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return;
+  const agora = new Date().toISOString();
+  addOrUpdatePlanoAula({ ...p,
+    reabertaPara: { ...(p.reabertaPara || {}), [alunoId]: agora },
+    anuladaPara: { ...(p.anuladaPara || {}), [alunoId]: agora },
+    oralPeloProfessor: oral ? { ...(p.oralPeloProfessor || {}), [alunoId]: oral }
+      : Object.fromEntries(Object.entries(p.oralPeloProfessor || {}).filter(([k]) => k !== alunoId)) });
 }
 /** Desde quando este aluno tem de responder outra vez nesta aula: o pedido à
  *  turma (perguntas novas) ou a reabertura só para ele — o mais recente. */
@@ -3405,7 +3540,16 @@ export function reabertaPorResponder(plano: any, alunoId: string): boolean {
     .sort((x: any, y: any) => quandoFoi(y.criadaEm) - quandoFoi(x.criadaEm))[0];
   return !s || !respostaDepoisDoPedido(s, r);
 }
-export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
+export function getValidacoes(): Validacao[] {
+  const todas = semPlanosEliminados(load<Validacao>(KEYS.validacoes));
+  // A validação de uma autoavaliação que o professor anulou deixa de contar (12/out/2026).
+  const anuladas = respostasAnuladas();
+  if (!anuladas.size) return todas;
+  return todas.filter((v: any) => {
+    const em = anuladas.get(v.planoAulaId)?.[v.alunoId];
+    return !em || quandoFoi(v.validadoEm) >= quandoFoi(em);
+  });
+}
 
 /** A validação desta autoavaliação. Procura pelo código e também pelo
  *  aluno e pela aula: a mesma autoavaliação pode chegar duas vezes (do
@@ -3462,8 +3606,9 @@ export function ultimaResposta(alunoId: string, planoId: string, sels: SelecaoAl
  *  que um «responder outra vez» escondeu: servem para saber o tema que ele já
  *  escolheu, que continua válido (Rosa, 11/out/2026). */
 export function respostasDoAlunoComAntigas(alunoId: string, planoId: string): SelecaoAluno[] {
+  // As que o professor anulou não contam: o aluno recomeça do zero.
   return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes))
-    .filter(s => !ehRegistoEspecial(s) && s.alunoId === alunoId && s.planoAulaId === planoId)
+    .filter(s => !ehRegistoEspecial(s) && s.alunoId === alunoId && s.planoAulaId === planoId && !foiAnulada(s))
     .sort((a: any, b: any) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
 }
 /** Quantas vezes o aluno respondeu a esta aula (o professor é avisado se for mais de uma). */
@@ -3548,6 +3693,10 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     ...((s as any).evidenciaFicha ? { evidenciaFicha: (s as any).evidenciaFicha } : {}),
     ...((s as any).semPratica ? { semPratica: true } : {}),
     ...((s as any).reflexaoPresenca ? { reflexaoPresenca: (s as any).reflexaoPresenca } : {}),
+    // Se apresentou a oral (12/out/2026): não ia, e o professor noutro aparelho não o via.
+    ...((s as any).apresentacaoOral ? { apresentacaoOral: (s as any).apresentacaoOral } : {}),
+    // A apresentação do colega que viu (quem não apresentou hoje).
+    ...((s as any).observouColega ? { observouColega: (s as any).observouColega } : {}),
   };
 }
 
@@ -3577,18 +3726,39 @@ export function addOrUpdateValidacao(v: Validacao): void {
   porConfirmar('validacao', v.id, rotuloAlunoAula('validação', (v as any).alunoId, (v as any).planoAulaId), v.turmaId);
 }
 
-function enviarValidacaoAoSheets(v: Validacao, nota20Final?: number): void {
+/** A nota de 0 a 20 que a validação leva para o Sheets. */
+function nota20DaValidacao(v: Validacao): number {
   const np = (v as any).notaMedia20;
-  const n20 = nota20Final ?? (typeof np === 'number' ? Math.round(np * 10) / 10
-    : notaPara20(v.notas.length ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0));
+  const notas = v.notas || [];
+  return typeof np === 'number' ? Math.round(np * 10) / 10
+    : notaPara20(notas.length ? notas.reduce((s, n) => s + n.nota, 0) / notas.length : 0);
+}
+
+/** O que vai para o Sheets numa validação. */
+function corpoValidacao(v: Validacao, nota20Final?: number): Record<string, unknown> {
+  const n20 = nota20Final ?? nota20DaValidacao(v);
   const aluno_val = getAlunos().find(a => a.id === v.alunoId);
-  enviar(SHEETS_HISTORICO_URL, 'validacao', {
+  return {
     ...(v as unknown as Record<string, unknown>),
     nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
     turma: v.turmaId,
     nota_media_1_5: Math.round(nivelDe20(n20) * 10) / 10,
     nota_media_0_20: n20,
-  });
+  };
+}
+
+function enviarValidacaoAoSheets(v: Validacao, nota20Final?: number): void {
+  enviar(SHEETS_HISTORICO_URL, 'validacao', corpoValidacao(v, nota20Final));
+}
+
+/** A validação que está no Sheets é esta (a mesma versão, com a nota)? O
+ *  script guarda a nota 0 vazia (0 || ''): a validação de uma falta nunca se
+ *  dava por entregue, ia 5 vezes e ficava presa no aparelho para sempre
+ *  (Rosa, 13/out/2026: 29 validações presas no tablet). */
+function validacaoNoSheets(v: Validacao, x: any): boolean {
+  if (!x) return false;
+  if (quandoFoi(x.validadoEm) < quandoFoi((v as any).validadoEm) - 1000) return false;
+  return String(x.notaMedia20 ?? '') !== '' || nota20DaValidacao(v) === 0;
 }
 
 export function addOrUpdateAtividade(a: Atividade): void {
@@ -3664,7 +3834,15 @@ export function mapaAvaliacoesAnteriores(
 }
 
 export function getHistoricoAvaliacoes(): RegistoAvaliacao[] {
-  return semPlanosEliminados(load<RegistoAvaliacao>(KEY_HIST));
+  const todos = semPlanosEliminados(load<RegistoAvaliacao>(KEY_HIST));
+  // Autoavaliação anulada pelo professor: as notas dela (do aluno e da
+  // validação) deixam de contar; contam as da resposta nova (12/out/2026).
+  const anuladas = respostasAnuladas();
+  if (!anuladas.size) return todos;
+  return todos.filter(r => {
+    const em = anuladas.get(r.planoAulaId)?.[r.alunoId];
+    return !em || quandoFoi(r.data) >= quandoFoi(em);
+  });
 }
 
 export interface RegistoPresenca {
@@ -6469,6 +6647,19 @@ export function recuperacoesDeAulasPorFazer(alunoId: string): { plano: PlanoAula
     .sort((a, b) => String(a.plano.data).localeCompare(String(b.plano.data)));
 }
 
+/** As aulas da UC em que o aluno já se autoavaliou e o professor ainda não
+ *  validou: não contam (nem 0) até serem validadas. Para «Como chegaste a esta
+ *  nota» (Rosa, 12/out/2026: o Leonel não via as aulas de 9 e 12/10). */
+export function aulasPorValidarNaNota(alunoId: string, turmaId: string, ucId: string): { planoId: string; titulo: string; data: string }[] {
+  const contadas = new Set(aulasDaNotaUC(alunoId, turmaId, ucId).map(l => l.planoId));
+  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  const sels = getSelecoes().filter(s => s.alunoId === alunoId);
+  return getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado'
+      && !contadas.has(p.id) && !faltados.has(p.id) && sels.some(s => s.planoAulaId === p.id))
+    .sort((a, b) => String(a.data).localeCompare(String(b.data)))
+    .map(p => ({ planoId: p.id, titulo: p.titulo || 'Aula', data: String(p.data || '').slice(0, 10).split('-').reverse().join('/') }));
+}
+
 /** As faltas que ainda contam 0 na nota (as recuperadas saem), com a
  *  recuperação pedida, se houver — para «Como chegaste a esta nota». */
 export function faltasQueContamNaNota(alunoId: string, turmaId: string, ucId: string): { titulo: string; data: string; recuperacao?: string }[] {
@@ -9098,13 +9289,22 @@ export interface PorConfirmar {
   versaoNoSheets?: string;
   /** (planos) A versão que já chegou à base de dados — e, por ela, aos alunos. */
   naBaseVersao?: string;
+  /** Quantas conferências seguidas não conseguiram ler o Sheets. */
+  semLeitura?: number;
 }
 
 function espera(): PorConfirmar[] {
-  try { return JSON.parse(localStorage.getItem(KEY_ESPERA) || '[]'); } catch { return []; }
+  try { return JSON.parse(naMemoria[KEY_ESPERA] ?? localStorage.getItem(KEY_ESPERA) ?? '[]'); } catch { return []; }
 }
 function guardarEspera(l: PorConfirmar[]): void {
-  try { localStorage.setItem(KEY_ESPERA, JSON.stringify(l.slice(-300))); } catch { /* */ }
+  // Sem espaço no aparelho, a lista do que falta enviar não pode perder-se:
+  // liberta o que já não serve e, se ainda assim não couber, fica na memória
+  // (e o professor vê o aviso de armazenamento cheio).
+  const texto = JSON.stringify(l.slice(-300));
+  try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; return; } catch { /* sem espaço */ }
+  libertarEspaco();
+  try { localStorage.setItem(KEY_ESPERA, texto); delete naMemoria[KEY_ESPERA]; }
+  catch { naMemoria[KEY_ESPERA] = texto; semEspacoNoAparelho = true; }
 }
 
 /** «validação de Diogo Neves, aula de 02/10» — para o professor saber o que ficou por enviar. */
@@ -9140,7 +9340,10 @@ export function rotuloDaEspera(x: PorConfirmar): string {
 /** Quantos ainda não se sabe se chegaram, e há quanto tempo. */
 export function estadoDaEspera(): { total: number; teimosos: PorConfirmar[] } {
   const l = espera();
-  return { total: l.length, teimosos: l.filter(x => x.tentativas >= 2) };
+  // Também o que há mais de 10 minutos não se consegue conferir: antes não
+  // aparecia ao professor, e ficava preso sem ninguém saber.
+  const haDezMinutos = Date.now() - 10 * 60000;
+  return { total: l.length, teimosos: l.filter(x => x.tentativas >= 2 || (x.semLeitura && new Date(x.desde).getTime() < haDezMinutos)) };
 }
 
 const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
@@ -9172,6 +9375,7 @@ function existeAinda(p: PorConfirmar): boolean {
     if (p.tipo === 'aluno') return getAlunos().some(x => x.id === p.id);
     if (p.tipo === 'selecao') return load<SelecaoAluno>(KEYS.selecoes).some(x => x.id === p.id);
     if (p.tipo === 'validacao') return getValidacoes().some(x => x.id === p.id);
+    if (p.tipo === 'avaliacao') return getHistoricoAvaliacoes().some(x => x.id === p.id);
   } catch { /* na dúvida, fica */ }
   return true;
 }
@@ -9259,22 +9463,49 @@ export function esquecerEsperaDoPlano(id: string): void {
   guardarEspera(espera().filter(x => !(x.tipo === 'plano' && x.id === id)));
 }
 
-/** Ao fechar ou esconder a aplicação: a autoavaliação ou o plano que ainda
- *  não se sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo
- *  com a aplicação fechada). As repetições juntam-se no script. */
+/** Ao fechar ou esconder a aplicação: a autoavaliação, a validação ou o
+ *  plano que ainda não se sabe se chegou vai outra vez, logo, com
+ *  «keepalive» (acaba mesmo com a aplicação fechada). As repetições juntam-se
+ *  no script. As validações não iam: o professor fechava o tablet e ficavam
+ *  lá presas (Rosa, 13/out/2026). */
 function enviarAntesDeFechar(): void {
   const agora = Date.now();
-  for (const p of espera()) {
-    if (agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
+  const respostas: Record<string, unknown>[] = [];
+  const planos: PlanoAula[] = [];
+  // As mais recentes primeiro: o navegador só deixa sair 64 KB ao fechar.
+  for (const p of espera().slice().reverse()) {
+    const dias = INSISTEM.has(p.tipo) ? 7 : 1;
+    if (agora - new Date(p.desde).getTime() > dias * 24 * 3600 * 1000) continue;
     if (p.tipo === 'selecao') {
       const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
-      if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+      if (sel) respostas.push({ tipo: 'selecao', ...corpoSelecao(sel) });
+    } else if (p.tipo === 'validacao') {
+      const v = getValidacoes().find(x => x.id === p.id);
+      if (v) respostas.push({ tipo: 'validacao', ...corpoValidacao(v) });
+    } else if (p.tipo === 'avaliacao') {
+      const r = getHistoricoAvaliacoes().find(x => x.id === p.id);
+      if (r) respostas.push({ tipo: 'avaliacao', ...(r as any) });
     } else if (p.tipo === 'plano') {
       // O professor gravou o plano e saiu logo: as alterações não chegavam aos alunos.
       const plano = getPlanosAula().find(x => x.id === p.id);
-      if (plano) postar(SHEETS_PLANOS_URL, { tipo: 'plano', plano });
+      if (plano) planos.push(plano);
     }
   }
+  // Em pacotes (script v16+), até se esgotarem os 64 KB do «keepalive».
+  let sobra = 60000;
+  const mandar = (corpo: Record<string, unknown>) => {
+    const t = JSON.stringify(corpo).length;
+    if (t > sobra) return;
+    sobra -= t;
+    postar(SHEETS_HISTORICO_URL, corpo);
+  };
+  if (loteSuportado === true) {
+    for (let i = 0; i < respostas.length; i += 10) {
+      const p = respostas.slice(i, i + 10);
+      mandar(p.length === 1 ? p[0] : { tipo: 'lote', itens: p });
+    }
+  } else respostas.forEach(mandar);
+  for (const plano of planos) postar(SHEETS_PLANOS_URL, { tipo: 'plano', plano });
 }
 if (typeof window !== 'undefined') {
   let ultimo = 0;
@@ -9309,10 +9540,25 @@ export async function confirmarSessoesAbertas(): Promise<number> {
   return reenviadas;
 }
 
-export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepetir: number }> {
+/** As respostas e as notas: nunca desistem de chegar ao Sheets. */
+const INSISTEM = new Set<PorConfirmar['tipo']>(['selecao', 'validacao', 'avaliacao']);
+
+/**
+ * Confere o que está à espera e reenvia o que não chegou.
+ * `forcar` («Tentar enviar agora»): manda logo tudo outra vez, à frente do
+ * resto, antes de ir conferir — mesmo o que já tinha esgotado as tentativas
+ * ou não se conseguiu conferir. Antes o botão só conferia: depois de 5
+ * tentativas, as validações nunca mais saíam do tablet (Rosa, 13/out/2026).
+ */
+export async function confirmarEReenviar(opcoes?: { forcar?: boolean }): Promise<{ confirmados: number; aRepetir: number; enviados: number }> {
+  const forcar = !!opcoes?.forcar;
+  let enviados = 0;
+  if (forcar) {
+    for (const p of espera()) if (existeAinda(p)) { reenviar(p); enviados++; }
+  }
   await confirmarSessoesAbertas().catch(() => 0);
   const l = espera();
-  if (!l.length) return { confirmados: 0, aRepetir: 0 };
+  if (!l.length) return { confirmados: 0, aRepetir: 0, enviados };
 
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
   const tipos = [...new Set(l.map(x => x.tipo))];
@@ -9326,6 +9572,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   // tomada por "não consegui ler" — e o que estava à espera nunca mais era
   // reenviado: a aula criada não chegava ao Sheets nem aos alunos.
   const lidoComSucesso = new Set<string>();
+  const validacoesNoSheets = new Map<string, any>();
   /** O que o Sheets diz ter sido eliminado de propósito (apagado de vez).
    *  O Sheets recusa gravá-lo outra vez («eliminado»), e o aparelho que ainda
    *  o tinha insistia para sempre: «9.ª tentativa», «62.ª tentativa» (Rosa,
@@ -9353,7 +9600,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
           // entregue e o professor validava a antiga (Rosa, out/2026).
           if (tipo === 'selecao') versaoNoSheets.set('selecao:' + String(x.id), quandoFoi(x.criadaEm));
           // A validação: a que lá está tem de ser a última (com a nota).
-          if (tipo === 'validacao') versaoNoSheets.set('validacao:' + String(x.id), String(x.notaMedia20 ?? '') === '' ? 0 : quandoFoi(x.validadoEm));
+          if (tipo === 'validacao') validacoesNoSheets.set(String(x.id), x);
         });
       } catch { /* sem rede: fica para a próxima */ }
     }
@@ -9363,9 +9610,8 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
 
   const versaoChegou = (p: PorConfirmar): boolean => {
     if (p.tipo === 'validacao') {
-      const local = quandoFoi((getValidacoes().find(x => x.id === p.id) as any)?.validadoEm);
-      const remota = versaoNoSheets.get('validacao:' + String(p.id)) || 0;
-      return !local || (remota > 0 && remota >= local - 1000);
+      const v = getValidacoes().find(x => x.id === p.id);
+      return !v || !quandoFoi((v as any).validadoEm) || validacaoNoSheets(v, validacoesNoSheets.get(String(p.id)));
     }
     if (p.tipo === 'selecao') {
       const local = quandoFoi((load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id) as any)?.criadaEm);
@@ -9390,7 +9636,15 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     if (!existeAinda(p)) { continue; }
     if (eliminadosNoSheets.get(p.tipo)?.has(String(p.id))) { esquecerEliminado(p); continue; }
     const ids = noSheets.get(p.tipo);
-    if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
+    if (!ids || !lidoComSucesso.has(p.tipo)) {
+      // Não consegui ler: não conto como falha. Mas as respostas e as notas
+      // vão outra vez de 5 em 5 conferências (antes, com o Sheets lento a
+      // responder, nunca mais saíam do aparelho).
+      const semLeitura = (p.semLeitura || 0) + 1;
+      if (!forcar && INSISTEM.has(p.tipo) && semLeitura % 5 === 0) emSegundoPlano(() => reenviar(p));
+      restantes.push({ ...p, motivo: 'sem_leitura', semLeitura });
+      continue;
+    }
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
     // O professor já validou esta resposta: chegou, de certeza.
     if (p.tipo === 'selecao') {
@@ -9403,7 +9657,9 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     // aviso «A enviar…» ficava para sempre sem nada a acontecer).
     // A resposta do aluno nunca desiste: depois de 60 tentativas, continua
     // de 10 em 10 conferências (antes parava e ficava «A enviar…» para sempre).
-    if (p.tentativas < 5 || (p.tipo === 'selecao' && (p.tentativas < 60 || p.tentativas % 10 === 0)) || (p.tipo === 'plano' && p.tentativas < 30)) emSegundoPlano(() => reenviar(p));
+    // (13/out/2026) As validações e as avaliações também nunca desistem: ao
+    // fim de 5 tentativas ficavam presas no tablet, e o botão não as mandava.
+    if (!forcar && (p.tentativas < 5 || (INSISTEM.has(p.tipo) && (p.tentativas < 60 || p.tentativas % 10 === 0)) || (p.tipo === 'plano' && p.tentativas < 30))) emSegundoPlano(() => reenviar(p));
     const v = versaoNoSheets.get(String(p.id));
     restantes.push({ ...p, tentativas: p.tentativas + 1,
       ...(p.tipo === 'plano' ? { motivo: ids.has(String(p.id)) ? 'versao_antiga' as const : 'nao_esta' as const,
@@ -9411,7 +9667,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   }
   for (const x of atual) if (!l.some(y => y.tipo === x.tipo && y.id === x.id)) restantes.push(x);
   guardarEspera(restantes);
-  return { confirmados, aRepetir: restantes.length };
+  return { confirmados, aRepetir: restantes.length, enviados };
 }
 
 // ============================================================
@@ -9831,12 +10087,88 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
   const escolhida = plano?.[chave === 'co' ? 'perguntaCO' : 'perguntaCR'];
   if (escolhida && bancoDe(chave).banco.some(q => q.id === escolhida)) return escolhida;
   if (!plano) return perguntaDoCiclo(chave, 0).id;
+  // A da rotação, fixada na 1.ª gravação do plano. Antes contava-se de novo em
+  // cada aparelho, pelos planos que lá estavam: na mesma aula, uns alunos
+  // tinham uma pergunta e outros outra (3.º ACP, 25/9, 1/10, 10/10).
+  const fixa = plano.rotacao5C?.[chave];
+  const soTeoria = !contextoDoPlano(plano).producao;
+  if (fixa && bancoDe(chave).banco.some(q => q.id === fixa) && !(soTeoria && SO_AULA_PRATICA.has(fixa))) return fixa;
+  return perguntaDaRotacao(chave, plano, getPlanosAula());
+}
+/** A pergunta da rotação pela posição da aula entre as aulas da turma (os
+ *  eventos não contam), da mais antiga para a mais recente. */
+function perguntaDaRotacao(chave: 'co' | 'cr', plano: any, todos: PlanoAula[]): string {
   const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
-  const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
+  const aulas = todos.filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
     .sort((a, b) => ordem(a).localeCompare(ordem(b)));
   // Sem cozinhar (aula teórica, atitudinal, visita) não saem perguntas sobre a cozinha e os pratos.
   const soTeoria = !contextoDoPlano(plano).producao;
-  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId)), soTeoria).id;
+  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === plano.id)), soTeoria).id;
+}
+/** O plano e a experiência do aluno para as perguntas do Consciente e do
+ *  Criativo (concretizar): o prato ou o tema de hoje, o guião ou a ficha que
+ *  havia para ler, e uma técnica de uma aula anterior (a mais recente que
+ *  correu bem e a que o professor viu correr menos bem). Só as aulas antes desta contam: a
+ *  pergunta não muda depois de o aluno responder. */
+export function contextoPerguntas5C(plano: any, fichasDoAluno?: { nomePrato?: string; textoGuia?: string }[], alunoId?: string, temaTitulo?: string): ContextoPerguntas5C {
+  if (!plano) return {};
+  // Sem as fichas: as do grupo do aluno (se o professor deu uma ao grupo) ou as do plano.
+  const fichaDoGrupo = alunoId ? grupoDoAluno(plano.id, alunoId)?.fichaId : undefined;
+  const fichas = fichasDoAluno || getFichasPorPlano(plano.id).filter(f => !fichaDoGrupo || f.id === fichaDoGrupo);
+  const producao = contextoDoPlano(plano).producao;
+  const c: ContextoPerguntas5C = { teorica: !producao };
+  const pratos = [...new Set(fichas.map(f => String(f.nomePrato || '').trim()).filter(Boolean))].slice(0, 2).map(n => `«${n}»`);
+  const nomes = pratos.join(' e ');
+  const temGuiao = fichas.some(f => String(f.textoGuia || '').trim());
+  // O capítulo do manual: o tema que o aluno escolheu, ou o conteúdo do plano.
+  const capitulo = temaTitulo || ((plano.conhecimentosProf || []) as any[])
+    .map(k => capituloDoCampo(String(k?.id || ''))?.capitulo.titulo).find(Boolean);
+  if (producao && pratos.length) {
+    c.aFazer = `a fazer ${nomes}`; c.oQue = nomes;
+    c.paraLer = temGuiao ? { longo: `o guião de ${nomes}`, curto: 'o guião' } : { longo: `a ficha técnica de ${nomes}`, curto: 'a ficha técnica' };
+    c.ondeProcurar = temGuiao ? 'no guião' : 'na ficha técnica';
+  } else if (capitulo) {
+    c.aFazer = `no trabalho sobre «${capitulo}»`; c.oQue = `«${capitulo}»`;
+    c.paraLer = { longo: `o capítulo do manual sobre «${capitulo}»`, curto: 'o capítulo do manual' };
+    c.ondeProcurar = 'no manual';
+  }
+  if (alunoId && producao) {
+    const dia = String(plano.data || '').slice(0, 10);
+    const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+    const datas = new Map(getPlanosAula().map(x => [x.id, String(x.data || '').slice(0, 10)]));
+    const dataDe = (r: RegistoAvaliacao) => datas.get(r.planoAulaId) || String(r.data || '').slice(0, 10);
+    const tecnicas = getHistoricoAvaliacoes()
+      .filter(r => r.alunoId === alunoId && r.planoAulaId !== plano.id
+        && /^(SUB|APP)-/.test(r.microcompetenciaId) && r.microcompetenciaId !== 'SUB-OUTRA' && dataDe(r) && dataDe(r) < dia)
+      .sort((a, b) => dataDe(b).localeCompare(dataDe(a)));
+    const nome = (r: RegistoAvaliacao) => nomeCompetencia(r.microcompetenciaId);
+    // O exemplo: uma técnica que fez (validada ou não); o erro: só o que o professor validou.
+    const bem = tecnicas.find(r => r.nota >= 3 && nome(r) !== r.microcompetenciaId);
+    const mal = tecnicas.find(r => r.validadoPor !== 'aluno' && r.nota <= 2 && nome(r) !== r.microcompetenciaId);
+    if (bem) c.aprendido = { nome: nome(bem), data: dm(dataDe(bem)) };
+    if (mal) c.erro = { nome: nome(mal), data: dm(dataDe(mal)) };
+  }
+  return c;
+}
+/** As perguntas do Consciente (ou do Criativo) a que o aluno já respondeu,
+ *  da aula mais antiga para a mais recente, sem a desta aula. Serve para a
+ *  pergunta que vem depois de «não aconteceu» não ser sempre a mesma. */
+export function perguntas5CDoAluno(alunoId: string, chave: 'cl' | 'co' | 'cr', semPlanoId?: string): string[] {
+  if (chave === 'cl') return [];
+  const campo = chave === 'co' ? 'coId' : 'crId';
+  const datas = new Map(getPlanosAula().map(p => [p.id, String(p.data || '').slice(0, 10)]));
+  return load<any>(KEYS.selecoes)
+    .filter(s => s.alunoId === alunoId && String(s.planoAulaId || '').startsWith(PREFIXO_TRIAGEM)
+      && s.planoAulaId !== PREFIXO_TRIAGEM + (semPlanoId || ''))
+    .map(s => {
+      const t = s.autoavaliacoes?.[0];
+      const r = (t?.aluno || t?.professor) as Triagem5C | undefined;
+      const pid = String(s.planoAulaId).slice(PREFIXO_TRIAGEM.length);
+      return { id: String((r as any)?.[campo] || ''), quando: `${datas.get(pid) || ''} ${s.criadaEm || ''}` };
+    })
+    .filter(x => x.id)
+    .sort((a, b) => a.quando.localeCompare(b.quando))
+    .map(x => x.id);
 }
 /** Como é esta aula (cozinha, produção, equipas): a triagem do professor,
  *  ou, sem ela, o que se deduz do plano e dos grupos formados. */

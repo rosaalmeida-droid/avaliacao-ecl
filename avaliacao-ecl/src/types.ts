@@ -517,6 +517,10 @@ export interface PlanoAula {
   perguntaCO?: string;
   /** O mesmo para o Criativo (BANCO_CR). */
   perguntaCR?: string;
+  /** A pergunta da rotação (Consciente e Criativo), fixada na 1.ª gravação do
+   *  plano: a mesma em todos os aparelhos e sempre a mesma, mesmo que depois
+   *  se criem ou apaguem planos da turma (Rosa, 12/out/2026). */
+  rotacao5C?: { co: string; cr: string };
   /** Plano organizacional: a função de cada aluno nesta aula (organizacaoAula.ts). */
   organizacao?: import('./organizacaoAula').OrganizacaoAula;
   realizadaEm?: string;     // ISO timestamp — quando o professor marcou como realizada

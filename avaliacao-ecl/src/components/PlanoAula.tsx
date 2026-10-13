@@ -1289,6 +1289,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       const cozinham = tp === 'pratico' || tp === 'misto';
       (p as any).triagemAula = { tipo: tp, cozinham, onde: cozinham ? 'cozinha' : 'sala',
         trabalho: tp === 'teorico' ? 'individual' : 'grupos', servico: false } as TriagemAula;
+      // Em grupos: os grupos ficam ligados, e os alunos avaliam os colegas do
+      // grupo (Rosa, 12/out/2026: sem isto, só uma aula teve avaliação entre colegas).
+      if (tp !== 'teorico') (p as any).gruposAlunos = { ativo: true, tamanho: 4 };
       if (tp === 'teorico') (p as any).compRemovidas = [...new Set([...((p as any).compRemovidas || []), 'OBR_01', 'OBR_02'])];
       if (tp === 'teorico' || tp === 'misto') {
         const prox = proximoConteudo(getPlanosAulaPorTurma(turmaId), turmaId, dados.ucId);
@@ -1714,7 +1717,10 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               As fichas, o guião e a requisição juntam-se no plano, no campo «Fichas, guião e requisição».
             </div>
           )}
-          <SumarioAula key={alvo.id + String((alvo as any).atualizadoEm || '')} plano={alvo} onGuardado={(np) => aoMudarPlano(np as any)} />
+          {/* Refaz-se só quando o sumário guardado muda: outra gravação do plano
+              (confirmar presenças, por exemplo) apagava o que o professor
+              estava a escrever (auditoria de 13/out/2026). */}
+          <SumarioAula key={alvo.id + '|' + String((alvo as any).sumario || '')} plano={alvo} onGuardado={(np) => aoMudarPlano(np as any)} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button className="btn btn-secondary" onClick={() => setPasso(4)} style={{ flex: 1 }}>← Anterior</button>
             <button className="btn btn-primary" onClick={() => setPasso(6)} style={{ flex: 2, fontSize: 15, padding: '13px' }}>Seguinte →</button>

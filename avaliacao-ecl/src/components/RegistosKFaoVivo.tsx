@@ -71,6 +71,101 @@ export async function registosKFdaAula(turmaId: string, dataISO: string): Promis
   return { registos, falhou: respostas === 0 };
 }
 
+// ── O que cada aluno registou, na validação (Rosa, 12/out/2026) ──────
+// «Tem de aparecer que o aluno registou, e até o que registou»: o professor
+// vê-o na validação, sem ir ao relatório. As colunas são as do script v6
+// (SHEET_CONFIG), para mostrar «Coluna: valor».
+const COLUNAS_KF: Record<string, string[]> = {
+  'Higiene Pessoal': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Estado', 'Fonte'],
+  'Temperaturas': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Momento', 'Congelador 1', 'Conf.', 'Congelador 2', 'Conf.', 'Congelador 3', 'Conf.',
+    'Frig. Vert. 1', 'Conf.', 'Frig. Vert. 2', 'Conf.', 'Frig. Vert. 3', 'Conf.', 'Frig. Vert. 4', 'Conf.', 'Frig. Banc. 1', 'Conf.', 'Frig. Banc. 2', 'Conf.',
+    'Frig. Banc. 3', 'Conf.', 'Frig. Banc. 4', 'Conf.', 'Frig. Banc. 5', 'Conf.', 'Validado Prof'],
+  'Receção Matérias-Primas': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Fornecedor', 'Fatura', 'Produto', 'Categoria', 'Quantidade', 'Lote', 'Validade', 'Conformidade', 'Temperatura (°C)'],
+  'Conservação Produtos': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Estado', 'Produto', 'Categoria', 'Local de conservação', 'Embalagem', 'Notas', 'Data Produção', 'Data Limite', 'Lote'],
+  'Regeneração': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Prato', 'Tipo', 'Temp. Final (°C)', 'Resultado', 'Hora Início', 'Hora Fim', 'Tempo (min)', 'Temp. Serviço', 'Serviço OK', 'Equipamento', 'Conservação Anterior', 'Embalagem', 'Data Confeção', 'Observações'],
+  'Amostra Testemunho': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Prato', 'Tipo Refeição', 'Hora Refeição', 'Peso (g)', 'Local', 'Destruir em'],
+  'Desinfeção': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Alimento', 'Quantidade', 'Produto Desinfetante', 'Concentração (ml/L)', 'Tempo (min)', 'Temp. Água (°C)'],
+  'Produção': ['Data', 'Turma', 'ID Aluno', 'Prato', 'Lote', 'Conservação', 'Data Produção', 'Data Limite', 'Local', 'Professor', 'Hora', 'Nome Aluno'],
+  'Controlo Óleos': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Equipamento', 'Temperatura (°C)', 'Cor', 'Espuma', 'Cheiro', 'Teste Oxidação', 'Ação Tomada', 'Resultado'],
+  'Temperatura Serviço': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Prato', 'Tipo Serviço', 'Temperatura (°C)', 'Resultado', 'Hora Início', 'Equipamento'],
+  'Higienização': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Item Higienizado', 'Observação'],
+  'Panos Solução': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Momento (Início/Final)'],
+  'Manutenção, Avarias e Prevenção': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Equipamento', 'Tipo Ocorrência', 'Descrição', 'Ação Imediata', 'Estado'],
+  'NãoConformidades': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Zona/Equipamento', 'Descrição', 'Ação Corretiva', 'Estado', 'Gravidade / Decidido por', 'Decisão'],
+  'Faltas e Necessidades': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Tipo', 'Descrição', 'Quantidade', 'Urgência', 'Estado', 'Observações'],
+  'Encerramento': ['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Estado'],
+};
+const NAO_MOSTRAR = new Set(['Data', 'Hora', 'Turma', 'ID Aluno', 'Nome Aluno', 'Fonte', 'Conf.', 'Validado Prof']);
+
+/** Cada folha de cada endereço fica 3 minutos em memória: validar a turma
+ *  toda não volta a pedir as folhas todas a cada aluno. */
+const folhasEmMemoria = new Map<string, { em: number; pedido: Promise<any[][] | null> }>();
+function lerFolhaKF(url: string, tabela: string): Promise<any[][] | null> {
+  const chave = url + '|' + tabela;
+  const m = folhasEmMemoria.get(chave);
+  if (m && Date.now() - m.em < 3 * 60 * 1000) return m.pedido;
+  const pedido = (async () => {
+    try {
+      const r = await fetch(`${url}?tabela=${encodeURIComponent(tabela)}`);
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j?.ok !== false && Array.isArray(j?.dados) ? j.dados as any[][] : null;
+    } catch { return null; }
+  })();
+  folhasEmMemoria.set(chave, { em: Date.now(), pedido });
+  pedido.then(d => { if (!d) folhasEmMemoria.delete(chave); });
+  return pedido;
+}
+
+/** Um valor de uma célula, como se lê: as datas e horas do Sheets chegam em UTC. */
+function valorKF(v: any): string {
+  const s = String(v ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 60);
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s.slice(0, 60);
+  const hh = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (d.getFullYear() < 1901) return hh; // só hora (o Sheets guarda-a em 30/12/1899)
+  const dia = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  return hh === '00:00' ? dia : `${dia} ${hh}`;
+}
+
+export interface RegistoKFDoAluno { tabela: string; hora: string; detalhe: string }
+/** Os registos que o aluno fez no KitchenFlow nesse dia (sem os que a própria
+ *  Avaliação lá põe, como a farda), ou null se o KitchenFlow não respondeu. */
+export async function registosKFDoAluno(turmaId: string, alunoId: string, dataISO: string): Promise<RegistoKFDoAluno[] | null> {
+  const turma = getTurmas().find(t => t.id === turmaId);
+  const turmas = new Set([norm(turmaId), norm(turma?.nome || '')].filter(Boolean));
+  const numero = String(alunoId).split('-').pop() || '';
+  const eDele = (v: any) => {
+    const t = String(v ?? '').trim();
+    return t === alunoId || t === numero || (/^\d+$/.test(t) && /^\d+$/.test(numero) && Number(t) === Number(numero));
+  };
+  const vistos = new Set<string>();
+  const out: RegistoKFDoAluno[] = [];
+  let respostas = 0;
+  await Promise.all(URLS.flatMap(url => Object.entries(COLUNAS_KF).map(async ([tabela, cols]) => {
+    const linhas = await lerFolhaKF(url, tabela);
+    if (!linhas) return;
+    respostas++;
+    const iD = cols.indexOf('Data'), iT = cols.indexOf('Turma'), iA = cols.indexOf('ID Aluno'), iH = cols.indexOf('Hora'), iF = cols.indexOf('Fonte');
+    for (const l of linhas) {
+      if (!Array.isArray(l) || dataDaLinha(l[iD]) !== dataISO || !eDele(l[iA])) continue;
+      if (norm(l[iT]) && !turmas.has(norm(l[iT]))) continue;
+      if (iF >= 0 && String(l[iF] ?? '') === 'avaliacao_ecl') continue;
+      const hora = horaDaLinha(l[iH]);
+      const detalhe = cols.map((c, i) => ({ c, v: valorKF(l[i]) }))
+        .filter(x => !NAO_MOSTRAR.has(x.c) && x.v)
+        .map(x => `${x.c}: ${x.v}`).join(' · ').slice(0, 220);
+      const chave = [tabela, hora, detalhe].join('|');
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      out.push({ tabela, hora, detalhe });
+    }
+  })));
+  if (!respostas) return null;
+  return out.sort((a, b) => a.hora.localeCompare(b.hora) || a.tabela.localeCompare(b.tabela));
+}
+
 /** Os PCC da ficha técnica e o registo que lhes corresponde no KitchenFlow.
  *  A temperatura interna de confeção ainda não tem registo próprio lá. */
 export const PCC_NO_KF: { re: RegExp; modulo: string; tabela: string; nome: string }[] = [

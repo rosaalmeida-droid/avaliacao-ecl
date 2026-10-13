@@ -479,12 +479,14 @@ const SUBSTITUTAS_EVENTO: Record<string, PerguntaAtitude> = {
     'Fiz logo e voltei à minha tarefa sem a deixar por acabar.',
   ]),
 };
-export function perguntaSubstituta(id: string, evento = false): PerguntaAtitude | null {
+export function perguntaSubstituta(id: string, evento = false, ctx?: ContextoAula): PerguntaAtitude | null {
   if (evento && PERGUNTAS_EVENTO[id]) return SUBSTITUTAS_EVENTO[id] || null;
-  // Das perguntas novas: a primeira situação «de sempre» que se pode fazer
-  // em qualquer aula (sem precisar de cozinha, equipa…). Sempre a mesma para
-  // esta atitude, para o professor ver exatamente a que o aluno respondeu.
-  const par = (PARES_NOVOS_ATITUDES[id] || []).find(x => !x.requisitos[1].length);
+  // Das perguntas novas: a primeira situação «de sempre» que faz sentido NESTA
+  // aula (numa teórica, nada de cozinha: «as tarefas mais chatas (descascar…)»
+  // ou «a linguagem na cozinha» apareciam — Rosa, 12/out/2026). Sem a aula,
+  // a primeira que se pode fazer em qualquer aula. Sempre a mesma para esta
+  // atitude e esta aula, para o professor ver exatamente a que o aluno respondeu.
+  const par = (PARES_NOVOS_ATITUDES[id] || []).find(x => ctx ? cumpre(x.requisitos[1], ctx) : !x.requisitos[1].length);
   return par ? par.perguntas[1] : null;
 }
 
@@ -544,11 +546,11 @@ export function temPerguntas(id: string): boolean {
 
 /** Respondida: as duas perguntas têm resposta (uma resposta pode ser «não
  *  aconteceu», ou a pergunta não se fez nesta aula), e pelo menos uma conta. */
-export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined, evento = false): boolean {
+export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined, evento = false, ctx?: ContextoAula): boolean {
   const ps = perguntasDe(id, evento);
   if (!ps || !r) return false;
   // Com uma «não aconteceu», a pergunta de substituição também tem de ter resposta.
-  const precisaSub = r.slice(0, 2).some(x => x === NAO_ACONTECEU) && !!perguntaSubstituta(id, evento);
+  const precisaSub = r.slice(0, 2).some(x => x === NAO_ACONTECEU) && !!perguntaSubstituta(id, evento, ctx);
   return ps.every((p, i) => r[i] != null && (r[i]! >= 0 || r[i] === NAO_SE_APLICA || (r[i] === NAO_ACONTECEU && !!p.naoAconteceu)))
     && r.some(x => x != null && x >= 0) && (!precisaSub || (r[2] != null && r[2]! >= 0));
 }
@@ -570,7 +572,7 @@ export function textoDasRespostas(id: string, r: (number | null | undefined)[] |
       : r[i] === NAO_SE_APLICA ? 'Não se perguntou: não fazia sentido nesta aula'
       : r[i] != null ? p.respostas[r[i]!] : 'Por responder',
   }));
-  const sub = r[2] != null && r[2]! >= 0 ? perguntaSubstituta(id, evento) : null;
+  const sub = r[2] != null && r[2]! >= 0 ? perguntaSubstituta(id, evento, ctx) : null;
   if (sub) lista.push({ pergunta: '(em vez da que não aconteceu) ' + sub.pergunta, resposta: sub.respostas[r[2]!] });
   return lista;
 }

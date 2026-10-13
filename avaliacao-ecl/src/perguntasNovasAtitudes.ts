@@ -17,7 +17,9 @@ type ComRequisitos = PerguntaAtitude & { requisitos?: Requisito[] };
 /** P(pergunta, respostas, «não aconteceu»?, requisitos?) — ou P(pergunta, respostas, requisitos). */
 const P = (pergunta: string, respostas: [string, string, string, string], nao?: string | Requisito[], req?: Requisito[]): ComRequisitos => {
   const naoAconteceu = typeof nao === 'string' ? nao : undefined;
-  const requisitos = Array.isArray(nao) ? nao : req;
+  // P(…, [], ['cozinha']): sem «não aconteceu», com requisitos. Antes a lista
+  // vazia ficava como requisitos e os ['cozinha'] perdiam-se (12/out/2026).
+  const requisitos = Array.isArray(nao) && nao.length ? nao : req;
   return { pergunta, respostas, ...(naoAconteceu ? { naoAconteceu } : {}), ...(requisitos && requisitos.length ? { requisitos } : {}) };
 };
 
@@ -86,7 +88,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Quase bem, mas faltou um pormenor.',
         'Unhas curtas e limpas, cabelo preso, sem adornos.',
         'Tudo isto, e lembrei um colega que se esqueceu.',
-      ])),
+      ], [], ['cozinha'])),
     par(
       P('Hoje, ao sair da cozinha (casa de banho, intervalo), o que fizeste à farda?', [
         'Saí com a farda e voltei sem lavar as mãos.',
@@ -538,7 +540,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Fiz à pressa e mal.',
         'Fiz bem, até ao fim.',
         'Fiz bem, até ao fim, sem reclamar.',
-      ])),
+      ], [], ['producao'])),
     par(
       P('Hoje, quando o prato não ficou como na ficha, o que fizeste?', [
         'Entreguei assim.',
@@ -867,7 +869,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
         'Disse uma asneira.',
         'Falei sempre bem.',
         'Falei sempre bem e usei os nomes certos das técnicas.',
-      ])),
+      ], [], ['cozinha'])),
     par(
       P('Hoje, quando cometeste um erro diante de alguém, como reagiste?', [
         'Fiz uma cena ou escondi.',

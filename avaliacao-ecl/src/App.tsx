@@ -139,7 +139,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, espacoOcupado, rotuloDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada, fechoDasAulas } from './backend';
 import { FechoDasAulas, deveAbrirFecho } from './components/FechoDasAulas';
 import { ouvirTurmaNaBase } from './baseDeDados';
 
@@ -204,6 +204,13 @@ function AppInterno() {
   const [moduloPedido, setModuloPedido] = useState<string | null>(null);
   /** O que ainda não se sabe se chegou ao Sheets. */
   const [espera, setEspera] = useState<{ total: number; teimosos: any[] }>({ total: 0, teimosos: [] });
+  // O espaço da aplicação neste aparelho (o tablet guarda todas as turmas):
+  // o professor é avisado antes de encher, e não depois (13/out/2026).
+  const [espaco, setEspaco] = useState(() => espacoOcupado());
+  useEffect(() => {
+    const t = setInterval(() => setEspaco(espacoOcupado()), 5 * 60000);
+    return () => clearInterval(t);
+  }, []);
   /** A resposta do botão «Tentar enviar agora» (antes não dizia nada). */
   const [msgEnvio, setMsgEnvio] = useState('');
 
@@ -597,6 +604,17 @@ function AppInterno() {
               <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
                 <EstadoSincronizacao turmaId={turmaId} outrosPorEnviar={espera.teimosos.length} />
               </div>
+              {(espaco.cheio || espaco.fracao >= 0.8) && (
+                <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#fdf0ef', border: '1.5px solid #c0392b',
+                  borderRadius: 12, padding: '12px 16px', color: '#8e2418', fontSize: 14.5, lineHeight: 1.5 }}>
+                  <b>{espaco.cheio ? 'O espaço da aplicação neste aparelho está cheio.'
+                    : `O espaço da aplicação neste aparelho está a ${Math.round(espaco.fracao * 100)}%.`}</b>{' '}
+                  {espaco.cheio
+                    ? 'O que ainda não chegou ao arquivo da escola só fica guardado enquanto a aplicação estiver aberta: carregue em «Tentar enviar agora» e não feche a aplicação até ficar tudo enviado.'
+                    : 'Quando encher, o que ainda não chegou ao arquivo da escola só fica guardado enquanto a aplicação estiver aberta.'}
+                  {' '}O navegador dá a cada site um espaço fixo, e libertar fotografias ou aplicações não ajuda.
+                </div>
+              )}
 
               {espera.teimosos.length === 0 && msgEnvio.startsWith('✓') && (
                 <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#EEF6EA', border: '1.5px solid #3E7A31', borderRadius: 12,
@@ -612,10 +630,19 @@ function AppInterno() {
                     {espera.teimosos.slice(0, 3).map((x: any) => rotuloDaEspera(x)).join(' · ')}
                     {espera.teimosos.length > 3 ? ` · e mais ${espera.teimosos.length - 3}` : ''}
                   </div>
-                  <button onClick={() => { setMsgEnvio('A enviar e a confirmar no arquivo da escola…');
-                      confirmarEReenviar().then(r => { setEspera(estadoDaEspera());
+                  <button onClick={() => {
+                      // Manda logo tudo outra vez, à frente do resto, e confere
+                      // daqui a meio minuto (o tempo de o Sheets gravar).
+                      const dizer = (r: { confirmados: number; aRepetir: number }) => {
+                        setEspera(estadoDaEspera());
                         setMsgEnvio(r.aRepetir === 0 ? '✓ Ficou tudo guardado no arquivo da escola.'
-                          : `${r.confirmados ? `Chegaram ${r.confirmados}. ` : ''}Ainda falta${r.aRepetir === 1 ? '' : 'm'} ${r.aRepetir}: a aplicação continua a tentar sozinha. Tente outra vez dentro de um minuto.`); })
+                          : `${r.confirmados ? `Chegaram ${r.confirmados}. ` : ''}Ainda falta${r.aRepetir === 1 ? '' : 'm'} ${r.aRepetir}: a aplicação continua a tentar sozinha. Não feche a aplicação; tente outra vez dentro de um minuto.`);
+                      };
+                      setMsgEnvio('A enviar tudo para o arquivo da escola…');
+                      confirmarEReenviar({ forcar: true }).then(r => {
+                        setMsgEnvio(`Foram enviados ${r.enviados}. A confirmar no arquivo da escola (meio minuto)…`);
+                        setTimeout(() => { confirmarEReenviar().then(dizer).catch(() => {}); }, 30000);
+                      })
                       .catch(() => setMsgEnvio('Não foi possível ligar ao arquivo da escola. Verifique a internet e tente outra vez.')); }}
                     style={{ marginTop: 9, padding: '8px 14px', borderRadius: 8, border: 'none',
                       background: 'var(--copper)', color: '#fff', fontSize: 13.5, fontWeight: 700,
