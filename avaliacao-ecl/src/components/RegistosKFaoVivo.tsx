@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula } from '../types';
 import { KITCHENFLOW_SHEET_URL, getTurmas } from '../backend';
+import { registosKFNaBase } from '../baseDeDados';
 import { organizacaoDe, FUNCOES_AULA, nomeDoAluno, type IdFuncao } from '../organizacaoAula';
 
 // O endereço que a aplicação KitchenFlow usa hoje (Google Sheets novo, script v6),
@@ -37,6 +38,16 @@ function dataDaLinha(v: any): string {
   // O Sheets manda a data à meia-noite de Lisboa em UTC: usa a data local.
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+/** «2026-10-13» → «13/10/2026» (como o KitchenFlow guarda o dia na base). */
+const diaPT = (iso: string) => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+/** Uma célula para comparar a linha da base com a do Sheets (o Sheets muda
+ *  as datas e os números): o mesmo registo não aparece duas vezes. */
+function celulaParaChave(v: any): string {
+  const s = valorKF(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return /^-?\d+(\.\d+)?$/.test(s) ? String(Number(s)) : s;
+}
 function horaDaLinha(v: any): string {
   const s = String(v || '');
   const m = s.match(/(\d{1,2}):(\d{2})/);
@@ -52,20 +63,28 @@ export async function registosKFdaAula(turmaId: string, dataISO: string): Promis
   const vistos = new Set<string>();
   const registos: RegistoKF[] = [];
   let respostas = 0;
-  const pedidos = URLS.flatMap(url => TABELAS.map(async tabela => {
+  // (13/out/2026) Os registos que já estão na base de dados aparecem logo; as
+  // folhas do Sheets juntam-se a seguir (sem repetidos).
+  const daBase = await registosKFNaBase(diaPT(dataISO));
+  if (daBase) respostas++;
+  const porTabela = (tabela: string) => (daBase || []).filter(x => x.tabela === tabela).map(x => x.linha);
+  const pedidos = [...TABELAS.map(async tabela => ({ tabela, linhas: porTabela(tabela) })), ...URLS.flatMap(url => TABELAS.map(async tabela => {
     const r = await fetch(`${url}?tabela=${encodeURIComponent(tabela)}`);
     const j = await r.json();
     respostas++;
-    for (const l of (j?.dados || []) as any[][]) {
+    return { tabela, linhas: (j?.dados || []) as any[][] };
+  }))].map(async p => {
+    const { tabela, linhas } = await p;
+    for (const l of linhas) {
       if (!Array.isArray(l) || dataDaLinha(l[0]) !== dataISO || !turmas.has(norm(l[2]))) continue;
       const hora = horaDaLinha(l[1]);
       const detalhe = l.slice(5).map(x => String(x ?? '').trim()).filter(x => x && x !== 'avaliacao_ecl').join(' · ');
-      const chave = [tabela, hora, l[3], detalhe].join('|');
+      const chave = [tabela, hora, l[3], l.slice(5).map(celulaParaChave).filter(x => x && x !== 'avaliacao_ecl').join('·')].join('|');
       if (vistos.has(chave)) continue;
       vistos.add(chave);
       registos.push({ tabela, hora, nome: String(l[4] || l[3] || '').trim(), detalhe, nc: /(^|·\s)NC(\s|$)/.test(detalhe), alunoId: String(l[3] || '') });
     }
-  }));
+  });
   await Promise.allSettled(pedidos);
   registos.sort((a, b) => b.hora.localeCompare(a.hora));
   return { registos, falhou: respostas === 0 };
@@ -143,10 +162,13 @@ export async function registosKFDoAluno(turmaId: string, alunoId: string, dataIS
   const vistos = new Set<string>();
   const out: RegistoKFDoAluno[] = [];
   let respostas = 0;
-  await Promise.all(URLS.flatMap(url => Object.entries(COLUNAS_KF).map(async ([tabela, cols]) => {
-    const linhas = await lerFolhaKF(url, tabela);
+  const daBase = await registosKFNaBase(diaPT(dataISO));
+  if (daBase) respostas++;
+  await Promise.all([null, ...URLS].flatMap(url => Object.entries(COLUNAS_KF).map(async ([tabela, cols]) => {
+    // url null: as linhas que já estão na base de dados (13/out/2026).
+    const linhas = url ? await lerFolhaKF(url, tabela) : (daBase || []).filter(x => x.tabela === tabela).map(x => x.linha);
     if (!linhas) return;
-    respostas++;
+    if (url) respostas++;
     const iD = cols.indexOf('Data'), iT = cols.indexOf('Turma'), iA = cols.indexOf('ID Aluno'), iH = cols.indexOf('Hora'), iF = cols.indexOf('Fonte');
     for (const l of linhas) {
       if (!Array.isArray(l) || dataDaLinha(l[iD]) !== dataISO || !eDele(l[iA])) continue;
@@ -156,7 +178,7 @@ export async function registosKFDoAluno(turmaId: string, alunoId: string, dataIS
       const detalhe = cols.map((c, i) => ({ c, v: valorKF(l[i]) }))
         .filter(x => !NAO_MOSTRAR.has(x.c) && x.v)
         .map(x => `${x.c}: ${x.v}`).join(' · ').slice(0, 220);
-      const chave = [tabela, hora, detalhe].join('|');
+      const chave = [tabela, hora, cols.map((c, i) => NAO_MOSTRAR.has(c) ? '' : celulaParaChave(l[i])).join('·')].join('|');
       if (vistos.has(chave)) continue;
       vistos.add(chave);
       out.push({ tabela, hora, detalhe });
@@ -189,6 +211,12 @@ export async function registoPCCjaFeito(tabela: string, turmaId: string, dataISO
   const turmas = new Set([norm(turmaId), norm(turma?.nome || '')].filter(Boolean));
   const ids = new Set(alunosIds.map(norm));
   const p = norm(prato).slice(0, 12);
+  const daBase = await registosKFNaBase(diaPT(dataISO));
+  for (const { tabela: t, linha: l } of (daBase || [])) {
+    if (t !== tabela || dataDaLinha(l[0]) !== dataISO || !turmas.has(norm(l[2])) || !ids.has(norm(l[3]))) continue;
+    if (p && !norm(l.slice(5).join(' ')).includes(p)) continue;
+    return { nome: String(l[4] || l[3] || ''), hora: horaDaLinha(l[1]) };
+  }
   for (const url of URLS) {
     try {
       const j = await (await fetch(`${url}?tabela=${encodeURIComponent(tabela)}`)).json();

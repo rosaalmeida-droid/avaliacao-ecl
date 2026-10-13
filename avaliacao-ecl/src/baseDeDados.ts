@@ -314,3 +314,36 @@ export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados:
   });
   return () => { vivo = false; parar.forEach(p => p()); parar = []; ouvidas.forEach(k => aOuvir.delete(k)); };
 }
+
+// ── Registos do KitchenFlow (13/out/2026) ─────────────────────────
+// O KitchenFlow passou a gravar cada registo também nesta base (coleção
+// «kitchenflow», no formato das linhas do Sheets). A validação e o plano da
+// aula leem-nos daqui num instante, em vez de pedirem 30 folhas ao Sheets.
+export interface RegistoKFNaBase { tabela: string; linha: any[] }
+const kfPorDia = new Map<string, { em: number; pedido: Promise<RegistoKFNaBase[] | null> }>();
+/** Os registos do KitchenFlow de um dia («13/10/2026»), de todas as turmas.
+ *  Um minuto em memória: validar a turma toda não volta a pedir a cada aluno.
+ *  null se a base não respondeu (lê-se o Sheets, como antes). */
+export function registosKFNaBase(diaPT: string): Promise<RegistoKFNaBase[] | null> {
+  if (!baseLigada() || baseEsgotada() || !diaPT) return Promise.resolve(null);
+  const m = kfPorDia.get(diaPT);
+  if (m && Date.now() - m.em < 60000) return m.pedido;
+  const pedido = (async () => {
+    const l = await ligar();
+    if (!l) return null;
+    try {
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
+      const r = await getDocs(query(collection(l.db, 'kitchenflow'), where('dia', '==', diaPT)));
+      return r.docs.map(d => d.data() as any)
+        .filter(x => x && typeof x.tabela === 'string' && Array.isArray(x.linha))
+        .map(x => ({ tabela: x.tabela as string, linha: x.linha as any[] }));
+    } catch (e) {
+      verSeEsgotou(e);
+      console.warn('[base] não leu o KitchenFlow', e);
+      return null;
+    }
+  })();
+  kfPorDia.set(diaPT, { em: Date.now(), pedido });
+  pedido.then(d => { if (!d) kfPorDia.delete(diaPT); });
+  return pedido;
+}
